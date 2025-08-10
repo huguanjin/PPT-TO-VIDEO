@@ -1,0 +1,17 @@
+{
+  "project_name": "test_project",
+  "ppt_file_path": "C:\\Users\\万亿神~1\\AppData\\Local\\Temp\\测试文件.pptx",
+  "tts_voice": "zh-CN-YunxiNeural",
+  "speech_rate": "medium",
+  "speech_pitch": "medium",
+  "video_resolution": "1920x1080 (Full HD)",
+  "video_fps": 24,
+  "video_bitrate": 2000,
+  "video_codec": "libx264",
+  "output_format": "MP4 (推荐)",
+  "include_subtitles": true,
+  "subtitle_fontsize": 50,
+  "subtitle_color": "white",
+  "subtitle_position": "bottom",
+  "last_updated": "2025-08-08T09:33:08.196399"
+}

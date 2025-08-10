@@ -1,0 +1,37 @@
+2025-08-08 09:33:21,823 - core.step01_ppt_parser - INFO - 开始解析PPT文件: C:\Users\万亿神~1\AppData\Local\Temp\测试文件.pptx
+2025-08-08 09:33:21,824 - utils.file_manager - INFO - 创建目录: output\test_project
+2025-08-08 09:33:21,825 - utils.file_manager - INFO - 创建目录: output\test_project\slides
+2025-08-08 09:33:21,826 - utils.file_manager - INFO - 创建目录: output\test_project\scripts
+2025-08-08 09:33:21,827 - utils.file_manager - INFO - 创建目录: output\test_project\audio
+2025-08-08 09:33:21,828 - utils.file_manager - INFO - 创建目录: output\test_project\video_clips
+2025-08-08 09:33:21,828 - utils.file_manager - INFO - 创建目录: output\test_project\subtitles
+2025-08-08 09:33:21,831 - utils.file_manager - INFO - 创建目录: output\test_project\temp
+2025-08-08 09:33:21,831 - utils.file_manager - INFO - 创建目录: output\test_project\final
+2025-08-08 09:33:21,833 - utils.file_manager - INFO - 创建目录: output\test_project\logs
+2025-08-08 09:33:21,850 - core.step01_ppt_parser - INFO - PPT总页数: 3
+2025-08-08 09:33:21,990 - core.step01_ppt_parser - INFO - 保存幻灯片图片: output\test_project\slides\slide_001.png
+2025-08-08 09:33:21,991 - core.step01_ppt_parser - INFO - 解析完成第 1 页
+2025-08-08 09:33:22,180 - core.step01_ppt_parser - INFO - 保存幻灯片图片: output\test_project\slides\slide_002.png
+2025-08-08 09:33:22,182 - core.step01_ppt_parser - INFO - 解析完成第 2 页
+2025-08-08 09:33:22,351 - core.step01_ppt_parser - INFO - 保存幻灯片图片: output\test_project\slides\slide_003.png
+2025-08-08 09:33:22,353 - core.step01_ppt_parser - INFO - 解析完成第 3 页
+2025-08-08 09:33:22,465 - utils.file_manager - INFO - 保存JSON文件: output\test_project\slides\slides_metadata.json
+2025-08-08 09:33:22,467 - utils.file_manager - INFO - 保存JSON文件: output\test_project\scripts\scripts_metadata.json
+2025-08-08 09:33:22,847 - utils.file_manager - INFO - 保存Excel文件: output\test_project\scripts\scripts_data.xlsx
+2025-08-08 09:33:22,848 - core.step01_ppt_parser - INFO - PPT解析完成
+2025-08-08 09:34:06,733 - utils.file_manager - INFO - 加载JSON文件: output\test_project\scripts\scripts_metadata.json
+2025-08-08 09:34:10,007 - core.step02_tts_generator - INFO - 开始生成音频文件
+2025-08-08 09:34:10,009 - core.step02_tts_generator - INFO - 生成第 1 页音频
+2025-08-08 09:34:10,010 - core.step02_tts_generator - INFO - 正在合成语音: 讲话稿一：欢迎来到PPT-to-video
+2025-08-08 09:34:11,661 - core.step02_tts_generator - ERROR - 生成音频失败 audio_001.wav: 403, message='Invalid response status', url='wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=b0079f2c162f4fcd939056a7ab489651'
+2025-08-08 09:34:11,664 - core.step02_tts_generator - WARNING - TTS失败，生成静默音频: audio_001.wav (时长: 6.0s), 错误: 403, message='Invalid response status', url='wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=b0079f2c162f4fcd939056a7ab489651'
+2025-08-08 09:34:12,181 - core.step02_tts_generator - INFO - 生成第 2 页音频
+2025-08-08 09:34:12,182 - core.step02_tts_generator - INFO - 正在合成语音: 讲话稿二：你好啊，我爱你
+2025-08-08 09:34:13,683 - core.step02_tts_generator - ERROR - 生成音频失败 audio_002.wav: 403, message='Invalid response status', url='wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=401d0bef1ca84148b1b094dac256fadb'
+2025-08-08 09:34:13,686 - core.step02_tts_generator - WARNING - TTS失败，生成静默音频: audio_002.wav (时长: 3.43s), 错误: 403, message='Invalid response status', url='wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=401d0bef1ca84148b1b094dac256fadb'
+2025-08-08 09:34:14,201 - core.step02_tts_generator - INFO - 生成第 3 页音频
+2025-08-08 09:34:14,203 - core.step02_tts_generator - INFO - 正在合成语音: 讲话稿三：谢谢观看
+2025-08-08 09:34:15,645 - core.step02_tts_generator - ERROR - 生成音频失败 audio_003.wav: 403, message='Invalid response status', url='wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=5d2719d5d1094ed5aca5e54c1cf44217'
+2025-08-08 09:34:15,648 - core.step02_tts_generator - WARNING - TTS失败，生成静默音频: audio_003.wav (时长: 2.57s), 错误: 403, message='Invalid response status', url='wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=5d2719d5d1094ed5aca5e54c1cf44217'
+2025-08-08 09:34:16,162 - utils.file_manager - INFO - 保存JSON文件: output\test_project\audio\audio_metadata.json
+2025-08-08 09:34:16,164 - core.step02_tts_generator - INFO - 音频生成完成，总时长: 12.00 秒

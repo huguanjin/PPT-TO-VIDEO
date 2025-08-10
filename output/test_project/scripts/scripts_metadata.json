@@ -1,0 +1,35 @@
+{
+  "total_scripts": 3,
+  "extraction_completed": true,
+  "extraction_timestamp": "2025-08-08T09:33:22.466200",
+  "total_word_count": 42,
+  "scripts": [
+    {
+      "script_id": "001",
+      "slide_number": 1,
+      "slide_title": "PPTist",
+      "script_content": "讲话稿一：欢迎来到PPT-to-video",
+      "word_count": 21,
+      "estimated_duration_seconds": 6.0,
+      "extracted_at": "2025-08-08T09:33:21.991762"
+    },
+    {
+      "script_id": "002",
+      "slide_number": 2,
+      "slide_title": "在此处添加标题",
+      "script_content": "讲话稿二：你好啊，我爱你",
+      "word_count": 12,
+      "estimated_duration_seconds": 3.43,
+      "extracted_at": "2025-08-08T09:33:22.182345"
+    },
+    {
+      "script_id": "003",
+      "slide_number": 3,
+      "slide_title": "感谢观看",
+      "script_content": "讲话稿三：谢谢观看",
+      "word_count": 9,
+      "estimated_duration_seconds": 2.57,
+      "extracted_at": "2025-08-08T09:33:22.352082"
+    }
+  ]
+}

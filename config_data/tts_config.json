@@ -1,0 +1,18 @@
+{
+  "edge_voice": "zh-CN-XiaoxiaoNeural",
+  "edge_rate": "medium",
+  "edge_pitch": "medium",
+  "fish_api_key": "",
+  "fish_character_id": "",
+  "fish_character_name": "",
+  "openai_api_key": "",
+  "openai_voice": "alloy",
+  "openai_model": "tts-1",
+  "azure_api_key": "",
+  "azure_region": "",
+  "azure_voice": "zh-CN-XiaoxiaoNeural",
+  "sample_rate": 22050,
+  "max_retries": 3,
+  "timeout": 30.0,
+  "last_updated": "2025-08-08T10:00:00"
+}

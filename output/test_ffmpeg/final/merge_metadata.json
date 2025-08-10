@@ -1,0 +1,12 @@
+{
+  "video_files": [
+    "test1.mp4",
+    "test2.mp4"
+  ],
+  "audio_files": [
+    "test1.wav",
+    "test2.wav"
+  ],
+  "output_file": "final_test.mp4",
+  "duration": 120.5
+}

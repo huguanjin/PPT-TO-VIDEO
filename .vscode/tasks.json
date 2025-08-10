@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "运行PPT转视频工具",
+			"type": "shell",
+			"command": "D:/My-LocalGitFile/makemoneyproject/01.edu-course-aotu/PPTist/ppt_to_video/venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"streamlit",
+				"run",
+				"main.py"
+			],
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}

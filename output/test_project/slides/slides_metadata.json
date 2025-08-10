@@ -1,0 +1,35 @@
+{
+  "total_slides": 3,
+  "parsing_completed": true,
+  "parsing_timestamp": "2025-08-08T09:33:21.850122",
+  "source_file": "C:\\Users\\万亿神~1\\AppData\\Local\\Temp\\测试文件.pptx",
+  "slides": [
+    {
+      "slide_id": "001",
+      "slide_number": 1,
+      "title": "PPTist",
+      "image_file": "slide_001.png",
+      "notes": "讲话稿一：欢迎来到PPT-to-video",
+      "notes_word_count": 21,
+      "extracted_at": "2025-08-08T09:33:21.991762"
+    },
+    {
+      "slide_id": "002",
+      "slide_number": 2,
+      "title": "在此处添加标题",
+      "image_file": "slide_002.png",
+      "notes": "讲话稿二：你好啊，我爱你",
+      "notes_word_count": 12,
+      "extracted_at": "2025-08-08T09:33:22.182345"
+    },
+    {
+      "slide_id": "003",
+      "slide_number": 3,
+      "title": "感谢观看",
+      "image_file": "slide_003.png",
+      "notes": "讲话稿三：谢谢观看",
+      "notes_word_count": 9,
+      "extracted_at": "2025-08-08T09:33:22.352082"
+    }
+  ]
+}
