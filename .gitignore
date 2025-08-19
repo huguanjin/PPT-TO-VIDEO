@@ -37,11 +37,25 @@ Thumbs.db
 
 # Project specific
 logs/
-output/*/
-uploads/*/
+output/
+uploads/
 temp/
 *.tmp
 *.log
+
+# Large files and media
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.wmv
+*.flv
+*.webm
+*.wav
+*.mp3
+*.aac
+*.flac
+*.ogg
 
 # Node.js (PPTist frontend)
 PPTist/node_modules/
@@ -86,3 +100,12 @@ coverage.xml
 # Translations
 *.mo
 *.pot
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache
+.cache/
+*.cache
