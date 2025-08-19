@@ -14,6 +14,23 @@
 			"group": "build",
 			"isBackground": true,
 			"problemMatcher": []
+		},
+		{
+			"label": "启动PPTist导入API服务器",
+			"type": "shell",
+			"command": "D:/My-LocalGitFile/makemoneyproject/01.edu-course-aotu/PPTist/ppt_to_video/venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"uvicorn",
+				"api_pptist_import:app",
+				"--host",
+				"0.0.0.0",
+				"--port",
+				"8001",
+				"--reload"
+			],
+			"isBackground": true,
+			"group": "build"
 		}
 	]
 }

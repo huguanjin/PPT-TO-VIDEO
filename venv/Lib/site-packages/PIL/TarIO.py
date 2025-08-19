@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 import io
-from types import TracebackType
 
 from . import ContainerIO
 
@@ -36,12 +35,16 @@ class TarIO(ContainerIO.ContainerIO[bytes]):
         while True:
             s = self.fh.read(512)
             if len(s) != 512:
+                self.fh.close()
+
                 msg = "unexpected end of tar file"
                 raise OSError(msg)
 
             name = s[:100].decode("utf-8")
             i = name.find("\0")
             if i == 0:
+                self.fh.close()
+
                 msg = "cannot find subfile"
                 raise OSError(msg)
             if i > 0:
@@ -56,18 +59,3 @@ class TarIO(ContainerIO.ContainerIO[bytes]):
 
         # Open region
         super().__init__(self.fh, self.fh.tell(), size)
-
-    # Context manager support
-    def __enter__(self) -> TarIO:
-        return self
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> None:
-        self.close()
-
-    def close(self) -> None:
-        self.fh.close()

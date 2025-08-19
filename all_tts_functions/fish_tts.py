@@ -2,7 +2,8 @@ import requests
 from pathlib import Path
 import os, sys
 from rich import print as rprint
-from moviepy.editor import AudioFileClip
+# 新版本 moviepy 的导入方式
+from moviepy.audio.io.AudioFileClip import AudioFileClip
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from core.config_utils import load_key
 

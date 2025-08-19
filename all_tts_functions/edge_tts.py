@@ -1,5 +1,5 @@
 from pathlib import Path
-import edge_tts
+import edge_tts as edge_tts_lib  # 重命名以避免冲突
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 from core.config_utils import load_key
@@ -16,23 +16,21 @@ from core.config_utils import load_key
 def edge_tts(text, save_path):
     # Load settings from config file
     edge_set = load_key("edge_tts")
-    voice = edge_set.get("voice", "en-US-JennyNeural")
+    voice = edge_set.get("voice", "zh-CN-XiaoxiaoNeural")  # 改为中文默认语音
     
     # Create output directory if it doesn't exist
     speech_file_path = Path(save_path)
     speech_file_path.parent.mkdir(parents=True, exist_ok=True)
     
-    # Use subprocess to run edge-tts command directly
-    import subprocess
+    # 使用Python库而不是命令行调用
+    import asyncio
     
-    cmd = [
-        "edge-tts",
-        "--voice", voice,
-        "--text", text,
-        "--write-media", str(speech_file_path)
-    ]
+    async def async_edge_tts():
+        communicate = edge_tts_lib.Communicate(text, voice)
+        await communicate.save(str(speech_file_path))
     
-    subprocess.run(cmd, check=True)
+    # 运行异步函数
+    asyncio.run(async_edge_tts())
     print(f"Audio saved to {speech_file_path}")
 
 if __name__ == "__main__":

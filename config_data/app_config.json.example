@@ -1,0 +1,25 @@
+{
+  "app": {
+    "title": "PPT转视频工具",
+    "version": "2.0.0",
+    "debug": false,
+    "language": "zh-CN"
+  },
+  "video": {
+    "resolution": "1920x1080",
+    "fps": 30,
+    "quality": "high",
+    "background_color": "#ffffff"
+  },
+  "subtitle": {
+    "font_size": 20,
+    "font_color": "white",
+    "position": "bottom",
+    "font_family": "Arial"
+  },
+  "paths": {
+    "output_dir": "output",
+    "temp_dir": "temp",
+    "uploads_dir": "uploads"
+  }
+}

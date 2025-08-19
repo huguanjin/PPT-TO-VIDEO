@@ -75,7 +75,7 @@ class TaskManager:
                     "任务状态": TaskStatus.PENDING.value,
                     "开始时间": "",
                     "完成时间": "",
-                    "执行时长(秒)": 0,
+                    "执行时长(秒)": 0.0,  # TTS任务使用浮点数
                     "错误信息": "",
                     "执行结果": ""
                 })
@@ -95,7 +95,7 @@ class TaskManager:
                     "任务状态": TaskStatus.PENDING.value,
                     "开始时间": "",
                     "完成时间": "",
-                    "执行时长(秒)": 0,
+                    "执行时长(秒)": 0.0,  # 视频生成任务使用浮点数
                     "错误信息": "",
                     "执行结果": ""
                 })
@@ -115,7 +115,7 @@ class TaskManager:
                     "任务状态": TaskStatus.PENDING.value,
                     "开始时间": "",
                     "完成时间": "",
-                    "执行时长(秒)": 0,
+                    "执行时长(秒)": 0.0,  # 字幕生成任务使用浮点数
                     "错误信息": "",
                     "执行结果": ""
                 })
@@ -132,7 +132,7 @@ class TaskManager:
                 "任务状态": TaskStatus.PENDING.value,
                 "开始时间": "",
                 "完成时间": "",
-                "执行时长(秒)": 0,
+                "执行时长(秒)": 0.0,  # 使用浮点数初始化
                 "错误信息": "",
                 "执行结果": ""
             })
@@ -196,11 +196,14 @@ class TaskManager:
             if end_time:
                 df.loc[idx, '完成时间'] = end_time
             if duration > 0:
+                # 确保执行时长列的数据类型兼容
+                if df['执行时长(秒)'].dtype == 'int64':
+                    df['执行时长(秒)'] = df['执行时长(秒)'].astype('float64')
                 df.loc[idx, '执行时长(秒)'] = round(duration, 2)
             if error_msg:
                 df.loc[idx, '错误信息'] = error_msg
             if result:
-                df.loc[idx, '执行结果'] = result
+                df.loc[idx, '执行结果'] = str(result)  # 确保结果转换为字符串
             
             # 保存更新后的任务表
             df.to_excel(self.task_file, index=False, engine='openpyxl')

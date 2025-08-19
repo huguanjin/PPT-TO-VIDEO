@@ -1,10 +1,12 @@
 {
+  "preferred_engine": "edge_tts",
   "edge_voice": "zh-CN-XiaoxiaoNeural",
   "edge_rate": "medium",
   "edge_pitch": "medium",
-  "fish_api_key": "",
-  "fish_character_id": "",
-  "fish_character_name": "",
+  "fish_api_key": "f9515b8c22e74f49a8ac8b7a487b42e9",
+  "fish_character": "雷军",
+  "fish_character_id": "738d0cc1a3e9430a9de2b544a466a7fc",
+  "fish_character_name": "雷军",
   "openai_api_key": "",
   "openai_voice": "alloy",
   "openai_model": "tts-1",
@@ -14,5 +16,5 @@
   "sample_rate": 22050,
   "max_retries": 3,
   "timeout": 30.0,
-  "last_updated": "2025-08-08T10:00:00"
+  "last_updated": "2025-08-18T13:59:02.122502"
 }

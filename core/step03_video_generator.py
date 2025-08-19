@@ -177,17 +177,34 @@ class VideoGenerator:
             # 计算总帧数
             total_frames = int(duration * self.fps)
             
-            # 初始化视频写入器
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            video_writer = cv2.VideoWriter(
-                str(output_path), 
-                fourcc, 
-                self.fps, 
-                (self.width, self.height)
-            )
+            # 尝试多个编码器，找到可用的
+            video_writer = None
+            codecs_to_try = ['mp4v', 'XVID', 'MJPG', 'X264']
             
-            if not video_writer.isOpened():
-                raise Exception("无法创建视频写入器")
+            for codec in codecs_to_try:
+                try:
+                    fourcc = cv2.VideoWriter_fourcc(*codec)
+                    video_writer = cv2.VideoWriter(
+                        str(output_path), 
+                        fourcc, 
+                        self.fps, 
+                        (self.width, self.height)
+                    )
+                    
+                    if video_writer.isOpened():
+                        self.logger.info(f"使用编码器: {codec}")
+                        break
+                    else:
+                        video_writer.release()
+                        video_writer = None
+                except Exception as e:
+                    self.logger.warning(f"编码器 {codec} 不可用: {e}")
+                    if video_writer:
+                        video_writer.release()
+                        video_writer = None
+            
+            if not video_writer or not video_writer.isOpened():
+                raise Exception("无法找到可用的视频编码器")
             
             # 加载或创建幻灯片图片
             if image_path.exists():

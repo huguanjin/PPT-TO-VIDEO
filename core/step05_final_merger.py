@@ -10,6 +10,13 @@ from typing import Dict, List, Any, Optional, Callable
 from datetime import datetime
 import json
 import shutil
+import time
+import platform
+
+try:
+    import cv2
+except ImportError:
+    cv2 = None
 
 from utils.file_manager import FileManager
 from utils.logger import get_logger
@@ -120,6 +127,46 @@ class FFmpegFinalMerger:
             self.logger.error(f"视频合并失败: {str(e)}", exc_info=True)
             return {"success": False, "error": str(e)}
     
+    def merge_videos(self, 
+                    scripts_data: Dict[str, Any],
+                    audio_data: Dict[str, Any], 
+                    video_data: Dict[str, Any],
+                    subtitles_data: Optional[Dict[str, Any]] = None,
+                    config: Optional[Dict[str, Any]] = None,
+                    progress_callback: Optional[Callable[[str, float], None]] = None) -> Dict[str, Any]:
+        """
+        视频合并适配器方法 - 兼容UI调用接口
+        
+        Args:
+            scripts_data: 脚本数据字典（暂不使用）
+            audio_data: 音频数据字典
+            video_data: 视频数据字典
+            subtitles_data: 字幕数据字典（可选）
+            config: 输出配置
+            progress_callback: 进度回调函数
+            
+        Returns:
+            合并结果字典
+        """
+        # 适配进度回调函数格式
+        adapted_progress_callback = None
+        if progress_callback:
+            def adapted_callback(progress: int):
+                # 将int进度转换为字符串描述和float进度
+                step_name = f"处理进度 {progress}%"
+                progress_float = progress / 100.0
+                progress_callback(step_name, progress_float)
+            adapted_progress_callback = adapted_callback
+        
+        # 调用实际的合并方法
+        return self.merge_final_video(
+            video_data=video_data,
+            audio_data=audio_data,
+            subtitle_data=subtitles_data,
+            config=config,
+            progress_callback=adapted_progress_callback
+        )
+    
     def _prepare_merge_parameters(self, 
                                  video_data: Dict[str, Any], 
                                  audio_data: Dict[str, Any],
@@ -129,7 +176,7 @@ class FFmpegFinalMerger:
         
         # 获取视频文件列表
         video_files = []
-        for video_info in video_data.get("video_files", []):
+        for video_info in video_data.get("video_clips", []):
             video_path = self.file_manager.video_clips_dir / video_info["video_file"]
             if video_path.exists():
                 video_files.append(str(video_path))
@@ -143,10 +190,32 @@ class FFmpegFinalMerger:
         
         # 获取字幕文件
         subtitle_file = None
-        if subtitle_data and subtitle_data.get("merged_subtitle_file"):
-            subtitle_path = self.file_manager.subtitles_dir / subtitle_data["merged_subtitle_file"]
-            if subtitle_path.exists():
-                subtitle_file = str(subtitle_path)
+        
+        # 检查配置是否启用字幕
+        output_config = config or {}
+        include_subtitles = output_config.get("include_subtitles", True)  # 默认包含字幕
+        
+        if include_subtitles and subtitle_data:
+            # 检查多种可能的字幕文件字段
+            subtitle_filename = (
+                subtitle_data.get("merged_subtitle_file") or
+                subtitle_data.get("combined_subtitle_info", {}).get("combined_subtitle_file") or
+                subtitle_data.get("combined_subtitle_file")
+            )
+            
+            if subtitle_filename:
+                subtitle_path = self.file_manager.subtitles_dir / subtitle_filename
+                if subtitle_path.exists():
+                    subtitle_file = str(subtitle_path)
+                    self.logger.info(f"找到字幕文件: {subtitle_file}")
+                else:
+                    self.logger.warning(f"字幕文件不存在: {subtitle_path}")
+            else:
+                self.logger.warning("未找到字幕文件名配置")
+        elif not include_subtitles:
+            self.logger.info("配置中禁用了字幕，跳过字幕处理")
+        else:
+            self.logger.info("未提供字幕数据，跳过字幕处理")
         
         # 输出文件配置
         output_config = config or {}
@@ -210,13 +279,28 @@ class FFmpegFinalMerger:
             
             if params["subtitle_file"]:
                 success = self._add_subtitles(av_merge_path, params["subtitle_file"], final_output_path)
+                if not success:
+                    # 字幕添加失败，使用无字幕版本作为备用
+                    self.logger.warning("字幕添加失败，使用无字幕版本")
+                    try:
+                        shutil.move(av_merge_path, final_output_path)
+                        success = True
+                    except Exception as e:
+                        self.logger.error(f"移动无字幕视频失败: {e}")
+                        return {"success": False, "error": f"视频处理失败: {e}"}
             else:
                 # 没有字幕，直接移动文件
-                shutil.move(av_merge_path, final_output_path)
-                success = True
+                try:
+                    shutil.move(av_merge_path, final_output_path)
+                    success = True
+                except Exception as e:
+                    self.logger.error(f"移动视频文件失败: {e}")
+                    return {"success": False, "error": f"视频处理失败: {e}"}
             
-            if not success:
-                return {"success": False, "error": "字幕添加失败"}
+            # 验证最终输出
+            output_path = Path(final_output_path)
+            if not output_path.exists() or output_path.stat().st_size < 10000:
+                return {"success": False, "error": "最终视频文件无效或过小"}
             
             # 清理临时文件
             self._cleanup_temp_files([concat_video_path, concat_audio_path, av_merge_path])
@@ -253,9 +337,11 @@ class FFmpegFinalMerger:
             
             with open(concat_list_path, 'w', encoding='utf-8') as f:
                 for video_file in video_files:
-                    # 使用相对路径避免路径问题
-                    relative_path = os.path.relpath(video_file, concat_list_path.parent)
-                    f.write(f"file '{relative_path}'\n")
+                    # 使用绝对路径，并确保路径格式正确
+                    abs_path = os.path.abspath(video_file)
+                    # 在Windows上，需要使用正斜杠或转义反斜杠
+                    abs_path = abs_path.replace('\\', '/')
+                    f.write(f"file '{abs_path}'\n")
             
             # 输出路径
             output_path = self.file_manager.temp_dir / "concatenated_video.mp4"
@@ -276,8 +362,7 @@ class FFmpegFinalMerger:
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=300,  # 5分钟超时
-                cwd=str(concat_list_path.parent)
+                timeout=300  # 5分钟超时
             )
             
             if result.returncode == 0 and output_path.exists():
@@ -305,8 +390,11 @@ class FFmpegFinalMerger:
             
             with open(concat_list_path, 'w', encoding='utf-8') as f:
                 for audio_file in audio_files:
-                    relative_path = os.path.relpath(audio_file, concat_list_path.parent)
-                    f.write(f"file '{relative_path}'\n")
+                    # 使用绝对路径，并确保路径格式正确
+                    abs_path = os.path.abspath(audio_file)
+                    # 在Windows上，需要使用正斜杠或转义反斜杠
+                    abs_path = abs_path.replace('\\', '/')
+                    f.write(f"file '{abs_path}'\n")
             
             # 输出路径
             output_path = self.file_manager.temp_dir / "concatenated_audio.wav"
@@ -327,8 +415,7 @@ class FFmpegFinalMerger:
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=180,  # 3分钟超时
-                cwd=str(concat_list_path.parent)
+                timeout=180  # 3分钟超时
             )
             
             if result.returncode == 0 and output_path.exists():
@@ -372,11 +459,24 @@ class FFmpegFinalMerger:
                 timeout=600  # 10分钟超时
             )
             
-            if result.returncode == 0 and output_path.exists():
-                self.logger.info("音视频合并成功")
-                return str(output_path)
+            self.logger.info(f"音视频合并返回码: {result.returncode}")
+            
+            if result.returncode == 0:
+                # 等待文件系统同步
+                import time
+                time.sleep(1)
+                
+                if output_path.exists():
+                    file_size = output_path.stat().st_size
+                    self.logger.info(f"音视频合并成功，文件大小: {file_size} bytes")
+                    return str(output_path)
+                else:
+                    self.logger.error(f"音视频合并返回成功但输出文件不存在: {output_path}")
+                    self.logger.error(f"FFmpeg stderr: {result.stderr}")
+                    return None
             else:
-                self.logger.error(f"音视频合并失败: {result.stderr}")
+                self.logger.error(f"音视频合并失败，返回码: {result.returncode}")
+                self.logger.error(f"FFmpeg stderr: {result.stderr}")
                 return None
                 
         except Exception as e:
@@ -384,34 +484,132 @@ class FFmpegFinalMerger:
             return None
     
     def _add_subtitles(self, video_path: str, subtitle_path: str, output_path: str) -> bool:
-        """添加字幕到视频"""
+        """
+        添加字幕到视频 - 借鉴 testfile 的稳定实现
+        """
         try:
-            cmd = [
-                'ffmpeg', '-y',
-                '-i', video_path,
-                '-vf', f"subtitles='{subtitle_path}'",
-                '-c:a', 'copy',
-                output_path
-            ]
+            video_path_obj = Path(video_path)
+            subtitle_path_obj = Path(subtitle_path)
+            output_path_obj = Path(output_path)
             
-            self.logger.info(f"执行字幕添加: {' '.join(cmd)}")
+            # 检查输入文件
+            if not video_path_obj.exists():
+                self.logger.error(f"输入视频文件不存在: {video_path}")
+                return False
             
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=600  # 10分钟超时
+            if not subtitle_path_obj.exists():
+                self.logger.warning(f"字幕文件不存在: {subtitle_path}")
+                # 没有字幕时，直接复制视频
+                return self._copy_video_without_subtitles(video_path_obj, output_path_obj)
+            
+            # 获取视频分辨率
+            video_info = self._get_video_resolution(video_path_obj)
+            if video_info:
+                target_width, target_height = video_info['width'], video_info['height']
+                self.logger.info(f"检测到视频分辨率: {target_width}x{target_height}")
+            else:
+                target_width, target_height = 1920, 1080
+                self.logger.warning("无法检测视频分辨率，使用默认: 1920x1080")
+            
+            # 获取平台适配的字体
+            font_name = self._get_platform_font()
+            
+            # 构造字幕滤镜 - 使用简单可靠的方式
+            # 尝试使用相对路径避免Windows路径问题
+            try:
+                subtitle_path_rel = subtitle_path_obj.relative_to(self.project_dir)
+                subtitle_path_fixed = str(subtitle_path_rel).replace('\\', '/')
+            except ValueError:
+                # 如果无法获取相对路径，使用绝对路径
+                subtitle_path_fixed = str(subtitle_path_obj).replace('\\', '/')
+            
+            vf_filter = (
+                f"scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,"
+                f"pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2,"
+                f"subtitles={subtitle_path_fixed}:force_style='"
+                f"FontSize=20,FontName={font_name},"
+                f"PrimaryColour=&HFFFFFF,OutlineColour=&H000000,OutlineWidth=1,"
+                f"ShadowColour=&H80000000,BorderStyle=1'"
             )
             
-            if result.returncode == 0 and Path(output_path).exists():
-                self.logger.info("字幕添加成功")
-                return True
-            else:
-                self.logger.error(f"字幕添加失败: {result.stderr}")
+            # 构造 FFmpeg 命令 - 借鉴 testfile 方式
+            # 由于设置了cwd，需要使用相对路径
+            try:
+                video_path_rel = video_path_obj.relative_to(self.project_dir)
+                output_path_rel = output_path_obj.relative_to(self.project_dir)
+            except ValueError:
+                # 如果无法获取相对路径，使用绝对路径
+                video_path_rel = video_path_obj
+                output_path_rel = output_path_obj
+            
+            ffmpeg_cmd = [
+                'ffmpeg', '-y',
+                '-i', str(video_path_rel),
+                '-vf', vf_filter,  # 保持字符串类型，不编码
+                '-c:a', 'copy',
+                str(output_path_rel)
+            ]
+            
+            self.logger.info(f"开始字幕合并，输出: {output_path_obj.name}")
+            
+            # 使用 testfile 的进程管理方式
+            start_time = time.time()
+            
+            self.logger.info(f"执行FFmpeg命令: {' '.join(ffmpeg_cmd)}")
+            
+            try:
+                # 直接使用 subprocess.run，更简单可靠
+                result = subprocess.run(
+                    ffmpeg_cmd,
+                    cwd=str(self.project_dir),  # 重要：在项目目录中执行
+                    capture_output=True,
+                    text=True,
+                    timeout=600
+                )
+                
+                elapsed_time = time.time() - start_time
+                
+                # 简化的成功判断：借鉴 testfile - 只检查返回码
+                if result.returncode == 0:
+                    # 验证输出文件
+                    if output_path_obj.exists() and output_path_obj.stat().st_size > 10000:
+                        self.logger.info(f"字幕添加成功！耗时: {elapsed_time:.2f}秒, 大小: {output_path_obj.stat().st_size} bytes")
+                        return True
+                    else:
+                        self.logger.error("FFmpeg返回成功但输出文件无效")
+                        return False
+                else:
+                    # 记录错误但不失败，因为可能是字幕格式问题
+                    self.logger.warning(f"FFmpeg执行警告，返回码: {result.returncode}")
+                    self.logger.warning(f"FFmpeg stdout: {result.stdout}")
+                    self.logger.warning(f"FFmpeg stderr: {result.stderr}")
+                    
+                    # 检查是否有输出文件生成
+                    if output_path_obj.exists() and output_path_obj.stat().st_size > 10000:
+                        self.logger.info(f"尽管有警告，字幕添加仍然成功！耗时: {elapsed_time:.2f}秒")
+                        return True
+                    
+                    return False
+                    
+            except subprocess.TimeoutExpired:
+                self.logger.error("FFmpeg执行超时")
+                return False
+            except Exception as e:
+                self.logger.error(f"进程执行异常: {e}")
                 return False
                 
         except Exception as e:
-            self.logger.error(f"字幕添加异常: {str(e)}")
+            self.logger.error(f"字幕添加方法异常: {e}")
+            return False
+    
+    def _copy_video_without_subtitles(self, source_path: Path, dest_path: Path) -> bool:
+        """复制视频文件作为备用方案"""
+        try:
+            shutil.copy2(source_path, dest_path)
+            self.logger.info(f"已复制视频文件（无字幕）: {dest_path}")
+            return True
+        except Exception as e:
+            self.logger.error(f"复制视频文件失败: {e}")
             return False
     
     def _cleanup_temp_files(self, temp_files: List[str]):
@@ -477,6 +675,53 @@ class FFmpegFinalMerger:
             
         except Exception as e:
             return {"available": False, "error": str(e)}
+    
+    def _get_video_resolution(self, video_path: Path) -> Optional[Dict[str, int]]:
+        """获取视频分辨率 - 借鉴 testfile 方式"""
+        try:
+            # 方法1: 使用 ffprobe
+            cmd = [
+                'ffprobe', '-v', 'quiet', '-print_format', 'json', 
+                '-show_streams', str(video_path)
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                import json
+                data = json.loads(result.stdout)
+                for stream in data.get('streams', []):
+                    if stream.get('codec_type') == 'video':
+                        width = stream.get('width')
+                        height = stream.get('height')
+                        if width and height:
+                            return {'width': int(width), 'height': int(height)}
+        except Exception as e:
+            self.logger.debug(f"ffprobe方式获取分辨率失败: {e}")
+        
+        try:
+            # 方法2: 使用 opencv (如果可用)
+            import cv2
+            video = cv2.VideoCapture(str(video_path))
+            if video.isOpened():
+                width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+                height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                video.release()
+                if width > 0 and height > 0:
+                    return {'width': width, 'height': height}
+        except Exception as e:
+            self.logger.debug(f"opencv方式获取分辨率失败: {e}")
+        
+        return None
+    
+    def _get_platform_font(self) -> str:
+        """获取平台适配的字体名称 - 借鉴 testfile 方式"""
+        system = platform.system()
+        
+        if system == 'Linux':
+            return 'NotoSansCJK-Regular'
+        elif system == 'Darwin':  # macOS
+            return 'Arial Unicode MS'
+        else:  # Windows
+            return 'Microsoft YaHei'
 
 # 为了向后兼容，创建一个别名
 FinalMerger = FFmpegFinalMerger

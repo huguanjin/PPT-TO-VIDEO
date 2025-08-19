@@ -21,7 +21,7 @@ from . import Image, ImageFile, ImagePalette
 from ._binary import i32be as i32
 
 
-def _accept(prefix):
+def _accept(prefix: bytes) -> bool:
     return len(prefix) >= 4 and i32(prefix) == 0x59A66A95
 
 
@@ -33,7 +33,7 @@ class SunImageFile(ImageFile.ImageFile):
     format = "SUN"
     format_description = "Sun Raster File"
 
-    def _open(self):
+    def _open(self) -> None:
         # The Sun Raster file header is 32 bytes in length
         # and has the following format:
 
@@ -48,6 +48,8 @@ class SunImageFile(ImageFile.ImageFile):
         #         DWORD ColorMapType;     /* Type of color map */
         #         DWORD ColorMapLength;   /* Size of the color map in bytes */
         #     } SUNRASTER;
+
+        assert self.fp is not None
 
         # HEAD
         s = self.fp.read(32)
@@ -122,9 +124,13 @@ class SunImageFile(ImageFile.ImageFile):
         # (https://www.fileformat.info/format/sunraster/egff.htm)
 
         if file_type in (0, 1, 3, 4, 5):
-            self.tile = [("raw", (0, 0) + self.size, offset, (rawmode, stride))]
+            self.tile = [
+                ImageFile._Tile("raw", (0, 0) + self.size, offset, (rawmode, stride))
+            ]
         elif file_type == 2:
-            self.tile = [("sun_rle", (0, 0) + self.size, offset, rawmode)]
+            self.tile = [
+                ImageFile._Tile("sun_rle", (0, 0) + self.size, offset, rawmode)
+            ]
         else:
             msg = "Unsupported Sun Raster file type"
             raise SyntaxError(msg)

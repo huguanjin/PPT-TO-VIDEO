@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Callable
 from datetime import datetime
 import logging
+import dataclasses
+import re
+import html
 
 import edge_tts
 import wave
@@ -81,7 +84,7 @@ class TTSGenerator:
                 "total_audio_files": total_scripts,
                 "generation_completed": False,
                 "generation_timestamp": datetime.now().isoformat(),
-                "tts_config": self.tts_config.copy(),
+                "tts_config": dataclasses.asdict(self.tts_config),
                 "audio_files": [],
                 "total_duration_seconds": 0.0
             }
@@ -135,6 +138,9 @@ class TTSGenerator:
         """
         slide_number = script["slide_number"]
         script_content = script["script_content"]
+        
+        # 清理HTML标签
+        script_content = self._clean_html_tags(script_content)
         
         if not script_content or not script_content.strip():
             # 如果没有讲话稿内容，生成静默音频
@@ -205,6 +211,10 @@ class TTSGenerator:
         
         # 根据讲话稿内容估算时长，如果没有内容则使用3秒
         script_content = script.get("script_content", "")
+        
+        # 清理HTML标签
+        script_content = self._clean_html_tags(script_content)
+        
         if script_content and script_content.strip():
             # 基于字数估算时长 (3.5字/秒)
             char_count = len(script_content.replace(" ", "").replace("\n", ""))
@@ -362,3 +372,27 @@ class TTSGenerator:
         
         # 重新初始化TTS管理器
         self.tts_manager = IntegratedTTSManager(self.tts_config)
+    
+    def _clean_html_tags(self, text: str) -> str:
+        """
+        清理HTML标签和实体
+        
+        Args:
+            text: 包含HTML标签的文本
+            
+        Returns:
+            清理后的纯文本
+        """
+        if not text:
+            return ""
+        
+        # 移除HTML标签
+        clean_text = re.sub(r'<[^>]+>', '', text)
+        
+        # 解码HTML实体
+        clean_text = html.unescape(clean_text)
+        
+        # 清理多余空白
+        clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+        
+        return clean_text

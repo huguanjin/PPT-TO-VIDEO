@@ -9,6 +9,7 @@ from typing import Dict, Any, List, Optional, Callable, Tuple
 from datetime import datetime, timedelta
 import logging
 import re
+import html
 
 import pysrt
 
@@ -135,6 +136,9 @@ class SubtitleGenerator:
         """
         slide_number = script["slide_number"]
         script_content = script["script_content"]
+        
+        # 清理HTML标签
+        script_content = self._clean_html_tags(script_content)
         
         # 字幕文件路径
         subtitle_filename = f"subtitle_{slide_number:03d}.srt"
@@ -263,6 +267,30 @@ class SubtitleGenerator:
             segments = [text[i:i+max_length] for i in range(0, len(text), max_length)]
         
         return [seg for seg in segments if seg.strip()]
+    
+    def _clean_html_tags(self, text: str) -> str:
+        """
+        清理HTML标签和实体
+        
+        Args:
+            text: 包含HTML标签的文本
+            
+        Returns:
+            清理后的纯文本
+        """
+        if not text:
+            return ""
+        
+        # 移除HTML标签
+        clean_text = re.sub(r'<[^>]+>', '', text)
+        
+        # 解码HTML实体
+        clean_text = html.unescape(clean_text)
+        
+        # 清理多余空白
+        clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+        
+        return clean_text
     
     def _split_long_sentence(self, sentence: str) -> List[str]:
         """

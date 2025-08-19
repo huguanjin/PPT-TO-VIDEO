@@ -34,6 +34,24 @@ try:
 except ImportError:
     EDGE_TTS_AVAILABLE = False
 
+# 导入自定义Edge TTS函数
+try:
+    import sys
+    from pathlib import Path
+    project_root = Path(__file__).parent.parent
+    sys.path.insert(0, str(project_root))
+    from all_tts_functions.edge_tts import edge_tts as custom_edge_tts
+    CUSTOM_EDGE_TTS_AVAILABLE = True
+except ImportError:
+    CUSTOM_EDGE_TTS_AVAILABLE = False
+
+# 导入自定义Fish TTS函数
+try:
+    from all_tts_functions.fish_tts import fish_tts as custom_fish_tts
+    CUSTOM_FISH_TTS_AVAILABLE = True
+except ImportError:
+    CUSTOM_FISH_TTS_AVAILABLE = False
+
 try:
     from moviepy.editor import AudioFileClip
     MOVIEPY_AVAILABLE = True
@@ -205,48 +223,47 @@ class IntegratedTTSManager:
             raise ValueError(f"不支持的引擎: {engine}")
     
     async def _edge_tts_synthesize(self, text: str, output_path: Path) -> Dict[str, Any]:
-        """Edge TTS合成 - 优化版本"""
-        if not EDGE_TTS_AVAILABLE:
-            raise ImportError("edge-tts 未安装")
+        """Edge TTS合成 - 使用自定义实现"""
         
-        # 使用命令行方式，更稳定
-        try:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            cmd = [
-                "edge-tts",
-                "--voice", self.config.edge_voice,
-                "--text", text,
-                "--write-media", str(output_path)
-            ]
-            
-            # 使用subprocess运行命令
-            process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(), 
-                timeout=self.config.timeout
-            )
-            
-            if process.returncode == 0 and output_path.exists() and output_path.stat().st_size > 1000:
-                duration = self._get_audio_duration(output_path)
-                return {
-                    "success": True,
-                    "engine": "edge_tts",
-                    "duration": duration,
-                    "file_size": output_path.stat().st_size,
-                    "method": "command_line"
-                }
-            else:
-                # Fallback to library method
-                return await self._edge_tts_library_method(text, output_path)
+        # 优先使用自定义Edge TTS实现
+        if CUSTOM_EDGE_TTS_AVAILABLE:
+            try:
+                self.logger.info("使用自定义Edge TTS实现")
                 
-        except Exception as e:
-            self.logger.warning(f"Edge TTS 命令行方式失败: {str(e)}")
+                # 确保输出目录存在
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                # 在线程池中运行同步的自定义Edge TTS函数
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(
+                    None, 
+                    custom_edge_tts,
+                    text, 
+                    str(output_path)
+                )
+                
+                # 检查生成的文件
+                if output_path.exists() and output_path.stat().st_size > 1000:
+                    duration = self._get_audio_duration(output_path)
+                    return {
+                        "success": True,
+                        "engine": "custom_edge_tts",
+                        "duration": duration,
+                        "file_size": output_path.stat().st_size,
+                        "method": "custom_implementation"
+                    }
+                else:
+                    self.logger.warning("自定义Edge TTS生成的文件无效或过小")
+                    
+            except Exception as e:
+                self.logger.warning(f"自定义Edge TTS失败: {str(e)}")
+                
+        # 如果自定义实现失败，回退到原始库方法
+        self.logger.info("回退到原始Edge TTS库方法")
+        if EDGE_TTS_AVAILABLE:
+            return await self._edge_tts_library_method(text, output_path)
+        else:
+            raise ImportError("Edge TTS 不可用：自定义实现和官方库都无法使用")
             # Fallback to library method
             return await self._edge_tts_library_method(text, output_path)
     
@@ -303,7 +320,47 @@ class IntegratedTTSManager:
         raise Exception("Edge TTS 库方法多次重试后失败")
     
     async def _fish_tts_synthesize(self, text: str, output_path: Path) -> Dict[str, Any]:
-        """Fish TTS合成"""
+        """Fish TTS合成 - 使用自定义实现"""
+        
+        # 优先使用自定义Fish TTS实现
+        if CUSTOM_FISH_TTS_AVAILABLE:
+            try:
+                self.logger.info("使用自定义Fish TTS实现")
+                
+                # 确保输出目录存在
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                # 在线程池中运行同步的自定义Fish TTS函数
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(
+                    None, 
+                    custom_fish_tts,
+                    text, 
+                    str(output_path)
+                )
+                
+                # 检查生成的文件
+                if output_path.exists() and output_path.stat().st_size > 1000:
+                    duration = self._get_audio_duration(output_path)
+                    return {
+                        "success": True,
+                        "engine": "custom_fish_tts",
+                        "duration": duration,
+                        "file_size": output_path.stat().st_size,
+                        "method": "custom_implementation"
+                    }
+                else:
+                    self.logger.warning("自定义Fish TTS生成的文件无效或过小")
+                    
+            except Exception as e:
+                self.logger.warning(f"自定义Fish TTS失败: {str(e)}")
+                
+        # 如果自定义实现失败，回退到原始实现
+        self.logger.info("回退到原始Fish TTS实现")
+        return await self._fish_tts_original_method(text, output_path)
+    
+    async def _fish_tts_original_method(self, text: str, output_path: Path) -> Dict[str, Any]:
+        """原始Fish TTS实现作为备选方案"""
         if not self.config.fish_api_key:
             raise ValueError("Fish TTS API密钥未配置")
         
@@ -363,7 +420,8 @@ class IntegratedTTSManager:
                         "duration": duration,
                         "file_size": output_path.stat().st_size,
                         "character_id": self.config.fish_character_id,
-                        "retry_count": retry
+                        "retry_count": retry,
+                        "method": "original_api"
                     }
                 else:
                     self.logger.warning(f"Fish TTS API请求失败，状态码: {response.status_code}")
