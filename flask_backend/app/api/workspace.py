@@ -5,6 +5,8 @@
 """
 
 from flask import Blueprint, request, jsonify
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import os
 import json
 import shutil
@@ -308,7 +310,7 @@ def load_workspace():
 
 @workspace_bp.route('/save', methods=['POST'])
 def save_workspace():
-    """保存工作空间"""
+    """保存工作空间 - 无限制（支持频繁保存）"""
     try:
         data = request.get_json()
         if not data:
