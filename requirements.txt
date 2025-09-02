@@ -14,6 +14,7 @@ edge-tts==6.1.10
 
 # 视频处理
 moviepy==1.0.3
+pydub==0.25.1
 opencv-python>=4.8.0
 
 # 字幕处理

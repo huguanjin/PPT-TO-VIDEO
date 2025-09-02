@@ -1,0 +1,48 @@
+# Flask后端依赖包
+Flask==2.3.3
+Flask-CORS==4.0.0
+Flask-Limiter==3.5.0
+Werkzeug==2.3.7
+python-dotenv==1.0.0
+
+# 原有项目依赖（需要的话可以保留）
+# 文件处理
+python-pptx==0.6.21
+Pillow==10.0.1
+opencv-python==4.8.1.78
+
+# 音频处理
+edge-tts==6.1.9
+pydub==0.25.1
+
+# 视频处理
+moviepy==1.0.3
+
+# 字幕处理
+pysrt==1.1.2
+
+# 数据处理
+pandas==2.1.1
+numpy==1.24.3
+
+# 异步处理
+aiofiles==23.2.1
+
+# 网络请求
+requests==2.31.0
+httpx==0.25.0
+
+# 日志
+loguru==0.7.2
+
+# 配置管理
+pydantic==2.4.2
+pydantic-settings==2.0.3
+
+# 任务队列（可选，用于后台任务）
+# celery==5.3.4
+# redis==5.0.1
+
+# 开发工具
+pytest==7.4.2
+pytest-asyncio==0.21.1
