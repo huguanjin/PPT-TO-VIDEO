@@ -3,9 +3,9 @@ Test machar. Given recent changes to hardcode type data, we might want to get
 rid of both MachAr and this test at some point.
 
 """
-import numpy._core.numerictypes as ntypes
-from numpy import array, errstate
 from numpy._core._machar import MachAr
+import numpy._core.numerictypes as ntypes
+from numpy import errstate, array
 
 
 class TestMachAr:
@@ -26,5 +26,5 @@ class TestMachAr:
             try:
                 self._run_machar_highprec()
             except FloatingPointError as e:
-                msg = f"Caught {e} exception, should not have been raised."
+                msg = "Caught %s exception, should not have been raised." % e
                 raise AssertionError(msg)

@@ -1,7 +1,9 @@
-from typing import Literal, TypeAlias, assert_type
+from typing import Literal, TypeAlias
 
 import numpy as np
 import numpy.typing as npt
+
+from typing_extensions import assert_type
 
 a: np.flatiter[npt.NDArray[np.str_]]
 a_1d: np.flatiter[np.ndarray[tuple[int], np.dtype[np.bytes_]]]

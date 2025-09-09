@@ -1,53 +1,59 @@
 from collections.abc import Iterable
-from typing import Any, SupportsIndex, TypeVar, overload
+from typing import Any, TypeVar, overload, SupportsIndex
 
 from numpy import generic
-from numpy._typing import ArrayLike, NDArray, _AnyShape, _ArrayLike, _ShapeLike
+from numpy._typing import (
+    NDArray,
+    ArrayLike,
+    _ShapeLike,
+    _Shape,
+    _ArrayLike
+)
 
 __all__ = ["broadcast_to", "broadcast_arrays", "broadcast_shapes"]
 
-_ScalarT = TypeVar("_ScalarT", bound=generic)
+_SCT = TypeVar("_SCT", bound=generic)
 
 class DummyArray:
     __array_interface__: dict[str, Any]
-    base: NDArray[Any] | None
+    base: None | NDArray[Any]
     def __init__(
         self,
         interface: dict[str, Any],
-        base: NDArray[Any] | None = ...,
+        base: None | NDArray[Any] = ...,
     ) -> None: ...
 
 @overload
 def as_strided(
-    x: _ArrayLike[_ScalarT],
-    shape: Iterable[int] | None = ...,
-    strides: Iterable[int] | None = ...,
+    x: _ArrayLike[_SCT],
+    shape: None | Iterable[int] = ...,
+    strides: None | Iterable[int] = ...,
     subok: bool = ...,
     writeable: bool = ...,
-) -> NDArray[_ScalarT]: ...
+) -> NDArray[_SCT]: ...
 @overload
 def as_strided(
     x: ArrayLike,
-    shape: Iterable[int] | None = ...,
-    strides: Iterable[int] | None = ...,
+    shape: None | Iterable[int] = ...,
+    strides: None | Iterable[int] = ...,
     subok: bool = ...,
     writeable: bool = ...,
 ) -> NDArray[Any]: ...
 
 @overload
 def sliding_window_view(
-    x: _ArrayLike[_ScalarT],
+    x: _ArrayLike[_SCT],
     window_shape: int | Iterable[int],
-    axis: SupportsIndex | None = ...,
+    axis: None | SupportsIndex = ...,
     *,
     subok: bool = ...,
     writeable: bool = ...,
-) -> NDArray[_ScalarT]: ...
+) -> NDArray[_SCT]: ...
 @overload
 def sliding_window_view(
     x: ArrayLike,
     window_shape: int | Iterable[int],
-    axis: SupportsIndex | None = ...,
+    axis: None | SupportsIndex = ...,
     *,
     subok: bool = ...,
     writeable: bool = ...,
@@ -55,10 +61,10 @@ def sliding_window_view(
 
 @overload
 def broadcast_to(
-    array: _ArrayLike[_ScalarT],
+    array: _ArrayLike[_SCT],
     shape: int | Iterable[int],
     subok: bool = ...,
-) -> NDArray[_ScalarT]: ...
+) -> NDArray[_SCT]: ...
 @overload
 def broadcast_to(
     array: ArrayLike,
@@ -66,7 +72,7 @@ def broadcast_to(
     subok: bool = ...,
 ) -> NDArray[Any]: ...
 
-def broadcast_shapes(*args: _ShapeLike) -> _AnyShape: ...
+def broadcast_shapes(*args: _ShapeLike) -> _Shape: ...
 
 def broadcast_arrays(
     *args: ArrayLike,

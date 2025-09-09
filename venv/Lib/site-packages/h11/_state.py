@@ -283,7 +283,9 @@ class ConnectionState:
             assert role is SERVER
             if server_switch_event not in self.pending_switch_proposals:
                 raise LocalProtocolError(
-                    "Received server _SWITCH_UPGRADE event without a pending proposal"
+                    "Received server {} event without a pending proposal".format(
+                        server_switch_event
+                    )
                 )
             _event_type = (event_type, server_switch_event)
         if server_switch_event is None and _event_type is Response:
@@ -356,7 +358,7 @@ class ConnectionState:
     def start_next_cycle(self) -> None:
         if self.states != {CLIENT: DONE, SERVER: DONE}:
             raise LocalProtocolError(
-                f"not in a reusable state. self.states={self.states}"
+                "not in a reusable state. self.states={}".format(self.states)
             )
         # Can't reach DONE/DONE with any of these active, but still, let's be
         # sure.

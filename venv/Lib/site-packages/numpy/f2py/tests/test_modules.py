@@ -1,10 +1,8 @@
+import pytest
 import textwrap
 
-import pytest
-
-from numpy.testing import IS_PYPY
-
 from . import util
+from numpy.testing import IS_PYPY
 
 
 @pytest.mark.slow

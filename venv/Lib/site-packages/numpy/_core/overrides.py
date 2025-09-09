@@ -2,13 +2,11 @@
 import collections
 import functools
 
+from .._utils import set_module
+from .._utils._inspect import getargspec
 from numpy._core._multiarray_umath import (
-    _ArrayFunctionDispatcher,
-    _get_implementing_args,
-    add_docstring,
-)
-from numpy._utils import set_module  # noqa: F401
-from numpy._utils._inspect import getargspec
+    add_docstring,  _get_implementing_args, _ArrayFunctionDispatcher)
+
 
 ARRAY_FUNCTIONS = set()
 

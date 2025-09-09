@@ -1,14 +1,16 @@
 import contextlib
 from collections.abc import Callable
-from typing import Any, assert_type
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
 from numpy._core.arrayprint import _FormatOptions
 
+from typing_extensions import assert_type
+
 AR: npt.NDArray[np.int64]
-func_float: Callable[[np.floating], str]
-func_int: Callable[[np.integer], str]
+func_float: Callable[[np.floating[Any]], str]
+func_int: Callable[[np.integer[Any]], str]
 
 assert_type(np.get_printoptions(), _FormatOptions)
 assert_type(

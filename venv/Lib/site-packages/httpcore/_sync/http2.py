@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import enum
 import logging
 import time
@@ -47,14 +45,14 @@ class HTTP2Connection(ConnectionInterface):
         self,
         origin: Origin,
         stream: NetworkStream,
-        keepalive_expiry: float | None = None,
+        keepalive_expiry: typing.Optional[float] = None,
     ):
         self._origin = origin
         self._network_stream = stream
-        self._keepalive_expiry: float | None = keepalive_expiry
+        self._keepalive_expiry: typing.Optional[float] = keepalive_expiry
         self._h2_state = h2.connection.H2Connection(config=self.CONFIG)
         self._state = HTTPConnectionState.IDLE
-        self._expire_at: float | None = None
+        self._expire_at: typing.Optional[float] = None
         self._request_count = 0
         self._init_lock = Lock()
         self._state_lock = Lock()
@@ -65,22 +63,24 @@ class HTTP2Connection(ConnectionInterface):
         self._connection_error = False
 
         # Mapping from stream ID to response stream events.
-        self._events: dict[
+        self._events: typing.Dict[
             int,
-            list[
-                h2.events.ResponseReceived
-                | h2.events.DataReceived
-                | h2.events.StreamEnded
-                | h2.events.StreamReset,
+            typing.Union[
+                h2.events.ResponseReceived,
+                h2.events.DataReceived,
+                h2.events.StreamEnded,
+                h2.events.StreamReset,
             ],
         ] = {}
 
         # Connection terminated events are stored as state since
         # we need to handle them for all streams.
-        self._connection_terminated: h2.events.ConnectionTerminated | None = None
+        self._connection_terminated: typing.Optional[
+            h2.events.ConnectionTerminated
+        ] = None
 
-        self._read_exception: Exception | None = None
-        self._write_exception: Exception | None = None
+        self._read_exception: typing.Optional[Exception] = None
+        self._write_exception: typing.Optional[Exception] = None
 
     def handle_request(self, request: Request) -> Response:
         if not self.can_handle_request(request.url.origin):
@@ -104,11 +104,9 @@ class HTTP2Connection(ConnectionInterface):
         with self._init_lock:
             if not self._sent_connection_init:
                 try:
-                    sci_kwargs = {"request": request}
-                    with Trace(
-                        "send_connection_init", logger, request, sci_kwargs
-                    ):
-                        self._send_connection_init(**sci_kwargs)
+                    kwargs = {"request": request}
+                    with Trace("send_connection_init", logger, request, kwargs):
+                        self._send_connection_init(**kwargs)
                 except BaseException as exc:
                     with ShieldCancellation():
                         self.close()
@@ -286,7 +284,7 @@ class HTTP2Connection(ConnectionInterface):
 
     def _receive_response(
         self, request: Request, stream_id: int
-    ) -> tuple[int, list[tuple[bytes, bytes]]]:
+    ) -> typing.Tuple[int, typing.List[typing.Tuple[bytes, bytes]]]:
         """
         Return the response status code and headers for a given stream ID.
         """
@@ -297,7 +295,6 @@ class HTTP2Connection(ConnectionInterface):
 
         status_code = 200
         headers = []
-        assert event.headers is not None
         for k, v in event.headers:
             if k == b":status":
                 status_code = int(v.decode("ascii", errors="ignore"))
@@ -315,8 +312,6 @@ class HTTP2Connection(ConnectionInterface):
         while True:
             event = self._receive_stream_event(request, stream_id)
             if isinstance(event, h2.events.DataReceived):
-                assert event.flow_controlled_length is not None
-                assert event.data is not None
                 amount = event.flow_controlled_length
                 self._h2_state.acknowledge_received_data(amount, stream_id)
                 self._write_outgoing_data(request)
@@ -326,7 +321,9 @@ class HTTP2Connection(ConnectionInterface):
 
     def _receive_stream_event(
         self, request: Request, stream_id: int
-    ) -> h2.events.ResponseReceived | h2.events.DataReceived | h2.events.StreamEnded:
+    ) -> typing.Union[
+        h2.events.ResponseReceived, h2.events.DataReceived, h2.events.StreamEnded
+    ]:
         """
         Return the next available event for a given stream ID.
 
@@ -340,7 +337,7 @@ class HTTP2Connection(ConnectionInterface):
         return event
 
     def _receive_events(
-        self, request: Request, stream_id: int | None = None
+        self, request: Request, stream_id: typing.Optional[int] = None
     ) -> None:
         """
         Read some data from the network until we see one or more events
@@ -387,9 +384,7 @@ class HTTP2Connection(ConnectionInterface):
 
         self._write_outgoing_data(request)
 
-    def _receive_remote_settings_change(
-        self, event: h2.events.RemoteSettingsChanged
-    ) -> None:
+    def _receive_remote_settings_change(self, event: h2.events.Event) -> None:
         max_concurrent_streams = event.changed_settings.get(
             h2.settings.SettingCodes.MAX_CONCURRENT_STREAMS
         )
@@ -430,7 +425,9 @@ class HTTP2Connection(ConnectionInterface):
 
     # Wrappers around network read/write operations...
 
-    def _read_incoming_data(self, request: Request) -> list[h2.events.Event]:
+    def _read_incoming_data(
+        self, request: Request
+    ) -> typing.List[h2.events.Event]:
         timeouts = request.extensions.get("timeout", {})
         timeout = timeouts.get("read", None)
 
@@ -454,7 +451,7 @@ class HTTP2Connection(ConnectionInterface):
             self._connection_error = True
             raise exc
 
-        events: list[h2.events.Event] = self._h2_state.receive_data(data)
+        events: typing.List[h2.events.Event] = self._h2_state.receive_data(data)
 
         return events
 
@@ -547,14 +544,14 @@ class HTTP2Connection(ConnectionInterface):
     # These context managers are not used in the standard flow, but are
     # useful for testing or working with connection instances directly.
 
-    def __enter__(self) -> HTTP2Connection:
+    def __enter__(self) -> "HTTP2Connection":
         return self
 
     def __exit__(
         self,
-        exc_type: type[BaseException] | None = None,
-        exc_value: BaseException | None = None,
-        traceback: types.TracebackType | None = None,
+        exc_type: typing.Optional[typing.Type[BaseException]] = None,
+        exc_value: typing.Optional[BaseException] = None,
+        traceback: typing.Optional[types.TracebackType] = None,
     ) -> None:
         self.close()
 

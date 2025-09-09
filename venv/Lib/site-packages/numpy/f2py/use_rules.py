@@ -13,7 +13,10 @@ __version__ = "$Revision: 1.3 $"[10:-1]
 f2py_version = 'See `f2py -v`'
 
 
-from .auxfuncs import applyrules, dictappend, gentitle, hasnote, outmess
+from .auxfuncs import (
+    applyrules, dictappend, gentitle, hasnote, outmess
+)
+
 
 usemodule_rules = {
     'body': """
@@ -42,7 +45,7 @@ capi_fail:
 def buildusevars(m, r):
     ret = {}
     outmess(
-        f"\t\tBuilding use variable hooks for module \"{m['name']}\" (feature only for F90/F95)...\n")
+        '\t\tBuilding use variable hooks for module "%s" (feature only for F90/F95)...\n' % (m['name']))
     varsmap = {}
     revmap = {}
     if 'map' in r:
@@ -59,13 +62,17 @@ def buildusevars(m, r):
                 if revmap[r['map'][v]] == v:
                     varsmap[v] = r['map'][v]
                 else:
-                    outmess(f"\t\t\tIgnoring map \"{v}=>{r['map'][v]}\". See above.\n")
+                    outmess('\t\t\tIgnoring map "%s=>%s". See above.\n' %
+                            (v, r['map'][v]))
             else:
                 outmess(
-                    f"\t\t\tNo definition for variable \"{v}=>{r['map'][v]}\". Skipping.\n")
+                    '\t\t\tNo definition for variable "%s=>%s". Skipping.\n' % (v, r['map'][v]))
     else:
         for v in m['vars'].keys():
-            varsmap[v] = revmap.get(v, v)
+            if v in revmap:
+                varsmap[v] = revmap[v]
+            else:
+                varsmap[v] = v
     for v in varsmap.keys():
         ret = dictappend(ret, buildusevar(v, varsmap[v], m['vars'], m['name']))
     return ret
@@ -81,9 +88,9 @@ def buildusevar(name, realname, vars, usemodulename):
            'usemodulename': usemodulename,
            'USEMODULENAME': usemodulename.upper(),
            'texname': name.replace('_', '\\_'),
-           'begintitle': gentitle(f'{name}=>{realname}'),
-           'endtitle': gentitle(f'end of {name}=>{realname}'),
-           'apiname': f'#modulename#_use_{realname}_from_{usemodulename}'
+           'begintitle': gentitle('%s=>%s' % (name, realname)),
+           'endtitle': gentitle('end of %s=>%s' % (name, realname)),
+           'apiname': '#modulename#_use_%s_from_%s' % (realname, usemodulename)
            }
     nummap = {0: 'Ro', 1: 'Ri', 2: 'Rii', 3: 'Riii', 4: 'Riv',
               5: 'Rv', 6: 'Rvi', 7: 'Rvii', 8: 'Rviii', 9: 'Rix'}

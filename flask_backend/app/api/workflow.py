@@ -12,14 +12,17 @@ from pathlib import Path
 from flask import Blueprint, request, jsonify, current_app
 
 # 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent.parent.parent
-sys.path.append(str(project_root))
+# 添加flask_backend目录到Python路径
+flask_backend_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(flask_backend_root))
 
 try:
     from core.step02_tts_generator import TTSGenerator
     from core.step03_video_generator import VideoGenerator
     from core.step04_subtitle_generator import SubtitleGenerator
     from core.step05_final_merger import FFmpegFinalMerger
+    from core.enhanced_workflow_executor import EnhancedWorkflowExecutor, WorkflowExecution
+    from core.workflow_persistence import StepStatus  # 添加StepStatus导入
     from utils.task_manager import TaskManager
     from utils.logger import get_logger
 except ImportError as e:
@@ -34,6 +37,18 @@ except ImportError as e:
             self.project_name = project_name
     
     class SubtitleGenerator:
+        def __init__(self, project_name):
+            self.project_name = project_name
+    
+    class EnhancedWorkflowExecutor:
+        def __init__(self, project_dir):
+            self.project_dir = project_dir
+        
+        async def start_workflow(self, project_name, config=None, progress_callback=None):
+            """Fallback implementation that raises an error"""
+            raise ImportError("Enhanced workflow executor not available - core modules failed to import")
+    
+    class WorkflowExecution:
         def __init__(self, project_name):
             self.project_name = project_name
     
@@ -441,413 +456,163 @@ def execute_workflow():
 
 
 def execute_workflow_task(project_name: str, task_id: str, project_dir: Path):
-    """实际执行工作流任务"""
+    """实际执行工作流任务 - 使用增强的工作流执行器"""
     try:
         logger.info(f"开始执行工作流任务: {project_name}")
         
         # 初始化步骤状态
         steps = [
+            {'name': '数据准备', 'status': 'waiting', 'progress': 0.0, 'message': '等待开始'},
+            {'name': 'AI内容优化', 'status': 'waiting', 'progress': 0.0, 'message': '等待开始'},
             {'name': 'TTS音频生成', 'status': 'waiting', 'progress': 0.0, 'message': '等待开始'},
-            {'name': '字幕生成', 'status': 'waiting', 'progress': 0.0, 'message': '等待开始'},
             {'name': '视频合成', 'status': 'waiting', 'progress': 0.0, 'message': '等待开始'},
-            {'name': '最终合并', 'status': 'waiting', 'progress': 0.0, 'message': '等待开始'},
-            {'name': '完成处理', 'status': 'waiting', 'progress': 0.0, 'message': '等待开始'}
+            {'name': '字幕生成', 'status': 'waiting', 'progress': 0.0, 'message': '等待开始'},
+            {'name': '最终合并', 'status': 'waiting', 'progress': 0.0, 'message': '等待开始'}
         ]
         
         update_task_status(task_id, 'running', '开始处理工作流', 0, None, 
-                          project_name, 1, 5, steps)
+                          project_name, 1, 6, steps)
         
-        # 读取项目数据
-        ppt_data_file = project_dir / "ppt_data.json"
-        with open(ppt_data_file, 'r', encoding='utf-8') as f:
-            ppt_data = json.load(f)
+        # 创建增强的工作流执行器
+        executor = EnhancedWorkflowExecutor(project_dir)
         
-        slides = ppt_data.get('slides', [])
-        if not slides:
-            raise ValueError("项目中没有幻灯片数据")
-        
-        logger.info(f"项目包含 {len(slides)} 个幻灯片")
-        
-        # Step 1: TTS音频生成
-        logger.info("步骤1: 开始TTS音频生成")
-        steps[0] = {'name': 'TTS音频生成', 'status': 'running', 'progress': 0.0, 'message': '正在生成语音音频...'}
-        update_task_status(task_id, 'running', '正在生成语音音频...', 5, None, 
-                          project_name, 1, 5, steps)
-        
-        # 准备TTS生成器和脚本数据
-        tts_generator = TTSGenerator(project_dir)
-        scripts_data = convert_slides_to_scripts(ppt_data, project_name)
-        
-        # 保存scripts_metadata.json文件（核心模块需要）
-        scripts_dir = project_dir / "scripts"
-        scripts_dir.mkdir(exist_ok=True)
-        scripts_metadata_path = scripts_dir / "scripts_metadata.json"
-        
-        with open(scripts_metadata_path, 'w', encoding='utf-8') as f:
-            json.dump(scripts_data, f, ensure_ascii=False, indent=2)
-        
-        logger.info(f"已保存脚本元数据: {scripts_metadata_path}")
-        
-        # 定义TTS进度回调
-        def tts_progress_callback(progress: int):
-            progress_ratio = progress / 100.0
-            steps[0]['progress'] = progress_ratio
-            steps[0]['message'] = f'正在生成语音音频... {progress}%'
-            overall_progress = 5 + int(progress_ratio * 15)
-            update_task_status(task_id, 'running', f'TTS生成进度: {progress}%', 
-                              overall_progress, None, project_name, 1, 5, steps)
-        
-        # 真正调用TTS生成
-        try:
-            # 由于Flask不是异步的，我们需要使用同步方式
-            # 检查TTS生成器是否有同步方法
-            if hasattr(tts_generator, 'generate_audio_sync'):
-                tts_result = tts_generator.generate_audio_sync(
-                    scripts_data=scripts_data,
-                    progress_callback=tts_progress_callback
-                )
-            else:
-                # 如果没有同步方法，使用asyncio运行异步方法
-                import asyncio
+        # 定义进度回调函数
+        async def progress_callback(execution):
+            """进度回调函数"""
+            current_step = execution.current_step
+            if current_step:
+                step_names = ['step01_data_preparation', 'step01b_ai_content_optimization', 'step02_tts_generation', 'step03_video_generation', 'step04_subtitle_generation', 'step05_final_merge']
+                display_names = ['数据准备', 'AI内容优化', 'TTS音频生成', '视频合成', '字幕生成', '最终合并']
                 
-                # 创建新的事件循环（如果当前线程没有）
-                try:
-                    loop = asyncio.get_event_loop()
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                
-                tts_result = loop.run_until_complete(
-                    tts_generator.generate_audio(
-                        scripts_data=scripts_data,
-                        progress_callback=tts_progress_callback
-                    )
-                )
-            
-            if not tts_result or not tts_result.get("generation_completed"):
-                raise Exception("TTS音频生成失败")
-            
-            logger.info("TTS音频生成完成")
-            
-            # 尝试从TTS结果或音频元数据文件中加载完整的音频数据
-            audio_metadata_file = project_dir / "audio" / "audio_metadata.json"
-            if audio_metadata_file.exists():
-                # 从元数据文件加载完整音频数据
-                try:
-                    with open(audio_metadata_file, 'r', encoding='utf-8') as f:
-                        audio_data = json.load(f)
-                    logger.info(f"从元数据文件加载了 {len(audio_data.get('audio_files', []))} 个音频文件信息")
-                except Exception as e:
-                    logger.warning(f"读取音频元数据失败: {e}")
-                    audio_data = tts_result  # 使用TTS直接返回的结果
-            else:
-                # 使用TTS生成器返回的结果
-                audio_data = tts_result
-            
-        except Exception as e:
-            logger.warning(f"TTS生成失败，使用备用方案: {e}")
-            # 备用方案：创建占位音频数据
-            audio_data = {
-                "audio_files": [],
-                "generation_completed": False,
-                "total_duration_seconds": 0.0
-            }
-            
-            for i, script in enumerate(scripts_data["scripts"]):
-                slide_number = script["slide_number"]
-                duration = len(script["text"]) * 0.1 + 1.0
-                
-                # 创建占位音频文件
-                audio_file = project_dir / "audios" / f"slide_{str(slide_number).zfill(3)}.wav"
-                audio_file.parent.mkdir(exist_ok=True)
-                
-                with open(audio_file, 'w') as f:
-                    f.write(f"# Audio placeholder for slide {slide_number}: {script['text']}")
-                
-                audio_info = {
-                    "slide_number": slide_number,
-                    "audio_file": str(audio_file),
-                    "duration_seconds": duration,
-                    "text": script["text"]
-                }
-                audio_data["audio_files"].append(audio_info)
-                audio_data["total_duration_seconds"] += duration
-        
-        steps[0] = {'name': 'TTS音频生成', 'status': 'completed', 'progress': 1.0, 'message': '音频生成完成'}
-        
-        # Step 2: 字幕生成
-        logger.info("步骤2: 开始生成字幕")
-        steps[1] = {'name': '字幕生成', 'status': 'running', 'progress': 0.0, 'message': '正在生成字幕文件...'}
-        update_task_status(task_id, 'running', '正在生成字幕文件...', 20, None, 
-                          project_name, 2, 5, steps)
-        
-        # 初始化字幕文件路径（确保变量在所有代码路径中都被定义）
-        subtitle_file = project_dir / "subtitles" / "combined_subtitle.srt"
-        subtitle_file.parent.mkdir(exist_ok=True)
-        current_time = 0  # 初始化时长变量
-        
-        # 定义字幕进度回调
-        def subtitle_progress_callback(progress: int):
-            progress_ratio = progress / 100.0
-            steps[1]['progress'] = progress_ratio
-            steps[1]['message'] = f'正在生成字幕... {progress}%'
-            overall_progress = 20 + int(progress_ratio * 15)
-            update_task_status(task_id, 'running', f'字幕生成进度: {progress}%', 
-                              overall_progress, None, project_name, 2, 5, steps)
-        
-        # 真正调用字幕生成
-        try:
-            subtitle_generator = SubtitleGenerator(project_dir)
-            
-            # 使用同步方式调用字幕生成
-            if hasattr(subtitle_generator, 'generate_subtitles_sync'):
-                subtitle_result = subtitle_generator.generate_subtitles_sync(
-                    scripts_data=scripts_data,
-                    audio_data=audio_data,
-                    progress_callback=subtitle_progress_callback
-                )
-            else:
-                # 如果没有同步方法，使用asyncio运行异步方法
-                import asyncio
-                
-                try:
-                    loop = asyncio.get_event_loop()
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                
-                subtitle_result = loop.run_until_complete(
-                    subtitle_generator.generate_subtitles(
-                        scripts_data=scripts_data,
-                        audio_data=audio_data,
-                        progress_callback=subtitle_progress_callback
-                    )
-                )
-            
-            if not subtitle_result or not subtitle_result.get("subtitle_generation_completed"):
-                raise Exception("字幕生成失败")
-            
-            logger.info("字幕生成完成")
-            current_time = subtitle_result.get("total_duration", 0)
-            
-        except Exception as e:
-            logger.error(f"字幕生成失败: {e}")
-            steps[1] = {'name': '字幕生成', 'status': 'failed', 'progress': 0.0, 'message': f'字幕生成失败: {str(e)}'}
-            update_task_status(task_id, 'failed', f'字幕生成失败: {str(e)}', 20, None, 
-                              project_name, 2, 5, steps)
-            save_task_statuses()
-            return
-        
-        steps[1] = {'name': '字幕生成', 'status': 'completed', 'progress': 1.0, 'message': '字幕生成完成'}
-        
-        # Step 3: 视频合成
-        logger.info("步骤3: 开始视频合成")
-        steps[2] = {'name': '视频合成', 'status': 'running', 'progress': 0.0, 'message': '正在合成视频...'}
-        update_task_status(task_id, 'running', '正在合成视频...', 35, None, 
-                          project_name, 3, 5, steps)
-        
-        # 定义视频进度回调
-        def video_progress_callback(progress: int):
-            progress_ratio = progress / 100.0
-            steps[2]['progress'] = progress_ratio
-            steps[2]['message'] = f'正在生成视频... {progress}%'
-            overall_progress = 35 + int(progress_ratio * 25)
-            update_task_status(task_id, 'running', f'视频生成进度: {progress}%', 
-                              overall_progress, None, project_name, 3, 5, steps)
-        
-        # 真正调用视频生成
-        try:
-            video_generator = VideoGenerator(project_dir)
-            
-            # 使用scripts_data而不是ppt_data，因为VideoGenerator期望包含image_file字段的数据
-            video_slides_data = {
-                "slides": scripts_data["scripts"]  # 使用转换后的scripts数据
-            }
-            
-            # 使用同步方式调用视频生成
-            if hasattr(video_generator, 'generate_video_clips_sync'):
-                video_result = video_generator.generate_video_clips_sync(
-                    slides_data=video_slides_data,
-                    audio_data=audio_data,
-                    progress_callback=video_progress_callback
-                )
-            else:
-                # 如果没有同步方法，使用asyncio运行异步方法
-                import asyncio
-                
-                try:
-                    loop = asyncio.get_event_loop()
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                
-                video_result = loop.run_until_complete(
-                    video_generator.generate_video_clips(
-                        slides_data=video_slides_data,
-                        audio_data=audio_data,
-                        progress_callback=video_progress_callback
-                    )
-                )
-            
-            if not video_result or not video_result.get("generation_completed"):
-                raise Exception("视频生成失败")
-            
-            logger.info("视频生成完成")
-            
-        except Exception as e:
-            logger.warning(f"视频生成失败，跳过视频合成: {e}")
-            video_result = {"generation_completed": True, "video_files": []}
-        
-        steps[2] = {'name': '视频合成', 'status': 'completed', 'progress': 1.0, 'message': '视频合成完成'}
-        
-        # Step 4: 最终合并
-        logger.info("步骤4: 开始最终合并")
-        steps[3] = {'name': '最终合并', 'status': 'running', 'progress': 0.0, 'message': '正在合并最终文件...'}
-        update_task_status(task_id, 'running', '正在合并最终文件...', 60, None, 
-                          project_name, 4, 5, steps)
-        
-        # 定义最终合并进度回调
-        def merge_progress_callback(progress: int):
-            progress_ratio = progress / 100.0
-            steps[3]['progress'] = progress_ratio
-            steps[3]['message'] = f'正在合并视频... {progress}%'
-            overall_progress = 60 + int(progress_ratio * 30)
-            update_task_status(task_id, 'running', f'最终合并进度: {progress}%', 
-                              overall_progress, None, project_name, 4, 5, steps)
-        
-        # 真正调用最终合并
-        try:
-            final_merger = FFmpegFinalMerger(project_dir)
-            
-            # 构建正确的字幕数据格式
-            subtitle_data_for_merger = {}
-            if subtitle_file and subtitle_file.exists():
-                subtitle_data_for_merger = {
-                    "subtitle_file": subtitle_file.name,  # 使用文件名
-                    "combined_subtitle_file": subtitle_file.name,
-                    "subtitle_generation_completed": True,
-                    "total_duration": current_time
-                }
-            
-            # FFmpegFinalMerger.merge_final_video 是同步方法
-            final_result = final_merger.merge_final_video(
-                video_data=video_result if 'video_result' in locals() else {},
-                audio_data=audio_data,
-                subtitle_data=subtitle_data_for_merger,
-                progress_callback=merge_progress_callback
-            )
-            
-            if not final_result.get("success"):
-                raise Exception(f"最终视频合并失败: {final_result.get('error', '未知错误')}")
-            
-            logger.info("最终视频合并完成")
-            final_video_file = Path(final_result.get("output_file", project_dir / "final_video.mp4"))
-            
-        except Exception as e:
-            logger.warning(f"最终合并失败，使用备用方案: {e}")
-            # 备用方案：创建测试视频文件
-            final_video_file = project_dir / "final_video.mp4"
-            
-            # 创建一个简单的视频信息文件
-            video_info = {
-                'project_name': project_name,
-                'slides_count': len(slides),
-                'total_duration': current_time,
-                'resolution': '1920x1080',
-                'created_at': datetime.now().isoformat(),
-                'files': {
-                    'images': [str(f) for f in (project_dir / "slides").glob("*.jpg")],
-                    'audios': [str(f) for f in (project_dir / "audios").glob("*.wav")],
-                    'subtitles': str(project_dir / "subtitles" / "subtitles.srt")
-                }
-            }
-            
-            with open(final_video_file.with_suffix('.json'), 'w', encoding='utf-8') as f:
-                json.dump(video_info, f, ensure_ascii=False, indent=2)
-            
-            # 创建一个简单但有效的MP4测试文件
-            try:
-                # 尝试使用FFmpeg创建一个简单的测试视频
-                ffmpeg_cmd = [
-                    'ffmpeg', '-f', 'lavfi', '-i', 'color=blue:size=1920x1080:duration=5',
-                    '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-y', str(final_video_file)
-                ]
-                
-                logger.info("尝试生成测试视频文件...")
-                result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, timeout=30)
-                
-                if result.returncode == 0:
-                    logger.info("成功生成测试视频文件")
-                else:
-                    logger.warning(f"FFmpeg生成失败: {result.stderr}")
-                    raise Exception("FFmpeg not available")
+                # 更新所有步骤的状态，不仅仅是当前步骤
+                for i, step_name in enumerate(step_names):
+                    if i < len(display_names) and i < len(steps):
+                        display_name = display_names[i]
+                        step_result = execution.steps.get(step_name)
+                        
+                        if step_result:
+                            # 根据步骤状态确定显示状态
+                            if step_result.status == StepStatus.COMPLETED:
+                                progress = 100.0
+                                status = 'completed'
+                                message = f'{display_name}已完成'
+                            elif step_result.status == StepStatus.SKIPPED:
+                                progress = 100.0
+                                status = 'completed'  # 跳过的步骤也显示为完成
+                                message = f'{display_name}已跳过'
+                            elif step_result.status == StepStatus.RUNNING:
+                                # step_result.progress可能是0-1或0-100范围，需要标准化为0-100
+                                if step_result.progress <= 1.0:
+                                    progress = step_result.progress * 100  # 0-1范围转换为0-100
+                                else:
+                                    progress = step_result.progress  # 已经是0-100范围
+                                progress = min(100.0, max(0.0, progress))  # 确保在有效范围内
+                                status = 'running'
+                                message = step_result.error_message if step_result.error_message else f'{display_name}进行中...'
+                            elif step_result.status == StepStatus.FAILED:
+                                progress = 0.0
+                                status = 'failed'
+                                message = step_result.error_message or f'{display_name}失败'
+                            else:  # PENDING
+                                progress = 0.0
+                                status = 'waiting'
+                                message = '等待开始'
+                        else:
+                            progress = 0.0
+                            status = 'waiting'
+                            message = '等待开始'
+                        
+                        # 更新步骤状态
+                        steps[i] = {
+                            'name': display_name, 
+                            'status': status,
+                            'progress': progress / 100.0,  # 前端期望0-1范围
+                            'message': message
+                        }
                     
-            except Exception as e:
-                logger.warning(f"无法使用FFmpeg生成测试视频: {e}")
-                # 如果FFmpeg不可用，创建一个包含项目信息的文本文件
-                with open(final_video_file.with_suffix('.txt'), 'w', encoding='utf-8') as f:
-                    f.write(f"""项目视频生成完成
-项目名称: {project_name}
-幻灯片数量: {len(slides)}
-总时长: {current_time:.2f}秒
-分辨率: 1920x1080
-生成时间: {datetime.now().isoformat()}
-
-注意: 这是一个测试文件，实际的视频文件需要完整的工作流实现。
-""")
+                # 计算整体进度和当前步骤索引
+                overall_progress = int(execution.total_progress)
+                current_step_index = 1  # 默认第一步
                 
-                # 同时创建一个空的MP4文件作为占位符
-                with open(final_video_file, 'wb') as f:
-                    # 写入最小的有效MP4文件结构
-                    f.write(b'\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom')
-                    f.write(b'\x00\x00\x00\x08free')
+                # 找到当前步骤的索引用于显示
+                for i, step_name in enumerate(step_names):
+                    if step_name == current_step:
+                        current_step_index = i + 1
+                        break
                 
-                logger.info("已创建占位视频文件和详细信息文件")
+                # 获取当前步骤的消息
+                current_message = "工作流进行中..."
+                if current_step and current_step in execution.steps:
+                    step_result = execution.steps[current_step]
+                    if step_result and step_result.error_message:
+                        current_message = step_result.error_message
+                    else:
+                        step_index = next((i for i, name in enumerate(step_names) if name == current_step), -1)
+                        if step_index >= 0 and step_index < len(display_names):
+                            current_message = f'{display_names[step_index]}进行中...'
+                
+                update_task_status(task_id, 'running', current_message, overall_progress, None, 
+                                  project_name, current_step_index, len(step_names), steps)
         
-        steps[3] = {'name': '最终合并', 'status': 'completed', 'progress': 1.0, 'message': '最终合并完成'}
+        # 运行增强的工作流
+        import asyncio
         
-        # Step 5: 完成处理
-        steps[4] = {'name': '完成处理', 'status': 'completed', 'progress': 1.0, 'message': '所有处理完成'}
+        # 创建新的事件循环（如果当前线程没有）
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
         
-        logger.info(f"工作流执行完成: {project_name}")
+        # 执行完整工作流
+        result_execution = loop.run_until_complete(
+            executor.start_workflow(project_name, config={}, progress_callback=progress_callback)
+        )
         
-        # 调试：打印最终视频文件路径
-        logger.info(f"最终视频文件路径: {final_video_file}")
-        logger.info(f"项目目录: {project_dir}")
-        logger.info(f"文件是否为绝对路径: {final_video_file.is_absolute()}")
+        if result_execution.workflow_status.value != 'completed':
+            error_msg = result_execution.error_message or "工作流执行失败"
+            raise Exception(f"工作流执行失败: {error_msg}")
         
-        # 获取最终视频文件的相对路径（相对于项目目录）
-        if final_video_file.is_absolute():
-            # 如果是绝对路径，获取相对于项目目录的路径
+        logger.info("增强工作流执行完成")
+        
+        # 获取最终结果
+        final_video_file = project_dir / "final_video.mp4"
+        subtitle_file = project_dir / "subtitles" / "combined_subtitle.srt"
+        
+        # 获取视频文件的相对路径
+        if final_video_file.exists():
             try:
                 relative_path = final_video_file.relative_to(project_dir)
                 video_file_name = str(relative_path).replace('\\', '/')
-                logger.info(f"相对路径: {video_file_name}")
-            except ValueError as e:
-                # 如果无法获取相对路径，使用文件名
-                logger.warning(f"无法获取相对路径: {e}")
+            except ValueError:
                 video_file_name = final_video_file.name
-                logger.info(f"使用文件名: {video_file_name}")
         else:
-            video_file_name = str(final_video_file).replace('\\', '/')
-            logger.info(f"使用相对路径字符串: {video_file_name}")
+            video_file_name = "final_video.mp4"
         
-        result = {
-            'video_file': video_file_name,  # 使用相对路径
-            'subtitle_file': subtitle_file.name if subtitle_file else '',
-            'duration': current_time,
-            'slides_count': len(slides)
+        # 构建最终结果
+        final_result = {
+            'video_file': video_file_name,
+            'subtitle_file': subtitle_file.name if subtitle_file.exists() else '',
+            'duration': 0,  # 从执行结果中获取或计算
+            'slides_count': 0  # 从执行结果中获取或计算
         }
         
-        update_task_status(task_id, 'completed', '视频生成完成', 100, result, 
-                          project_name, 5, 5, steps)
+        # 标记所有步骤为完成
+        for i in range(len(steps)):
+            steps[i]['status'] = 'completed'
+            steps[i]['progress'] = 1.0
+        
+        update_task_status(task_id, 'completed', '视频生成完成', 100, final_result, 
+                          project_name, 6, 6, steps)
+        
+        logger.info(f"工作流执行完成: {project_name}")
         
     except Exception as e:
         logger.error(f"工作流执行失败: {e}")
         # 更新失败状态
         steps = steps if 'steps' in locals() else []
         update_task_status(task_id, 'failed', str(e), 0, None, 
-                          project_name, 1, 5, steps)
+                          project_name, 1, 6, steps)
 
 
 def format_time(seconds):
@@ -860,151 +625,71 @@ def format_time(seconds):
 
 
 def convert_slides_to_scripts(ppt_data, project_name):
-    """将PPT数据转换为scripts格式"""
-    slides = ppt_data.get('slides', [])
+    """将PPT数据转换为脚本数据格式"""
     scripts_data = {
-        "project_info": {
-            "title": project_name,
-            "description": f"Generated from PPT with {len(slides)} slides",
-            "created_at": datetime.now().isoformat()
-        },
+        "project_name": project_name,
+        "generated_at": datetime.now().isoformat(),
         "scripts": []
     }
     
-    # 获取项目目录 - 单机版本：直接使用output目录
-    output_dir = Path('output')
-    project_dir = output_dir
-    slides_dir = project_dir / "slides"
+    for slide in ppt_data.get('slides', []):
+        slide_number = slide.get('id', 1)
+        # 优先使用notes，其次使用remark
+        text = slide.get('notes', slide.get('remark', ''))
+        
+        if text:
+            script_info = {
+                "slide_number": slide_number,
+                "text": text,
+                "word_count": len(text),
+                "estimated_duration": max(3.0, len(text) * 0.1)
+            }
+            scripts_data["scripts"].append(script_info)
     
-    for i, slide in enumerate(slides):
-        # 查找对应的图片文件
-        image_file = f"slide_{str(i+1).zfill(3)}.jpg"
-        image_path = slides_dir / image_file
-        
-        # 如果标准命名的文件不存在，尝试查找其他格式
-        if not image_path.exists():
-            # 查找可能的图片文件
-            possible_files = [
-                f"slide_{i+1}.jpg",
-                f"slide_{i+1}.png", 
-                f"slide_{str(i+1).zfill(3)}.png",
-                f"{i+1}.jpg",
-                f"{i+1}.png"
-            ]
-            
-            for possible_file in possible_files:
-                possible_path = slides_dir / possible_file
-                if possible_path.exists():
-                    image_file = possible_file
-                    break
-            else:
-                # 如果都找不到，使用现有的图片文件列表
-                if slides_dir.exists():
-                    image_files = list(slides_dir.glob("*.jpg")) + list(slides_dir.glob("*.png"))
-                    if image_files and i < len(image_files):
-                        image_file = image_files[i].name
-                    else:
-                        logger.warning(f"找不到第 {i+1} 页的图片文件，使用默认名称: {image_file}")
-        
-        # 解析slide内容，提取remark字段
-        content = slide.get("content", "")
-        remark_text = ""
-        
-        if content:
-            try:
-                # 尝试解析JSON格式的content
-                import json as json_lib
-                slide_data = json_lib.loads(content)
-                remark_html = slide_data.get("remark", "")
-                
-                # 清理HTML标签，提取纯文本
-                if remark_html:
-                    import re
-                    import html
-                    # 解码HTML实体
-                    remark_text = html.unescape(remark_html)
-                    # 移除HTML标签
-                    remark_text = re.sub(r'<[^>]+>', '', remark_text)
-                    # 清理多余的空白
-                    remark_text = ' '.join(remark_text.split())
-                    
-            except (json_lib.JSONDecodeError, KeyError, AttributeError):
-                # 如果解析失败，使用原始content
-                logger.warning(f"无法解析slide {i+1}的content为JSON，使用原始文本")
-                remark_text = content
-        
-        # 回退到其他可能的文本源
-        if not remark_text.strip():
-            remark_text = slide.get("remark", "") or slide.get("title", "")
-
-        script = {
-            "script_id": f"script_{i+1:03d}",
-            "slide_index": i,
-            "slide_number": slide.get("slide_number", i + 1),
-            "slide_id": slide.get("id", f"slide_{i+1}"),
-            "title": slide.get("title", ""),
-            "content": remark_text,  # 使用提取的remark文本
-            "script_content": remark_text,  # 使用提取的remark文本
-            "text": remark_text,  # 使用提取的remark文本
-            "duration": slide.get("duration", 3.0),
-            "image_file": image_file  # 确保包含正确的image_file字段
-        }
-        scripts_data["scripts"].append(script)
-    
+    scripts_data["total_scripts"] = len(scripts_data["scripts"])
     return scripts_data
 
 
-# 持久化任务状态管理
+# 任务状态管理
 task_statuses = {}
-
-def get_task_status_file():
-    """获取任务状态文件路径"""
-    status_dir = Path(project_root) / "output" / "task_status"
-    status_dir.mkdir(exist_ok=True, parents=True)
-    return status_dir / "task_statuses.json"
-
-def load_task_statuses():
-    """从文件加载任务状态"""
-    global task_statuses
-    status_file = get_task_status_file()
-    if status_file.exists():
-        try:
-            with open(status_file, 'r', encoding='utf-8') as f:
-                task_statuses = json.load(f)
-                logger.info(f"加载了 {len(task_statuses)} 个任务状态")
-        except Exception as e:
-            logger.error(f"加载任务状态失败: {e}")
-            task_statuses = {}
-    else:
-        task_statuses = {}
 
 def save_task_statuses():
     """保存任务状态到文件"""
-    status_file = get_task_status_file()
     try:
+        status_file = Path('output/task_status/task_statuses.json')
+        status_file.parent.mkdir(exist_ok=True)
         with open(status_file, 'w', encoding='utf-8') as f:
             json.dump(task_statuses, f, ensure_ascii=False, indent=2)
     except Exception as e:
         logger.error(f"保存任务状态失败: {e}")
 
-def update_task_status(task_id: str, status: str, message: str = '', progress: int = 0, result: dict = None, 
-                      project_name: str = '', current_step: int = 1, total_steps: int = 5, steps: list = None):
+def load_task_statuses():
+    """从文件加载任务状态"""
+    try:
+        global task_statuses
+        status_file = Path('output/task_status/task_statuses.json')
+        if status_file.exists():
+            with open(status_file, 'r', encoding='utf-8') as f:
+                task_statuses = json.load(f)
+        else:
+            task_statuses = {}
+    except Exception as e:
+        logger.error(f"加载任务状态失败: {e}")
+        task_statuses = {}
+
+def update_task_status(task_id, status, message, progress, result=None, project_name='', current_step=1, total_steps=5, steps=None):
     """更新任务状态"""
     task_statuses[task_id] = {
-        'task_id': task_id,
         'status': status,
         'message': message,
         'progress': progress,
-        'updated_at': datetime.now().isoformat(),
         'result': result,
         'project_name': project_name,
         'current_step': current_step,
         'total_steps': total_steps,
-        'steps': steps or []
+        'steps': steps or [],
+        'updated_at': datetime.now().isoformat()
     }
-    logger.info(f"任务 {task_id} 状态更新: {status} - {message} ({progress}%)")
-    
-    # 保存到文件
     save_task_statuses()
 
 # 启动时加载任务状态

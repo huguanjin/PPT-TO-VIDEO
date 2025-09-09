@@ -12,8 +12,8 @@ import asyncio
 import aiofiles
 from datetime import datetime
 
-from ..utils.logger import get_logger
-from ..utils.file_manager import FileManager
+from utils.logger import get_logger
+from utils.file_manager import FileManager
 
 logger = get_logger(__name__)
 

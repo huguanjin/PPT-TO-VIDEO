@@ -1,0 +1,104 @@
+---
+title: VideoLingo
+---
+
+import Landing from '@/components/landing'
+
+export const getStaticProps = ({ params }) => {
+    return Promise.all([
+        fetch(`https://api.github.com/repos/Huanshere/VideoLingo`).then(res => res.json()),
+        fetch(`https://api.github.com/repos/Huanshere/VideoLingo/contributors?per_page=16`).then(res => res.json())
+    ]).then(([repo, stargazers]) => ({
+        props: {
+            ssg: {
+                stars: repo.stargazers_count,
+                recentStargazers: stargazers
+            }
+        },
+        revalidate: 60
+    }))
+}
+
+export default function Component() {
+    const landingData = {
+        hero: {
+            title: "VideoLingo: Connecting Every Frame Across the World",
+            description: "Netflix-level subtitle cutting, translation, alignment, and even dubbing - one-click fully automated video localization AI subtitle team",
+            videoSrc: "/videos/demo.mp4"
+        },
+        features: {
+            title: "Powerful Features, Unleash Creativity",
+            items: [
+                {
+                    title: 'Intelligent Subtitle Segmentation',
+                    description: 'Using NLP and LLM technologies to accurately segment subtitles based on sentence meaning, ensuring each phrase is just right.',
+                    icon: 'CheckCircle',
+                },
+                {
+                    title: 'Context-Aware Translation',
+                    description: 'GPT summarizes and extracts terminology knowledge base, achieving context-coherent translation, making every sentence natural and fluent.',
+                    icon: 'ArrowRight',
+                },
+                {
+                    title: 'Three-Step Translation Process',
+                    description: 'Direct translation - Reflection - Paraphrasing, multiple safeguards, rivaling the quality of professional subtitle team translations.',
+                    icon: 'CheckCircle',
+                },
+                {
+                    title: 'Precise Subtitle Alignment',
+                    description: 'Using WhisperX for word-level timeline subtitle recognition, ensuring every word is accurately synchronized.',
+                    icon: 'ArrowRight',
+                },
+                {
+                    title: 'High-Quality Dubbing',
+                    description: 'Supports various TTS solutions, including high-quality personalized dubbing with GPT-SoVITS technology, making videos more appealing.',
+                    icon: 'CheckCircle',
+                },
+                {
+                    title: 'Developer-Friendly',
+                    description: 'Structured file design, convenient for developers to customize and extend functionality. Supports multiple deployment methods.',
+                    icon: 'ArrowRight',
+                },
+            ]
+        },
+        comments: {
+            title: "They're All Using VideoLingo",
+            items: [
+                {
+                    content: "What used to take a whole day now gets done in an hour!",
+                    author: "k",
+                    title: "Bilibili creator with 300k followers"
+                },
+                {
+                    content: "This dubbing is even more accurate than my own speech, I suddenly have so many fun ideas 🤩",
+                    author: "Ah Biao",
+                    title: "Xiaohongshu Cantonese creator with 100k followers"
+                },
+                {
+                    content: "I just posted it for fun after work, didn't expect it to blow up so quickly 😂",
+                    author: "X",
+                    title: "Douyin creator gaining 7k followers daily"
+                }
+            ]
+        },
+        faq: {
+            title: "Frequently Asked Questions",
+            items: [
+                {
+                    question: "How is the translation quality?",
+                    description: "We strictly adhere to Netflix subtitle standards, using the most advanced Claude 3.5 model for multi-step translation."
+                },
+                {
+                    question: "How long does it take to process a video?",
+                    answer: "Processing time depends on the length of the video and the selected services. Typically, a 60-minute video takes about 40 minutes to complete translation and dubbing."
+                },
+                {
+                    question: "How is it priced?",
+                    answer: "VideoLingo is an open-source project that has already gained 3k+ stars on Github. A commercial version with more features is coming soon~"
+                },
+            ]
+        }
+    }
+
+    return <Landing data={landingData} />
+}

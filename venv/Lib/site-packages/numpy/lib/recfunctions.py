@@ -13,6 +13,7 @@ import numpy.ma.mrecords as mrec
 from numpy._core.overrides import array_function_dispatch
 from numpy.lib._iotools import _is_string_like
 
+
 __all__ = [
     'append_fields', 'apply_along_fields', 'assign_fields_by_name',
     'drop_fields', 'find_duplicates', 'flatten_descr',
@@ -262,7 +263,7 @@ def get_fieldstructure(adtype, lastname=None, parents=None,):
                 parents[name] = []
             parents.update(get_fieldstructure(current, name, parents))
         else:
-            lastparent = list(parents.get(lastname, []) or [])
+            lastparent = list((parents.get(lastname, []) or []))
             if lastparent:
                 lastparent.append(lastname)
             elif lastname:
@@ -884,7 +885,7 @@ def _get_fields_and_offsets(dt, offset=0):
                     # optimization: avoid list comprehension if no subarray
                     fields.extend(subfields)
                 else:
-                    fields.extend([(d, c, o + i * size) for d, c, o in subfields])
+                    fields.extend([(d, c, o + i*size) for d, c, o in subfields])
     return fields
 
 def _common_stride(offsets, counts, itemsize):
@@ -995,7 +996,7 @@ def structured_to_unstructured(arr, dtype=None, copy=False, casting='unsafe'):
     >>> np.mean(rfn.structured_to_unstructured(b[['x', 'z']]), axis=-1)
     array([ 3. ,  5.5,  9. , 11. ])
 
-    """  # noqa: E501
+    """
     if arr.dtype.names is None:
         raise ValueError('arr must be a structured array')
 
@@ -1008,7 +1009,7 @@ def structured_to_unstructured(arr, dtype=None, copy=False, casting='unsafe'):
         raise NotImplementedError("arr with no fields is not supported")
 
     dts, counts, offsets = zip(*fields)
-    names = [f'f{n}' for n in range(n_fields)]
+    names = ['f{}'.format(n) for n in range(n_fields)]
 
     if dtype is None:
         out_dtype = np.result_type(*[dt.base for dt in dts])
@@ -1127,7 +1128,7 @@ def unstructured_to_structured(arr, dtype=None, names=None, align=False,
            (10, (11., 12), [13., 14.]), (15, (16., 17), [18., 19.])],
           dtype=[('a', '<i4'), ('b', [('f0', '<f4'), ('f1', '<u2')]), ('c', '<f4', (2,))])
 
-    """  # noqa: E501
+    """
     if arr.shape == ():
         raise ValueError('arr must have at least one dimension')
     n_elem = arr.shape[-1]
@@ -1137,7 +1138,7 @@ def unstructured_to_structured(arr, dtype=None, names=None, align=False,
 
     if dtype is None:
         if names is None:
-            names = [f'f{n}' for n in range(n_elem)]
+            names = ['f{}'.format(n) for n in range(n_elem)]
         out_dtype = np.dtype([(n, arr.dtype) for n in names], align=align)
         fields = _get_fields_and_offsets(out_dtype)
         dts, counts, offsets = zip(*fields)
@@ -1160,7 +1161,7 @@ def unstructured_to_structured(arr, dtype=None, names=None, align=False,
         if align and not out_dtype.isalignedstruct:
             raise ValueError("align was True but dtype is not aligned")
 
-    names = [f'f{n}' for n in range(len(fields))]
+    names = ['f{}'.format(n) for n in range(len(fields))]
 
     # Use a series of views and casts to convert to a structured array:
 
@@ -1385,7 +1386,8 @@ def stack_arrays(arrays, defaults=None, usemask=True, asrecarray=False,
                 if autoconvert:
                     newdescr[nameidx] = (fname, max(fdtype, cdtype))
                 elif fdtype != cdtype:
-                    raise TypeError(f"Incompatible type '{cdtype}' <> '{fdtype}'")
+                    raise TypeError("Incompatible type '%s' <> '%s'" %
+                                    (cdtype, fdtype))
     # Only one field: use concatenate
     if len(newdescr) == 1:
         output = ma.concatenate(seqarrays)
@@ -1397,7 +1399,7 @@ def stack_arrays(arrays, defaults=None, usemask=True, asrecarray=False,
         for (a, n, i, j) in zip(seqarrays, fldnames, offset[:-1], offset[1:]):
             names = a.dtype.names
             if names is None:
-                output[f'f{len(seen)}'][i:j] = a
+                output['f%i' % len(seen)][i:j] = a
             else:
                 for name in n:
                     output[name][i:j] = a[name]
@@ -1541,18 +1543,20 @@ def join_by(key, r1, r2, jointype='inner', r1postfix='1', r2postfix='2',
 
     # Check the keys
     if len(set(key)) != len(key):
-        dup = next(x for n, x in enumerate(key) if x in key[n + 1:])
-        raise ValueError(f"duplicate join key {dup!r}")
+        dup = next(x for n,x in enumerate(key) if x in key[n+1:])
+        raise ValueError("duplicate join key %r" % dup)
     for name in key:
         if name not in r1.dtype.names:
-            raise ValueError(f'r1 does not have key field {name!r}')
+            raise ValueError('r1 does not have key field %r' % name)
         if name not in r2.dtype.names:
-            raise ValueError(f'r2 does not have key field {name!r}')
+            raise ValueError('r2 does not have key field %r' % name)
 
     # Make sure we work with ravelled arrays
     r1 = r1.ravel()
     r2 = r2.ravel()
-    (nb1, nb2) = (len(r1), len(r2))
+    # Fixme: nb2 below is never used. Commenting out for pyflakes.
+    # (nb1, nb2) = (len(r1), len(r2))
+    nb1 = len(r1)
     (r1names, r2names) = (r1.dtype.names, r2.dtype.names)
 
     # Check the names for collision
@@ -1564,7 +1568,7 @@ def join_by(key, r1, r2, jointype='inner', r1postfix='1', r2postfix='2',
 
     # Make temporary arrays of just the keys
     #  (use order of keys in `r1` for back-compatibility)
-    key1 = [n for n in r1names if n in key]
+    key1 = [ n for n in r1names if n in key ]
     r1k = _keep_fields(r1, key1)
     r2k = _keep_fields(r2, key1)
 
@@ -1607,7 +1611,7 @@ def join_by(key, r1, r2, jointype='inner', r1postfix='1', r2postfix='2',
     for fname, fdtype in _get_fieldspec(r2.dtype):
         # Have we seen the current name already ?
         # we need to rebuild this list every time
-        names = [name for name, dtype in ndtype]
+        names = list(name for name, dtype in ndtype)
         try:
             nameidx = names.index(fname)
         except ValueError:
@@ -1652,7 +1656,7 @@ def join_by(key, r1, r2, jointype='inner', r1postfix='1', r2postfix='2',
             current[-r2spc:] = selected[r2cmn:]
     # Sort and finalize the output
     output.sort(order=key)
-    kwargs = {'usemask': usemask, 'asrecarray': asrecarray}
+    kwargs = dict(usemask=usemask, asrecarray=asrecarray)
     return _fix_output(_fix_defaults(output, defaults), **kwargs)
 
 
@@ -1673,8 +1677,8 @@ def rec_join(key, r1, r2, jointype='inner', r1postfix='1', r2postfix='2',
     --------
     join_by : equivalent function
     """
-    kwargs = {'jointype': jointype, 'r1postfix': r1postfix, 'r2postfix': r2postfix,
-                  'defaults': defaults, 'usemask': False, 'asrecarray': True}
+    kwargs = dict(jointype=jointype, r1postfix=r1postfix, r2postfix=r2postfix,
+                  defaults=defaults, usemask=False, asrecarray=True)
     return join_by(key, r1, r2, **kwargs)
 
 

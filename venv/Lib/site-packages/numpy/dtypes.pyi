@@ -1,19 +1,9 @@
 # ruff: noqa: ANN401
-from typing import (
-    Any,
-    Generic,
-    LiteralString,
-    Never,
-    NoReturn,
-    Self,
-    TypeAlias,
-    final,
-    overload,
-    type_check_only,
-)
+from types import MemberDescriptorType
+from typing import Any, ClassVar, Generic, NoReturn, TypeAlias, final, type_check_only
 from typing import Literal as L
 
-from typing_extensions import TypeVar
+from typing_extensions import LiteralString, Self, TypeVar
 
 import numpy as np
 
@@ -55,15 +45,15 @@ __all__ = [  # noqa: RUF022
 
 # Helper base classes (typing-only)
 
-_ScalarT_co = TypeVar("_ScalarT_co", bound=np.generic, covariant=True)
+_SCT_co = TypeVar("_SCT_co", bound=np.generic, covariant=True)
 
 @type_check_only
-class _SimpleDType(np.dtype[_ScalarT_co], Generic[_ScalarT_co]):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
+class _SimpleDType(np.dtype[_SCT_co], Generic[_SCT_co]):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
     names: None  # pyright: ignore[reportIncompatibleVariableOverride]
     def __new__(cls, /) -> Self: ...
     def __getitem__(self, key: Any, /) -> NoReturn: ...
     @property
-    def base(self) -> np.dtype[_ScalarT_co]: ...
+    def base(self) -> np.dtype[_SCT_co]: ...
     @property
     def fields(self) -> None: ...
     @property
@@ -78,7 +68,7 @@ class _SimpleDType(np.dtype[_ScalarT_co], Generic[_ScalarT_co]):  # type: ignore
     def subdtype(self) -> None: ...
 
 @type_check_only
-class _LiteralDType(_SimpleDType[_ScalarT_co], Generic[_ScalarT_co]):  # type: ignore[misc]
+class _LiteralDType(_SimpleDType[_SCT_co], Generic[_SCT_co]):  # type: ignore[misc]
     @property
     def flags(self) -> L[0]: ...
     @property
@@ -427,7 +417,7 @@ class ObjectDType(  # type: ignore[misc]
 class BytesDType(  # type: ignore[misc]
     _TypeCodes[L["S"], L["S"], L[18]],
     _NoOrder,
-    _NBit[L[1], _ItemSize_co],
+    _NBit[L[1],_ItemSize_co],
     _SimpleDType[np.bytes_],
     Generic[_ItemSize_co],
 ):
@@ -443,7 +433,7 @@ class BytesDType(  # type: ignore[misc]
 class StrDType(  # type: ignore[misc]
     _TypeCodes[L["U"], L["U"], L[19]],
     _NativeOrder,
-    _NBit[L[4], _ItemSize_co],
+    _NBit[L[4],_ItemSize_co],
     _SimpleDType[np.str_],
     Generic[_ItemSize_co],
 ):
@@ -578,54 +568,40 @@ class TimeDelta64DType(  # type: ignore[misc]
         "<m8[as]", ">m8[as]",
     ]: ...
 
-_NaObjectT_co = TypeVar("_NaObjectT_co", default=Never, covariant=True)
-
 @final
 class StringDType(  # type: ignore[misc]
     _TypeCodes[L["T"], L["T"], L[2056]],
     _NativeOrder,
     _NBit[L[8], L[16]],
-    # TODO(jorenham): change once we have a string scalar type:
-    # https://github.com/numpy/numpy/issues/28165
-    np.dtype[str],  # type: ignore[type-var]  # pyright: ignore[reportGeneralTypeIssues, reportInvalidTypeArguments]
-    Generic[_NaObjectT_co],
+    # TODO: Replace the (invalid) `str` with the scalar type, once implemented
+    np.dtype[str],  # type: ignore[type-var]  # pyright: ignore[reportGeneralTypeIssues,reportInvalidTypeArguments]
 ):
     @property
-    def na_object(self) -> _NaObjectT_co: ...
-    @property
     def coerce(self) -> L[True]: ...
+    na_object: ClassVar[MemberDescriptorType]  # does not get instantiated
 
     #
-    @overload
-    def __new__(cls, /, *, coerce: bool = True) -> Self: ...
-    @overload
-    def __new__(cls, /, *, na_object: _NaObjectT_co, coerce: bool = True) -> Self: ...
-
-    #
-    def __getitem__(self, key: Never, /) -> NoReturn: ...  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
+    def __new__(cls, /) -> StringDType: ...
+    def __getitem__(self, key: Any, /) -> NoReturn: ...
+    @property
+    def base(self) -> StringDType: ...
     @property
     def fields(self) -> None: ...
-    @property
-    def base(self) -> Self: ...
-    @property
-    def ndim(self) -> L[0]: ...
-    @property
-    def shape(self) -> tuple[()]: ...
-
-    #
-    @property
-    def name(self) -> L["StringDType64", "StringDType128"]: ...
-    @property
-    def subdtype(self) -> None: ...
-    @property
-    def type(self) -> type[str]: ...
-    @property
-    def str(self) -> L["|T8", "|T16"]: ...
-
-    #
     @property
     def hasobject(self) -> L[True]: ...
     @property
     def isalignedstruct(self) -> L[False]: ...
     @property
     def isnative(self) -> L[True]: ...
+    @property
+    def name(self) -> L["StringDType64", "StringDType128"]: ...
+    @property
+    def ndim(self) -> L[0]: ...
+    @property
+    def shape(self) -> tuple[()]: ...
+    @property
+    def str(self) -> L["|T8", "|T16"]: ...
+    @property
+    def subdtype(self) -> None: ...
+    @property
+    def type(self) -> type[str]: ...  # type: ignore[valid-type]

@@ -1,0 +1,75 @@
+{
+  "测试时间": "2025-09-09T21:51:35.960038",
+  "系统信息": {
+    "测试目标": "http://127.0.0.1:8004",
+    "Python版本": "3.12.7 | packaged by Anaconda, Inc. | (main, Oct  4 2024, 13:17:27) [MSC v.1929 64 bit (AMD64)]"
+  },
+  "测试结果": {
+    "系统健康检查": {
+      "status": "passed",
+      "details": {
+        "success": true
+      }
+    },
+    "配置预设API测试": {
+      "status": "passed",
+      "details": {
+        "get_all_presets": false,
+        "get_specific_preset": false,
+        "save_custom_preset": false
+      }
+    },
+    "配置管理API测试": {
+      "status": "passed",
+      "details": {
+        "get_configs_list": true,
+        "configs_count": 0,
+        "get_statistics": true,
+        "total_configs": 0,
+        "create_backup": true
+      }
+    },
+    "配置存储系统测试": {
+      "status": "failed",
+      "details": {}
+    },
+    "配置应用测试": {
+      "status": "passed",
+      "details": {
+        "apply_config": false,
+        "test_config": false
+      }
+    },
+    "配置导入导出测试": {
+      "status": "passed",
+      "details": {
+        "export_config": false
+      }
+    },
+    "错误处理测试": {
+      "status": "passed",
+      "details": {
+        "invalid_preset_handling": false,
+        "invalid_config_id_handling": true,
+        "invalid_json_handling": false
+      }
+    },
+    "性能基准测试": {
+      "status": "passed",
+      "details": {
+        "health_check_response_time_ms": 4.0,
+        "presets_response_time_ms": 4.01,
+        "configs_list_response_time_ms": 17.8,
+        "performance_grade": "优秀",
+        "average_response_time_ms": 8.6
+      }
+    }
+  },
+  "测试统计": {
+    "总测试数": 8,
+    "通过测试": 7,
+    "失败测试": 1,
+    "错误测试": 0,
+    "通过率": "87.5%"
+  }
+}

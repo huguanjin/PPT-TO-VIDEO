@@ -5,6 +5,7 @@ in python where it's easier.
 By putting the formatting in `__str__`, we also avoid paying the cost for
 users who silence the exceptions.
 """
+from .._utils import set_module
 
 def _unpack_tuple(tup):
     if len(tup) == 1:
@@ -43,9 +44,12 @@ class _UFuncNoLoopError(UFuncTypeError):
 
     def __str__(self):
         return (
-            f"ufunc {self.ufunc.__name__!r} did not contain a loop with signature "
-            f"matching types {_unpack_tuple(self.dtypes[:self.ufunc.nin])!r} "
-            f"-> {_unpack_tuple(self.dtypes[self.ufunc.nin:])!r}"
+            "ufunc {!r} did not contain a loop with signature matching types "
+            "{!r} -> {!r}"
+        ).format(
+            self.ufunc.__name__,
+            _unpack_tuple(self.dtypes[:self.ufunc.nin]),
+            _unpack_tuple(self.dtypes[self.ufunc.nin:])
         )
 
 
@@ -82,10 +86,12 @@ class _UFuncInputCastingError(_UFuncCastingError):
 
     def __str__(self):
         # only show the number if more than one input exists
-        i_str = f"{self.in_i} " if self.ufunc.nin != 1 else ""
+        i_str = "{} ".format(self.in_i) if self.ufunc.nin != 1 else ""
         return (
-            f"Cannot cast ufunc {self.ufunc.__name__!r} input {i_str}from "
-            f"{self.from_!r} to {self.to!r} with casting rule {self.casting!r}"
+            "Cannot cast ufunc {!r} input {}from {!r} to {!r} with casting "
+            "rule {!r}"
+        ).format(
+            self.ufunc.__name__, i_str, self.from_, self.to, self.casting
         )
 
 
@@ -98,10 +104,12 @@ class _UFuncOutputCastingError(_UFuncCastingError):
 
     def __str__(self):
         # only show the number if more than one output exists
-        i_str = f"{self.out_i} " if self.ufunc.nout != 1 else ""
+        i_str = "{} ".format(self.out_i) if self.ufunc.nout != 1 else ""
         return (
-            f"Cannot cast ufunc {self.ufunc.__name__!r} output {i_str}from "
-            f"{self.from_!r} to {self.to!r} with casting rule {self.casting!r}"
+            "Cannot cast ufunc {!r} output {}from {!r} to {!r} with casting "
+            "rule {!r}"
+        ).format(
+            self.ufunc.__name__, i_str, self.from_, self.to, self.casting
         )
 
 
@@ -148,15 +156,17 @@ class _ArrayMemoryError(MemoryError):
         # format with a sensible number of digits
         if unit_i == 0:
             # no decimal point on bytes
-            return f'{n_units:.0f} {unit_name}'
+            return '{:.0f} {}'.format(n_units, unit_name)
         elif round(n_units) < 1000:
             # 3 significant figures, if none are dropped to the left of the .
-            return f'{n_units:#.3g} {unit_name}'
+            return '{:#.3g} {}'.format(n_units, unit_name)
         else:
             # just give all the digits otherwise
-            return f'{n_units:#.0f} {unit_name}'
+            return '{:#.0f} {}'.format(n_units, unit_name)
 
     def __str__(self):
         size_str = self._size_to_string(self._total_size)
-        return (f"Unable to allocate {size_str} for an array with shape "
-                f"{self.shape} and data type {self.dtype}")
+        return (
+            "Unable to allocate {} for an array with shape {} and data type {}"
+            .format(size_str, self.shape, self.dtype)
+        )

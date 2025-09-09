@@ -34,7 +34,7 @@ from ._exceptions import (
     WriteError,
     WriteTimeout,
 )
-from ._models import URL, Origin, Proxy, Request, Response
+from ._models import URL, Origin, Request, Response
 from ._ssl import default_ssl_context
 from ._sync import (
     ConnectionInterface,
@@ -79,7 +79,6 @@ __all__ = [
     "URL",
     "Request",
     "Response",
-    "Proxy",
     # async
     "AsyncHTTPConnection",
     "AsyncConnectionPool",
@@ -131,11 +130,10 @@ __all__ = [
     "WriteError",
 ]
 
-__version__ = "1.0.9"
+__version__ = "0.18.0"
 
 
 __locals = locals()
 for __name in __all__:
-    # Exclude SOCKET_OPTION, it causes AttributeError on Python 3.14
-    if not __name.startswith(("__", "SOCKET_OPTION")):
+    if not __name.startswith("__"):
         setattr(__locals[__name], "__module__", "httpcore")  # noqa

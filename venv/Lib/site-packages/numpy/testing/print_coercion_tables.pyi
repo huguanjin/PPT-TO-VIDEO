@@ -1,7 +1,7 @@
 from collections.abc import Iterable
-from typing import ClassVar, Generic, Self
+from typing import ClassVar, Generic
 
-from typing_extensions import TypeVar
+from typing_extensions import Self, TypeVar
 
 import numpy as np
 

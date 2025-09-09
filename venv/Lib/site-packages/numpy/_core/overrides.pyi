@@ -1,5 +1,7 @@
 from collections.abc import Callable, Iterable
-from typing import Any, Final, NamedTuple, ParamSpec, TypeVar
+from typing import Any, Final, NamedTuple
+
+from typing_extensions import ParamSpec, TypeVar
 
 from numpy._typing import _SupportsArrayFunc
 

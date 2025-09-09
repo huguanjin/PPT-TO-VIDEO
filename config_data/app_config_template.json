@@ -1,0 +1,53 @@
+{
+  "ai_config": {
+    "enabled": true,
+    "service": "openai",
+    "api_key": "your_openai_api_key_here",
+    "base_url": "https://api.openai.com/v1",
+    "model": "gpt-3.5-turbo",
+    "max_tokens": 1000,
+    "temperature": 0.7
+  },
+  "ai_content_optimization": {
+    "enabled": false,
+    "max_segment_length": 35,
+    "min_segment_length": 10,
+    "preserve_meaning": true,
+    "natural_breaks": true,
+    "fallback_to_original": true
+  },
+  "smart_subtitle": {
+    "enabled": true,
+    "splitter_type": "ai_semantic",
+    "max_chars_per_line": 35,
+    "max_lines": 2,
+    "netflix_style": true
+  },
+  "tts": {
+    "preferred_engine": "edge_tts",
+    "edge_tts": {
+      "voice": "zh-CN-XiaoxiaoNeural",
+      "rate": "+0%",
+      "pitch": "+0Hz"
+    },
+    "fish_tts": {
+      "api_key": "your_fish_api_key_here",
+      "character_name": "丁真"
+    },
+    "openai_tts": {
+      "api_key": "your_openai_api_key_here",
+      "model": "tts-1",
+      "voice": "alloy"
+    },
+    "custom_tts": {
+      "api_key": "your_custom_api_key_here",
+      "base_url": "https://your-custom-tts-api.com",
+      "model": "your_model_name"
+    }
+  },
+  "video": {
+    "resolution": "1920x1080",
+    "fps": 30,
+    "background_color": "#000000"
+  }
+}

@@ -1,11 +1,13 @@
 from collections.abc import Mapping
-from typing import Any, SupportsIndex, assert_type
+from typing import Any, SupportsIndex
 
 import numpy as np
 import numpy.typing as npt
 
+from typing_extensions import assert_type
+
 def mode_func(
-    ar: npt.NDArray[np.number],
+    ar: npt.NDArray[np.number[Any]],
     width: tuple[int, int],
     iaxis: SupportsIndex,
     kwargs: Mapping[str, Any],

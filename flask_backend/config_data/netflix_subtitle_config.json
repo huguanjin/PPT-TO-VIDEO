@@ -3,7 +3,6 @@
     "description": "Netflix级别专业字幕配置",
     "version": "1.0",
     "created": "2025-08-30",
-    
     "style_profiles": {
       "netflix_standard": {
         "name": "Netflix标准样式",
@@ -19,7 +18,6 @@
         "shadow_offset_x": 1,
         "shadow_offset_y": 1
       },
-      
       "netflix_minimal": {
         "name": "Netflix简约样式",
         "font_family": "Arial",
@@ -34,7 +32,6 @@
         "shadow_offset_x": 2,
         "shadow_offset_y": 2
       },
-      
       "netflix_accessibility": {
         "name": "Netflix无障碍样式",
         "font_family": "Arial",
@@ -48,7 +45,6 @@
         "high_contrast": true
       }
     },
-    
     "timing_rules": {
       "min_display_time": 1.0,
       "max_display_time": 8.0,
@@ -58,7 +54,6 @@
       "gap_threshold": 0.8,
       "subtitle_overlap_tolerance": 0.1
     },
-    
     "layout_rules": {
       "max_chars_per_line": 40,
       "max_lines": 2,
@@ -71,7 +66,6 @@
       "safe_area_margin": 5,
       "alignment": "center"
     },
-    
     "text_processing": {
       "smart_line_breaks": true,
       "auto_punctuation_removal": true,
@@ -82,7 +76,53 @@
       "capitalize_sentences": false,
       "remove_redundant_spaces": true
     },
-    
+    "smart_subtitle_processing": {
+      "enabled": true,
+      "max_length": 75,
+      "target_multiplier": 1.2,
+      "smart_split": true,
+      "use_ai_splitting": true,
+      "character_weights": {
+        "chinese": 1.75,
+        "japanese": 1.75,
+        "korean": 1.5,
+        "english": 1.0,
+        "punctuation": 0.8,
+        "space": 0.5,
+        "number": 0.8
+      },
+      "punctuation_priority": {
+        "。": 10,
+        ".": 10,
+        "！": 9,
+        "!": 9,
+        "？": 9,
+        "?": 9,
+        "；": 8,
+        ";": 8,
+        "：": 7,
+        ":": 7,
+        "，": 6,
+        ",": 6,
+        "、": 5,
+        " ": 3,
+        "-": 2,
+        "/": 1
+      },
+      "semantic_splitting": {
+        "enabled": true,
+        "look_ahead_chars": 10,
+        "min_priority_threshold": 6
+      },
+      "ai_config": {
+        "service_type": "openai",
+        "api_key": "test-key",
+        "model": "gpt-3.5-turbo",
+        "base_url": "https://api.openai.com/v1",
+        "timeout": 30,
+        "max_retries": 3
+      }
+    },
     "quality_settings": {
       "anti_aliasing": true,
       "subpixel_rendering": true,
@@ -92,7 +132,6 @@
       "sharpening": 0,
       "color_temperature": 6500
     },
-    
     "animation_settings": {
       "enable_fade": true,
       "fade_in_duration": 0.2,
@@ -101,22 +140,28 @@
       "subtitle_exit": "fade",
       "smooth_transitions": true
     },
-    
     "language_specific": {
       "zh-CN": {
-        "font_families": ["Microsoft YaHei", "SimHei", "Arial Unicode MS"],
+        "font_families": [
+          "Microsoft YaHei",
+          "SimHei",
+          "Arial Unicode MS"
+        ],
         "character_spacing": 0,
         "line_height_adjustment": 1.0,
         "punctuation_handling": "standard"
       },
       "en-US": {
-        "font_families": ["Arial", "Helvetica", "sans-serif"],
+        "font_families": [
+          "Arial",
+          "Helvetica",
+          "sans-serif"
+        ],
         "character_spacing": 0,
         "line_height_adjustment": 1.0,
         "punctuation_handling": "standard"
       }
     },
-    
     "accessibility_features": {
       "high_contrast_mode": false,
       "large_text_mode": false,
@@ -125,7 +170,6 @@
       "keyboard_navigation": true,
       "focus_indicators": true
     },
-    
     "performance_settings": {
       "cache_enabled": true,
       "preload_subtitles": true,
@@ -134,7 +178,6 @@
       "memory_limit_mb": 512,
       "background_processing": true
     },
-    
     "debugging": {
       "show_timing_info": false,
       "highlight_boundaries": false,

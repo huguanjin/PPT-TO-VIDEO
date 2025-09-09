@@ -10,6 +10,6 @@ can safely replace this file with your own version.
 """
 
 try:
-    from . import _distributor_init_local  # noqa: F401
+    from . import _distributor_init_local
 except ImportError:
     pass

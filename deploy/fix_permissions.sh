@@ -40,6 +40,13 @@ EOF
 chmod 666 "$PROJECT_ROOT/output/task_status/task_statuses.json"
 chown www:www "$PROJECT_ROOT/output/task_status/task_statuses.json"
 
+# 同步flask_backend到backend目录（如果存在）
+if [ -d "$PROJECT_ROOT/flask_backend" ]; then
+    echo "同步flask_backend到backend目录..."
+    rsync -av --delete "$PROJECT_ROOT/flask_backend/" "$BACKEND_ROOT/"
+    chown -R www:www "$BACKEND_ROOT"
+fi
+
 echo "权限修复完成！"
 echo "项目目录: $PROJECT_ROOT"
 echo "后端目录: $BACKEND_ROOT"

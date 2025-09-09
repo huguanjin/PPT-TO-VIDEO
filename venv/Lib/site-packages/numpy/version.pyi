@@ -1,4 +1,6 @@
-from typing import Final, LiteralString
+from typing import Final
+
+from typing_extensions import LiteralString
 
 __all__ = (
     '__version__',

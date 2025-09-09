@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 import inspect
 import logging
-import types
-import typing
+from types import TracebackType
+from typing import Any, Dict, Optional, Type
 
 from ._models import Request
 
@@ -13,8 +11,8 @@ class Trace:
         self,
         name: str,
         logger: logging.Logger,
-        request: Request | None = None,
-        kwargs: dict[str, typing.Any] | None = None,
+        request: Optional[Request] = None,
+        kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         self.name = name
         self.logger = logger
@@ -23,11 +21,11 @@ class Trace:
         )
         self.debug = self.logger.isEnabledFor(logging.DEBUG)
         self.kwargs = kwargs or {}
-        self.return_value: typing.Any = None
+        self.return_value: Any = None
         self.should_trace = self.debug or self.trace_extension is not None
         self.prefix = self.logger.name.split(".")[-1]
 
-    def trace(self, name: str, info: dict[str, typing.Any]) -> None:
+    def trace(self, name: str, info: Dict[str, Any]) -> None:
         if self.trace_extension is not None:
             prefix_and_name = f"{self.prefix}.{name}"
             ret = self.trace_extension(prefix_and_name, info)
@@ -46,7 +44,7 @@ class Trace:
                 message = f"{name} {args}"
             self.logger.debug(message)
 
-    def __enter__(self) -> Trace:
+    def __enter__(self) -> "Trace":
         if self.should_trace:
             info = self.kwargs
             self.trace(f"{self.name}.started", info)
@@ -54,9 +52,9 @@ class Trace:
 
     def __exit__(
         self,
-        exc_type: type[BaseException] | None = None,
-        exc_value: BaseException | None = None,
-        traceback: types.TracebackType | None = None,
+        exc_type: Optional[Type[BaseException]] = None,
+        exc_value: Optional[BaseException] = None,
+        traceback: Optional[TracebackType] = None,
     ) -> None:
         if self.should_trace:
             if exc_value is None:
@@ -66,7 +64,7 @@ class Trace:
                 info = {"exception": exc_value}
                 self.trace(f"{self.name}.failed", info)
 
-    async def atrace(self, name: str, info: dict[str, typing.Any]) -> None:
+    async def atrace(self, name: str, info: Dict[str, Any]) -> None:
         if self.trace_extension is not None:
             prefix_and_name = f"{self.prefix}.{name}"
             coro = self.trace_extension(prefix_and_name, info)
@@ -86,7 +84,7 @@ class Trace:
                 message = f"{name} {args}"
             self.logger.debug(message)
 
-    async def __aenter__(self) -> Trace:
+    async def __aenter__(self) -> "Trace":
         if self.should_trace:
             info = self.kwargs
             await self.atrace(f"{self.name}.started", info)
@@ -94,9 +92,9 @@ class Trace:
 
     async def __aexit__(
         self,
-        exc_type: type[BaseException] | None = None,
-        exc_value: BaseException | None = None,
-        traceback: types.TracebackType | None = None,
+        exc_type: Optional[Type[BaseException]] = None,
+        exc_value: Optional[BaseException] = None,
+        traceback: Optional[TracebackType] = None,
     ) -> None:
         if self.should_trace:
             if exc_value is None:

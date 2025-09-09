@@ -1,1 +1,3 @@
-"""Tools to better processing and edition of audio."""
+"""
+Tools to better process/edit/cut audio.
+"""

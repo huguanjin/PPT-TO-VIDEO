@@ -10,25 +10,22 @@ terms of the NumPy License.
 
 NO WARRANTY IS EXPRESSED OR IMPLIED.  USE AT YOUR OWN RISK.
 """
-import argparse
+import sys
 import os
 import pprint
 import re
-import sys
+import argparse
 
-from numpy.f2py._backends import f2py_build_generator
-
-from . import (
-    __version__,
-    auxfuncs,
-    capi_maps,
-    cb_rules,
-    cfuncs,
-    crackfortran,
-    f90mod_rules,
-    rules,
-)
+from . import crackfortran
+from . import rules
+from . import cb_rules
+from . import auxfuncs
+from . import cfuncs
+from . import f90mod_rules
+from . import __version__
+from . import capi_maps
 from .cfuncs import errmess
+from numpy.f2py._backends import f2py_build_generator
 
 f2py_version = __version__.version
 numpy_version = __version__.version
@@ -270,7 +267,7 @@ def scaninputline(inputline):
         elif l == '--skip-empty-wrappers':
             emptygen = False
         elif l[0] == '-':
-            errmess(f'Unknown option {repr(l)}\n')
+            errmess('Unknown option %s\n' % repr(l))
             sys.exit()
         elif f2:
             f2 = 0
@@ -306,13 +303,13 @@ def scaninputline(inputline):
         sys.exit()
     if not os.path.isdir(buildpath):
         if not verbose:
-            outmess(f'Creating build directory {buildpath}\n')
+            outmess('Creating build directory %s\n' % (buildpath))
         os.mkdir(buildpath)
     if signsfile:
         signsfile = os.path.join(buildpath, signsfile)
     if signsfile and os.path.isfile(signsfile) and 'h-overwrite' not in options:
         errmess(
-            f'Signature file "{signsfile}" exists!!! Use --overwrite-signature to overwrite.\n')
+            'Signature file "%s" exists!!! Use --overwrite-signature to overwrite.\n' % (signsfile))
         sys.exit()
 
     options['emptygen'] = emptygen
@@ -354,7 +351,7 @@ def callcrackfortran(files, options):
     crackfortran.dolowercase = options['do-lower']
     postlist = crackfortran.crackfortran(files)
     if 'signsfile' in options:
-        outmess(f"Saving signatures to file \"{options['signsfile']}\"\n")
+        outmess('Saving signatures to file "%s"\n' % (options['signsfile']))
         pyf = crackfortran.crack2fortran(postlist)
         if options['signsfile'][-6:] == 'stdout':
             sys.stdout.write(pyf)
@@ -363,13 +360,13 @@ def callcrackfortran(files, options):
                 f.write(pyf)
     if options["coutput"] is None:
         for mod in postlist:
-            mod["coutput"] = f"{mod['name']}module.c"
+            mod["coutput"] = "%smodule.c" % mod["name"]
     else:
         for mod in postlist:
             mod["coutput"] = options["coutput"]
     if options["f2py_wrapper_output"] is None:
         for mod in postlist:
-            mod["f2py_wrapper_output"] = f"{mod['name']}-f2pywrappers.f"
+            mod["f2py_wrapper_output"] = "%s-f2pywrappers.f" % mod["name"]
     else:
         for mod in postlist:
             mod["f2py_wrapper_output"] = options["f2py_wrapper_output"]
@@ -482,19 +479,19 @@ def run_main(comline_list):
                     isusedby[u] = []
                 isusedby[u].append(plist['name'])
     for plist in postlist:
-        module_name = plist['name']
-        if plist['block'] == 'python module' and '__user__' in module_name:
-            if module_name in isusedby:
+        if plist['block'] == 'python module' and '__user__' in plist['name']:
+            if plist['name'] in isusedby:
                 # if not quiet:
-                usedby = ','.join(f'"{s}"' for s in isusedby[module_name])
                 outmess(
-                    f'Skipping Makefile build for module "{module_name}" '
-                    f'which is used by {usedby}\n')
+                    f'Skipping Makefile build for module "{plist["name"]}" '
+                    'which is used by {}\n'.format(
+                        ','.join(f'"{s}"' for s in isusedby[plist['name']])))
     if 'signsfile' in options:
         if options['verbose'] > 1:
             outmess(
                 'Stopping. Edit the signature file and then run f2py on the signature file: ')
-            outmess(f"{os.path.basename(sys.argv[0])} {options['signsfile']}\n")
+            outmess('%s %s\n' %
+                    (os.path.basename(sys.argv[0]), options['signsfile']))
         return
     for plist in postlist:
         if plist['block'] != 'python module':
@@ -542,7 +539,7 @@ class CombineIncludePaths(argparse.Action):
         include_paths_set = set(getattr(namespace, 'include_paths', []) or [])
         if option_string == "--include_paths":
             outmess("Use --include-paths or -I instead of --include_paths which will be removed")
-        if option_string in {"--include-paths", "--include_paths"}:
+        if option_string == "--include-paths" or option_string == "--include_paths":
             include_paths_set.update(values.split(':'))
         else:
             include_paths_set.add(values)
@@ -679,10 +676,10 @@ def run_compile():
                         nv = vmap[ov]
                     except KeyError:
                         if ov not in vmap.values():
-                            print(f'Unknown vendor: "{s[len(v):]}"')
+                            print('Unknown vendor: "%s"' % (s[len(v):]))
                     nv = ov
                 i = flib_flags.index(s)
-                flib_flags[i] = '--fcompiler=' + nv  # noqa: B909
+                flib_flags[i] = '--fcompiler=' + nv
                 continue
     for s in del_list:
         i = flib_flags.index(s)

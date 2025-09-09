@@ -1,9 +1,6 @@
 import pytest
-
 import numpy as np
-
 from . import util
-
 
 @pytest.mark.slow
 class TestCommonBlock(util.F2PyTest):

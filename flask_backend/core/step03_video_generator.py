@@ -8,10 +8,30 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Callable
 from datetime import datetime
 import logging
+from typing import Dict, Any, List, Optional, Callable, Union
 
 from PIL import Image, ImageDraw, ImageFont
-import cv2
-import numpy as np
+
+# 安全导入OpenCV和numpy
+try:
+    import cv2
+    OPENCV_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: OpenCV导入失败: {e}")
+    OPENCV_AVAILABLE = False
+    cv2 = None
+
+try:
+    import numpy as np
+    NUMPY_AVAILABLE = True
+    # 定义numpy数组类型
+    NDArray = np.ndarray
+except ImportError as e:
+    print(f"Warning: NumPy导入失败: {e}")
+    NUMPY_AVAILABLE = False
+    np = None
+    # 定义替代类型
+    NDArray = Any
 
 from utils.logger import get_logger
 from utils.file_manager import FileManager
@@ -23,6 +43,12 @@ class VideoGenerator:
         self.project_dir = Path(project_dir)
         self.file_manager = FileManager(project_dir)
         self.logger = get_logger(__name__, self.project_dir / "logs")
+        
+        # 检查依赖是否可用
+        if not OPENCV_AVAILABLE:
+            self.logger.warning("OpenCV不可用，视频生成功能受限")
+        if not NUMPY_AVAILABLE:
+            self.logger.warning("NumPy不可用，视频生成功能受限")
         
         # 解析分辨率
         self.width, self.height = map(int, resolution.split('x'))
@@ -241,7 +267,7 @@ class VideoGenerator:
             self.logger.error(f"创建视频失败: {e}")
             raise
     
-    def _create_placeholder_image(self, title: str, slide_number: int) -> np.ndarray:
+    def _create_placeholder_image(self, title: str, slide_number: int):
         """
         创建占位符图片
         
@@ -275,7 +301,7 @@ class VideoGenerator:
         
         return image
     
-    def _add_progress_bar(self, frame: np.ndarray, progress: float):
+    def _add_progress_bar(self, frame, progress: float):
         """
         在帧上添加进度条
         

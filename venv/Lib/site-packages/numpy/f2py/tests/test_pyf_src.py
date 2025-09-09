@@ -2,6 +2,7 @@
 from numpy.f2py._src_pyf import process_str
 from numpy.testing import assert_equal
 
+
 pyf_src = """
 python module foo
     <_rd=real,double precision>

@@ -4,13 +4,19 @@ import sys
 import tempfile
 
 
+def run_command(cmd):
+    print('Running %r:' % (cmd))
+    os.system(cmd)
+    print('------')
+
+
 def run():
     _path = os.getcwd()
     os.chdir(tempfile.gettempdir())
     print('------')
-    print(f'os.name={os.name!r}')
+    print('os.name=%r' % (os.name))
     print('------')
-    print(f'sys.platform={sys.platform!r}')
+    print('sys.platform=%r' % (sys.platform))
     print('------')
     print('sys.version:')
     print(sys.version)
@@ -18,7 +24,7 @@ def run():
     print('sys.prefix:')
     print(sys.prefix)
     print('------')
-    print(f"sys.path={':'.join(sys.path)!r}")
+    print('sys.path=%r' % (':'.join(sys.path)))
     print('------')
 
     try:
@@ -48,7 +54,8 @@ def run():
 
     if has_newnumpy:
         try:
-            print(f'Found new numpy version {numpy.__version__!r} in {numpy.__file__}')
+            print('Found new numpy version %r in %s' %
+                  (numpy.__version__, numpy.__file__))
         except Exception as msg:
             print('error:', msg)
             print('------')
@@ -143,7 +150,5 @@ def run():
             print('error:', msg)
             print('------')
     os.chdir(_path)
-
-
 if __name__ == "__main__":
     run()

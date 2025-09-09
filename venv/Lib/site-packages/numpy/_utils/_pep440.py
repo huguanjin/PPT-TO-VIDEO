@@ -33,6 +33,7 @@ import collections
 import itertools
 import re
 
+
 __all__ = [
     "parse", "Version", "LegacyVersion", "InvalidVersion", "VERSION_PATTERN",
 ]
@@ -171,7 +172,7 @@ class LegacyVersion(_BaseVersion):
         return self._version
 
     def __repr__(self):
-        return f"<LegacyVersion({str(self)!r})>"
+        return "<LegacyVersion({0})>".format(repr(str(self)))
 
     @property
     def public(self):
@@ -292,7 +293,7 @@ class Version(_BaseVersion):
         # Validate the version and parse it into pieces
         match = self._regex.search(version)
         if not match:
-            raise InvalidVersion(f"Invalid version: '{version}'")
+            raise InvalidVersion("Invalid version: '{0}'".format(version))
 
         # Store the parsed out pieces of the version
         self._version = _Version(
@@ -324,14 +325,14 @@ class Version(_BaseVersion):
         )
 
     def __repr__(self):
-        return f"<Version({str(self)!r})>"
+        return "<Version({0})>".format(repr(str(self)))
 
     def __str__(self):
         parts = []
 
         # Epoch
         if self._version.epoch != 0:
-            parts.append(f"{self._version.epoch}!")
+            parts.append("{0}!".format(self._version.epoch))
 
         # Release segment
         parts.append(".".join(str(x) for x in self._version.release))
@@ -342,16 +343,16 @@ class Version(_BaseVersion):
 
         # Post-release
         if self._version.post is not None:
-            parts.append(f".post{self._version.post[1]}")
+            parts.append(".post{0}".format(self._version.post[1]))
 
         # Development release
         if self._version.dev is not None:
-            parts.append(f".dev{self._version.dev[1]}")
+            parts.append(".dev{0}".format(self._version.dev[1]))
 
         # Local version segment
         if self._version.local is not None:
             parts.append(
-                f"+{'.'.join(str(x) for x in self._version.local)}"
+                "+{0}".format(".".join(str(x) for x in self._version.local))
             )
 
         return "".join(parts)
@@ -366,7 +367,7 @@ class Version(_BaseVersion):
 
         # Epoch
         if self._version.epoch != 0:
-            parts.append(f"{self._version.epoch}!")
+            parts.append("{0}!".format(self._version.epoch))
 
         # Release segment
         parts.append(".".join(str(x) for x in self._version.release))

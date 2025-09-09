@@ -33,6 +33,24 @@ class SubtitleGenerator:
         self.logger = get_logger(__name__, self.project_dir / "logs")
         self.use_enhanced = use_enhanced and ENHANCED_SUBTITLE_AVAILABLE
         
+        # 加载智能字幕配置
+        try:
+            from core.subtitle_config_loader import load_smart_subtitle_config
+            smart_config = load_smart_subtitle_config(
+                config_dir=self.project_dir / "config_data", 
+                enable_ai=True  # 启用AI智能分割功能
+            )
+            self.logger.info("成功加载智能字幕配置，AI分割功能已启用")
+        except Exception as e:
+            self.logger.warning(f"加载智能字幕配置失败，使用默认配置: {e}")
+            smart_config = {
+                "enabled": True,
+                "max_length": 75,
+                "target_multiplier": 1.2,
+                "smart_split": True,
+                "use_ai_splitting": False
+            }
+        
         # 字幕配置
         self.subtitle_config = {
             "max_chars_per_line": 40,     # 每行最大字符数
@@ -42,7 +60,23 @@ class SubtitleGenerator:
             "words_per_second": 3.5,      # 阅读速度（字/秒）
             "line_break_chars": "，。！？；：",  # 断行标点符号
             "use_enhanced_mode": self.use_enhanced,  # 是否使用增强模式
+            
+            # 智能字幕处理配置
+            "smart_processing": smart_config
         }
+        
+        # 初始化智能字幕处理器
+        try:
+            from core.subtitle_utils import SmartSubtitleProcessor
+            from core.ai_subtitle_splitter import HybridSubtitleSplitter
+            
+            self.smart_processor = SmartSubtitleProcessor(self.subtitle_config["smart_processing"])
+            self.hybrid_splitter = HybridSubtitleSplitter(self.subtitle_config["smart_processing"])
+            self.logger.info("智能字幕处理器初始化成功")
+        except ImportError as e:
+            self.logger.warning(f"智能字幕处理器不可用: {e}")
+            self.smart_processor = None
+            self.hybrid_splitter = None
         
         # 初始化增强版生成器
         if self.use_enhanced:
@@ -209,8 +243,8 @@ class SubtitleGenerator:
             return subtitle_info, []
         
         try:
-            # 分割文本为字幕片段
-            subtitle_segments = self._split_text_to_segments(script_content)
+            # 分割文本为字幕片段 - 支持异步智能分割
+            subtitle_segments = await self._split_text_to_segments(script_content)
             
             # 计算时间分配
             start_time = audio_info["start_time"]
@@ -258,9 +292,9 @@ class SubtitleGenerator:
             self.logger.error(f"生成字幕文件失败 {subtitle_filename}: {e}")
             raise
     
-    def _split_text_to_segments(self, text: str) -> List[str]:
+    async def _split_text_to_segments(self, text: str) -> List[str]:
         """
-        将文本分割为合适的字幕片段
+        将文本分割为合适的字幕片段 - 支持智能分割
         
         Args:
             text: 输入文本
@@ -273,6 +307,29 @@ class SubtitleGenerator:
         if not text:
             return []
         
+        # 优先使用智能字幕处理器
+        if self.hybrid_splitter:
+            try:
+                segments = await self.hybrid_splitter.split_subtitle_text(text)
+                if segments:
+                    self.logger.debug(f"智能分割成功: {len(segments)} 个片段")
+                    return segments
+            except Exception as e:
+                self.logger.warning(f"智能分割失败，使用传统方法: {e}")
+        
+        # 传统分割方法作为fallback
+        return self._legacy_split_text(text)
+    
+    def _legacy_split_text(self, text: str) -> List[str]:
+        """
+        传统文本分割方法
+        
+        Args:
+            text: 输入文本
+            
+        Returns:
+            字幕片段列表
+        """
         segments = []
         current_segment = ""
         

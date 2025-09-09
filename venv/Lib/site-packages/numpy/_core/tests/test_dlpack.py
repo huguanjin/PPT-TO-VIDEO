@@ -1,9 +1,8 @@
 import sys
-
 import pytest
 
 import numpy as np
-from numpy.testing import IS_PYPY, assert_array_equal
+from numpy.testing import assert_array_equal, IS_PYPY
 
 
 def new_and_old_dlpack():
@@ -23,9 +22,9 @@ class TestDLPack:
     def test_dunder_dlpack_refcount(self, max_version):
         x = np.arange(5)
         y = x.__dlpack__(max_version=max_version)
-        startcount = sys.getrefcount(x)
+        assert sys.getrefcount(x) == 3
         del y
-        assert startcount - sys.getrefcount(x) == 1
+        assert sys.getrefcount(x) == 2
 
     def test_dunder_dlpack_stream(self):
         x = np.arange(5)
@@ -59,9 +58,9 @@ class TestDLPack:
     def test_from_dlpack_refcount(self, arr):
         arr = arr.copy()
         y = np.from_dlpack(arr)
-        startcount = sys.getrefcount(arr)
+        assert sys.getrefcount(arr) == 3
         del y
-        assert startcount - sys.getrefcount(arr) == 1
+        assert sys.getrefcount(arr) == 2
 
     @pytest.mark.parametrize("dtype", [
         np.bool,

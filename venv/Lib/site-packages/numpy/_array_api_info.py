@@ -8,21 +8,21 @@ more details.
 
 """
 from numpy._core import (
-    bool,
-    complex64,
-    complex128,
     dtype,
-    float32,
-    float64,
+    bool,
+    intp,
     int8,
     int16,
     int32,
     int64,
-    intp,
     uint8,
     uint16,
     uint32,
     uint64,
+    float32,
+    float64,
+    complex64,
+    complex128,
 )
 
 
@@ -94,14 +94,14 @@ class __array_namespace_info__:
         >>> info = np.__array_namespace_info__()
         >>> info.capabilities()
         {'boolean indexing': True,
-         'data-dependent shapes': True,
-         'max dimensions': 64}
+         'data-dependent shapes': True}
 
         """
         return {
             "boolean indexing": True,
             "data-dependent shapes": True,
-            "max dimensions": 64,
+            # 'max rank' will be part of the 2024.12 standard
+            # "max rank": 64,
         }
 
     def default_device(self):

@@ -2,9 +2,14 @@
 增强的工作流执行器 - 支持断点续传和智能跳过
 """
 import asyncio
+import sys
 from pathlib import Path
 from typing import Dict, Any, Optional, Callable, List
 from datetime import datetime
+
+# 确保可以导入本地模块
+flask_backend_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(flask_backend_dir))
 
 from core.workflow_persistence import (
     WorkflowPersistenceManager, WorkflowExecution, 
@@ -25,12 +30,13 @@ class EnhancedWorkflowExecutor:
     def __init__(self, project_dir: Path):
         self.project_dir = Path(project_dir)
         self.file_manager = FileManager(project_dir)
-        self.logger = get_logger(__name__, project_dir / "logs")
-        self.persistence_manager = WorkflowPersistenceManager(project_dir)
+        self.logger = get_logger(__name__, self.project_dir / "logs")
+        self.persistence_manager = WorkflowPersistenceManager(self.project_dir)
         
         # 步骤执行器映射
         self.step_executors = {
             "step01_data_preparation": self._execute_data_preparation,
+            "step01b_ai_content_optimization": self._execute_ai_content_optimization,  # 新增AI内容优化步骤
             "step02_tts_generation": self._execute_tts_generation,
             "step03_video_generation": self._execute_video_generation,
             "step04_subtitle_generation": self._execute_subtitle_generation,
@@ -177,17 +183,61 @@ class EnhancedWorkflowExecutor:
     async def _execute_data_preparation(self, execution: WorkflowExecution, 
                                       progress_callback: Callable) -> List[str]:
         """执行数据准备步骤"""
-        # 检查slides_metadata.json是否存在，如果存在则转换为scripts_metadata.json
+        # 优先检查slides_metadata.json，如果不存在则检查ppt_data.json
         slides_metadata_path = self.project_dir / "slides" / "slides_metadata.json"
-        if not slides_metadata_path.exists():
-            raise Exception("slides_metadata.json文件不存在")
+        ppt_data_path = self.project_dir / "ppt_data.json"
+        
+        slides_data = None
+        
+        if slides_metadata_path.exists():
+            # 使用slides_metadata.json
+            self.logger.info("使用slides_metadata.json文件")
+            import json
+            with open(slides_metadata_path, 'r', encoding='utf-8') as f:
+                slides_data = json.load(f)
+        elif ppt_data_path.exists():
+            # 使用ppt_data.json
+            self.logger.info("使用ppt_data.json文件")
+            import json
+            with open(ppt_data_path, 'r', encoding='utf-8') as f:
+                ppt_data = json.load(f)
+            
+            # 将PPTist格式转换为标准格式
+            self.logger.info("将ppt_data.json转换为标准slides_metadata.json格式")
+            slides_data = {
+                "slides": [],
+                "total_slides": len(ppt_data.get("slides", [])),
+                "generated_at": datetime.now().isoformat()
+            }
+            
+            for i, slide in enumerate(ppt_data.get("slides", []), 1):
+                # 从PPTist content JSON中提取remark文本
+                import json
+                import re
+                content_str = slide.get("content", "{}")
+                try:
+                    content_json = json.loads(content_str)
+                    raw_remark = content_json.get("remark", "")
+                    # 使用正则表达式去除HTML标签，提取纯文本
+                    clean_remark = re.sub(r'<[^>]+>', '', raw_remark) if raw_remark else ""
+                except:
+                    clean_remark = ""
+                
+                standard_slide = {
+                    "slide_number": i,
+                    "title": f"幻灯片 {i}",
+                    "image_file": slide.get("image", f"slide_{i:03d}.jpg"),  # 转换image字段为image_file
+                    "notes": clean_remark,  # 使用提取的文本内容
+                    "remark": clean_remark  # 使用提取的文本内容
+                }
+                slides_data["slides"].append(standard_slide)
+            
+            # 保存转换后的标准格式数据
+            self.file_manager.save_slides_metadata(slides_data)
+        else:
+            raise Exception("找不到slides_metadata.json或ppt_data.json文件")
         
         progress_callback(20.0)
-        
-        # 读取slides数据
-        import json
-        with open(slides_metadata_path, 'r', encoding='utf-8') as f:
-            slides_data = json.load(f)
         
         progress_callback(60.0)
         
@@ -212,6 +262,88 @@ class EnhancedWorkflowExecutor:
         progress_callback(100.0)
         
         return ["scripts/scripts_metadata.json"]
+    
+    async def _execute_ai_content_optimization(self, execution: WorkflowExecution,
+                                             progress_callback: Callable) -> List[str]:
+        """执行AI内容优化步骤（可选）"""
+        try:
+            # 检查是否启用AI内容优化 - 默认启用
+            config = execution.config or {}
+            ai_optimization_enabled = config.get("ai_content_optimization", {}).get("enabled", True)  # 默认启用
+            
+            if not ai_optimization_enabled:
+                self.logger.info("AI内容优化已被配置为禁用，跳过该步骤")
+                progress_callback(100.0)
+                return ["scripts/scripts_metadata.json"]  # 返回原始文件
+            
+            # 读取原始scripts数据
+            scripts_data = self.file_manager.load_scripts_metadata()
+            if not scripts_data:
+                raise Exception("scripts_metadata.json文件不存在")
+            
+            progress_callback(20.0)
+            
+            # 加载AI配置
+            ai_config = None
+            try:
+                from core.subtitle_config_loader import SmartSubtitleConfigLoader
+                # 修正配置目录路径 - 配置文件在flask_backend/config_data目录
+                config_dir = Path(__file__).parent.parent / "config_data"
+                config_loader = SmartSubtitleConfigLoader(config_dir)
+                ai_config = config_loader.load_ai_config()
+                
+                if not ai_config or not ai_config.get("api_key"):
+                    self.logger.warning("AI配置不可用，跳过AI内容优化")
+                    progress_callback(100.0)
+                    return ["scripts/scripts_metadata.json"]
+                
+            except Exception as e:
+                self.logger.warning(f"加载AI配置失败: {e}")
+                progress_callback(100.0)
+                return ["scripts/scripts_metadata.json"]
+            
+            # 检查是否为测试环境，如果API密钥是测试密钥则跳过AI调用
+            if ai_config and ai_config.get("api_key", "").startswith("test-"):
+                self.logger.info("检测到测试API密钥，跳过AI内容优化")
+                progress_callback(100.0)
+                return ["scripts/scripts_metadata.json"]
+            
+            progress_callback(40.0)
+            
+            # 创建AI内容优化器
+            from core.ai_content_optimizer import AIContentOptimizer
+            optimizer = AIContentOptimizer(self.project_dir, ai_config)
+            
+            progress_callback(60.0)
+            
+            # 执行AI内容优化 - 添加超时保护
+            try:
+                self.logger.info("开始执行AI内容优化")
+                
+                # 设置超时时间为5分钟
+                optimized_data = await asyncio.wait_for(
+                    optimizer.optimize_scripts_content(scripts_data),
+                    timeout=300  # 5分钟超时
+                )
+                
+                # 保存优化后的scripts数据
+                optimized_filename = "scripts_optimized_metadata.json"
+                self.file_manager.save_scripts_metadata(optimized_data, filename=optimized_filename)
+                
+                progress_callback(100.0)
+                
+                self.logger.info("AI内容优化完成")
+                return [f"scripts/{optimized_filename}"]
+                
+            except asyncio.TimeoutError:
+                self.logger.warning("AI内容优化超时，使用原始数据")
+                progress_callback(100.0)
+                return ["scripts/scripts_metadata.json"]
+            
+        except Exception as e:
+            self.logger.error(f"AI内容优化失败: {e}")
+            # 失败时返回原始文件
+            return ["scripts/scripts_metadata.json"]
     
     async def _execute_tts_generation(self, execution: WorkflowExecution,
                                     progress_callback: Callable) -> List[str]:
@@ -310,20 +442,32 @@ class EnhancedWorkflowExecutor:
         if not video_data or not audio_data:
             raise Exception("缺少必要的输入数据")
         
+        # 尝试读取字幕数据
+        subtitle_data = None
+        try:
+            subtitle_data = self.file_manager.load_subtitles_metadata()
+            if subtitle_data:
+                self.logger.info("找到字幕数据，将包含在最终视频中")
+            else:
+                self.logger.info("未找到字幕数据")
+        except Exception as e:
+            self.logger.warning(f"读取字幕数据失败: {e}")
+        
         # 创建最终合并器
         final_merger = FFmpegFinalMerger(self.project_dir)
         
-        # 执行最终合并
-        result = await final_merger.merge_final_video(
+        # 执行最终合并 - 移除await，因为merge_final_video不是async方法
+        result = final_merger.merge_final_video(
             video_data=video_data,
             audio_data=audio_data,
+            subtitle_data=subtitle_data,  # 传递字幕数据
             progress_callback=lambda p: progress_callback(p)
         )
         
-        if not result.get("merge_completed"):
-            raise Exception("最终合并失败")
+        if not result.get("success"):
+            raise Exception(f"最终合并失败: {result.get('error', '未知错误')}")
         
-        return ["final/final_video.mp4"]
+        return [result.get("output_file", "final/final_video.mp4")]
     
     def get_execution_history(self, project_name: str) -> List[WorkflowExecution]:
         """获取项目的执行历史"""

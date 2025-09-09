@@ -1,6 +1,8 @@
-from typing import Any, NamedTuple, assert_type
+from typing import Any, NamedTuple
 
 import numpy as np
+from typing_extensions import assert_type
+
 
 # Subtype of tuple[int, int]
 class XYGrid(NamedTuple):

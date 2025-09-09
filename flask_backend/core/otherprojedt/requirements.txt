@@ -1,0 +1,33 @@
+librosa==0.10.2.post1
+pytorch-lightning==2.3.3
+lightning==2.3.3
+transformers==4.39.3
+moviepy==1.0.3
+numpy==1.26.4
+openai==1.55.3
+opencv-python==4.10.0.84
+openpyxl==3.1.5
+pandas==2.2.3
+pydub==0.25.1
+PyYAML==6.0.2
+replicate==0.33.0
+requests==2.32.3
+resampy==0.4.3
+spacy==3.7.4
+streamlit==1.38.0
+yt-dlp
+json-repair
+ruamel.yaml
+InquirerPy
+autocorrect-py
+ctranslate2==4.4.0
+edge-tts
+
+demucs[dev] @ git+https://github.com/adefossez/demucs
+whisperx @ git+https://github.com/m-bain/whisperx.git@7307306a9d8dd0d261e588cc933322454f853853
+
+syllables
+pypinyin
+g2p-en
+xmltodict
+

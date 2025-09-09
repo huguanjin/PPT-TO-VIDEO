@@ -10,6 +10,7 @@ import os
 
 from numpy.version import version as __version__
 
+
 # disables OpenBLAS affinity setting of the main thread that limits
 # python threads or processes to one core
 env_added = []
@@ -45,7 +46,7 @@ Please carefully study the documentation linked above for further help.
 Original error was: %s
 """ % (sys.version_info[0], sys.version_info[1], sys.executable,
         __version__, exc)
-    raise ImportError(msg) from exc
+    raise ImportError(msg)
 finally:
     for envkey in env_added:
         del os.environ[envkey]
@@ -68,43 +69,37 @@ if not (hasattr(multiarray, '_multiarray_umath') and
     raise ImportError(msg.format(path))
 
 from . import numerictypes as nt
-from .numerictypes import sctypeDict, sctypes
-
+from .numerictypes import sctypes, sctypeDict
 multiarray.set_typeDict(nt.sctypeDict)
-from . import (
-    _machar,
-    einsumfunc,
-    fromnumeric,
-    function_base,
-    getlimits,
-    numeric,
-    shape_base,
-)
-from .einsumfunc import *
+from . import numeric
+from .numeric import *
+from . import fromnumeric
 from .fromnumeric import *
-from .function_base import *
-from .getlimits import *
-
+from .records import record, recarray
 # Note: module name memmap is overwritten by a class with same name
 from .memmap import *
-from .numeric import *
-from .records import recarray, record
+from . import function_base
+from .function_base import *
+from . import _machar
+from . import getlimits
+from .getlimits import *
+from . import shape_base
 from .shape_base import *
-
+from . import einsumfunc
+from .einsumfunc import *
 del nt
+
+from .numeric import absolute as abs
 
 # do this after everything else, to minimize the chance of this misleadingly
 # appearing in an import-time traceback
+from . import _add_newdocs
+from . import _add_newdocs_scalars
 # add these for module-freeze analysis (like PyInstaller)
-from . import (
-    _add_newdocs,
-    _add_newdocs_scalars,
-    _dtype,
-    _dtype_ctypes,
-    _internal,
-    _methods,
-)
-from .numeric import absolute as abs
+from . import _dtype_ctypes
+from . import _internal
+from . import _dtype
+from . import _methods
 
 acos = numeric.arccos
 acosh = numeric.arccosh
@@ -181,6 +176,5 @@ copyreg.pickle(type(dtype), _DType_reduce, _DType_reconstruct)
 del copyreg, _ufunc_reduce, _DType_reduce
 
 from numpy._pytesttester import PytestTester
-
 test = PytestTester(__name__)
 del PytestTester

@@ -24,11 +24,11 @@ def create_app(config_class=None):
     # 配置CORS
     CORS(app, origins=['*'], supports_credentials=True)
     
-    # 配置请求限制
+    # 配置请求限制（放宽限制以支持前端频繁操作）
     limiter = Limiter(
         key_func=get_remote_address,
         app=app,
-        default_limits=["200 per day", "50 per hour"]
+        default_limits=["10000 per day", "1000 per hour"]
     )
     
     # 配置日志
@@ -74,15 +74,81 @@ def register_blueprints(app):
     from app.api.pptist_export import pptist_export_bp
     from app.api.workspace import workspace_bp
     
-    # 导入增强的API蓝图
+    # 导入增强的API蓝图（带详细错误处理）
+    enhanced_apis_available = True
+    enhanced_workflow_bp = None
+    enhanced_tts_bp = None
+    enhanced_workspace_bp = None
+    
     try:
         from app.api.enhanced_workflow import bp as enhanced_workflow_bp
-        from app.api.enhanced_tts import bp as enhanced_tts_bp
-        from app.api.enhanced_workspace import bp as enhanced_workspace_bp
-        enhanced_apis_available = True
+        print("✅ enhanced_workflow模块导入成功")
     except ImportError as e:
-        print(f"Warning: 增强的API模块导入失败: {e}")
+        print(f"❌ enhanced_workflow模块导入失败: {e}")
         enhanced_apis_available = False
+    except Exception as e:
+        print(f"❌ enhanced_workflow模块加载错误: {e}")
+        enhanced_apis_available = False
+    
+    try:
+        from app.api.enhanced_tts import bp as enhanced_tts_bp
+        print("✅ enhanced_tts模块导入成功")
+    except ImportError as e:
+        print(f"❌ enhanced_tts模块导入失败: {e}")
+        enhanced_apis_available = False
+    except Exception as e:
+        print(f"❌ enhanced_tts模块加载错误: {e}")
+        enhanced_apis_available = False
+    
+    try:
+        from app.api.enhanced_workspace import bp as enhanced_workspace_bp
+        print("✅ enhanced_workspace模块导入成功")
+    except ImportError as e:
+        print(f"❌ enhanced_workspace模块导入失败: {e}")
+        enhanced_apis_available = False
+    except Exception as e:
+        print(f"❌ enhanced_workspace模块加载错误: {e}")
+        enhanced_apis_available = False
+    
+    # 导入智能字幕API
+    smart_subtitle_bp = None
+    try:
+        from api.smart_subtitle_api import smart_subtitle_bp
+        print("✅ smart_subtitle_api模块导入成功")
+    except ImportError as e:
+        print(f"❌ smart_subtitle_api模块导入失败: {e}")
+    except Exception as e:
+        print(f"❌ smart_subtitle_api模块加载错误: {e}")
+    
+    # 导入AI配置API
+    ai_config_api = None
+    try:
+        from api.ai_config_api import ai_config_api
+        print("✅ ai_config_api模块导入成功")
+    except ImportError as e:
+        print(f"❌ ai_config_api模块导入失败: {e}")
+    except Exception as e:
+        print(f"❌ ai_config_api模块加载错误: {e}")
+    
+    # 导入AI连接测试API
+    ai_test_bp = None
+    try:
+        from api.ai_config_test_api import ai_test_bp
+        print("✅ ai_config_test_api模块导入成功")
+    except ImportError as e:
+        print(f"❌ ai_config_test_api模块导入失败: {e}")
+    except Exception as e:
+        print(f"❌ ai_config_test_api模块加载错误: {e}")
+    
+    # 导入提示词管理API
+    prompt_api = None
+    try:
+        from api.prompt_api import prompt_api
+        print("✅ prompt_api模块导入成功")
+    except ImportError as e:
+        print(f"❌ prompt_api模块导入失败: {e}")
+    except Exception as e:
+        print(f"❌ prompt_api模块加载错误: {e}")
     
     # 注册原有蓝图
     app.register_blueprint(common_bp)
@@ -95,21 +161,69 @@ def register_blueprints(app):
     app.register_blueprint(pptist_export_bp, url_prefix='/api/pptist_export')
     app.register_blueprint(workspace_bp, url_prefix='/api/workspace')
     
-    # 注册增强的API蓝图（如果可用）
-    if enhanced_apis_available:
-        # 注册增强的工作流API（替代原有工作流的高级功能）
-        app.register_blueprint(enhanced_workflow_bp, url_prefix='/api/enhanced_workflow')
-        # 注册增强的TTS API（多引擎支持）
-        app.register_blueprint(enhanced_tts_bp, url_prefix='/api/enhanced_tts')
-        # 注册增强的工作空间API（PPTist项目持久化）
-        app.register_blueprint(enhanced_workspace_bp, url_prefix='/api/enhanced_workspace')
-        
-        print("✅ 增强的API模块已成功注册:")
-        print("   - /api/enhanced_workflow/* - 完整工作流功能")
-        print("   - /api/enhanced_tts/* - 多引擎TTS试听功能")
-        print("   - /api/enhanced_workspace/* - PPTist项目持久化功能")
+    # 注册智能字幕API
+    if smart_subtitle_bp is not None:
+        try:
+            app.register_blueprint(smart_subtitle_bp)
+            print("✅ smart_subtitle蓝图注册成功: /api/smart-subtitle/*")
+        except Exception as e:
+            print(f"❌ smart_subtitle蓝图注册失败: {e}")
+    
+    # 注册AI配置API
+    if ai_config_api is not None:
+        try:
+            app.register_blueprint(ai_config_api)
+            print("✅ ai_config_api蓝图注册成功: /api/ai-config/*")
+        except Exception as e:
+            print(f"❌ ai_config_api蓝图注册失败: {e}")
+    
+    # 注册AI连接测试API
+    if ai_test_bp is not None:
+        try:
+            app.register_blueprint(ai_test_bp, url_prefix='/api/ai')
+            print("✅ ai_test_bp蓝图注册成功: /api/ai/*")
+        except Exception as e:
+            print(f"❌ ai_test_bp蓝图注册失败: {e}")
+    
+    # 注册提示词管理API
+    if prompt_api is not None:
+        try:
+            app.register_blueprint(prompt_api)
+            print("✅ prompt_api蓝图注册成功: /api/prompts/*")
+        except Exception as e:
+            print(f"❌ prompt_api蓝图注册失败: {e}")
+    
+    # 注册增强的API蓝图（只注册成功导入的）
+    enhanced_count = 0
+    
+    if enhanced_workflow_bp is not None:
+        try:
+            app.register_blueprint(enhanced_workflow_bp, url_prefix='/api/enhanced_workflow')
+            print("✅ enhanced_workflow蓝图注册成功: /api/enhanced_workflow/*")
+            enhanced_count += 1
+        except Exception as e:
+            print(f"❌ enhanced_workflow蓝图注册失败: {e}")
+    
+    if enhanced_tts_bp is not None:
+        try:
+            app.register_blueprint(enhanced_tts_bp, url_prefix='/api/enhanced_tts')
+            print("✅ enhanced_tts蓝图注册成功: /api/enhanced_tts/*")
+            enhanced_count += 1
+        except Exception as e:
+            print(f"❌ enhanced_tts蓝图注册失败: {e}")
+    
+    if enhanced_workspace_bp is not None:
+        try:
+            app.register_blueprint(enhanced_workspace_bp, url_prefix='/api/enhanced_workspace')
+            print("✅ enhanced_workspace蓝图注册成功: /api/enhanced_workspace/*")
+            enhanced_count += 1
+        except Exception as e:
+            print(f"❌ enhanced_workspace蓝图注册失败: {e}")
+    
+    if enhanced_count > 0:
+        print(f"✅ 成功注册 {enhanced_count} 个增强API模块")
     else:
-        print("⚠️  增强的API模块不可用，使用原有的基础功能")
+        print("⚠️  没有增强的API模块可用，使用原有的基础功能")
 
 def register_error_handlers(app):
     """注册错误处理器"""

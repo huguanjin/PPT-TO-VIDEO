@@ -16,7 +16,7 @@ __all__ = ['build_and_import_extension', 'compile_extension_module']
 
 def build_and_import_extension(
         modname, functions, *, prologue="", build_dir=None,
-        include_dirs=None, more_init=""):
+        include_dirs=[], more_init=""):
     """
     Build and imports a c-extension module `modname` from a list of function
     fragments `functions`.
@@ -53,8 +53,6 @@ def build_and_import_extension(
     >>> assert not mod.test_bytes('abc')
     >>> assert mod.test_bytes(b'abc')
     """
-    if include_dirs is None:
-        include_dirs = []
     body = prologue + _make_methods(functions, modname)
     init = """
     PyObject *mod = PyModule_Create(&moduledef);
@@ -70,8 +68,12 @@ def build_and_import_extension(
         init += more_init
     init += "\nreturn mod;"
     source_string = _make_source(modname, init, body)
-    mod_so = compile_extension_module(
-        modname, build_dir, include_dirs, source_string)
+    try:
+        mod_so = compile_extension_module(
+            modname, build_dir, include_dirs, source_string)
+    except Exception as e:
+        # shorten the exception chain
+        raise RuntimeError(f"could not compile in {build_dir}:") from e
     import importlib.util
     spec = importlib.util.spec_from_file_location(modname, mod_so)
     foo = importlib.util.module_from_spec(spec)
@@ -81,7 +83,7 @@ def build_and_import_extension(
 
 def compile_extension_module(
         name, builddir, include_dirs,
-        source_string, libraries=None, library_dirs=None):
+        source_string, libraries=[], library_dirs=[]):
     """
     Build an extension module and return the filename of the resulting
     native code file.
@@ -104,14 +106,11 @@ def compile_extension_module(
     dirname = builddir / name
     dirname.mkdir(exist_ok=True)
     cfile = _convert_str_to_file(source_string, dirname)
-    include_dirs = include_dirs or []
-    libraries = libraries or []
-    library_dirs = library_dirs or []
+    include_dirs = include_dirs + [sysconfig.get_config_var('INCLUDEPY')]
 
     return _c_compile(
         cfile, outputfilename=dirname / modname,
-        include_dirs=include_dirs, libraries=libraries,
-        library_dirs=library_dirs,
+        include_dirs=include_dirs, libraries=[], library_dirs=[],
         )
 
 
@@ -134,19 +133,19 @@ def _make_methods(functions, modname):
     methods_table = []
     codes = []
     for funcname, flags, code in functions:
-        cfuncname = f"{modname}_{funcname}"
+        cfuncname = "%s_%s" % (modname, funcname)
         if 'METH_KEYWORDS' in flags:
             signature = '(PyObject *self, PyObject *args, PyObject *kwargs)'
         else:
             signature = '(PyObject *self, PyObject *args)'
         methods_table.append(
             "{\"%s\", (PyCFunction)%s, %s}," % (funcname, cfuncname, flags))
-        func_code = f"""
+        func_code = """
         static PyObject* {cfuncname}{signature}
         {{
         {code}
         }}
-        """
+        """.format(cfuncname=cfuncname, signature=signature, code=code)
         codes.append(func_code)
 
     body = "\n".join(codes) + """
@@ -161,7 +160,7 @@ def _make_methods(functions, modname):
         -1,             /* m_size */
         methods,        /* m_methods */
     };
-    """ % {'methods': '\n'.join(methods_table), 'modname': modname}
+    """ % dict(methods='\n'.join(methods_table), modname=modname)
     return body
 
 
@@ -177,28 +176,41 @@ def _make_source(name, init, body):
     PyInit_%(name)s(void) {
     %(init)s
     }
-    """ % {
-        'name': name, 'init': init, 'body': body,
-    }
+    """ % dict(
+        name=name, init=init, body=body,
+    )
     return code
 
 
-def _c_compile(cfile, outputfilename, include_dirs, libraries,
-               library_dirs):
-    link_extra = []
+def _c_compile(cfile, outputfilename, include_dirs=[], libraries=[],
+               library_dirs=[]):
     if sys.platform == 'win32':
         compile_extra = ["/we4013"]
-        link_extra.append('/DEBUG')  # generate .pdb file
+        link_extra = ["/LIBPATH:" + os.path.join(sys.base_prefix, 'libs')]
     elif sys.platform.startswith('linux'):
         compile_extra = [
             "-O0", "-g", "-Werror=implicit-function-declaration", "-fPIC"]
+        link_extra = []
     else:
-        compile_extra = []
+        compile_extra = link_extra = []
+        pass
+    if sys.platform == 'win32':
+        link_extra = link_extra + ['/DEBUG']  # generate .pdb file
+    if sys.platform == 'darwin':
+        # support Fink & Darwinports
+        for s in ('/sw/', '/opt/local/'):
+            if (s + 'include' not in include_dirs
+                    and os.path.exists(s + 'include')):
+                include_dirs.append(s + 'include')
+            if s + 'lib' not in library_dirs and os.path.exists(s + 'lib'):
+                library_dirs.append(s + 'lib')
 
-    return build(
+    outputfilename = outputfilename.with_suffix(get_so_suffix())
+    build(
         cfile, outputfilename,
         compile_extra, link_extra,
         include_dirs, libraries, library_dirs)
+    return outputfilename
 
 
 def build(cfile, outputfilename, compile_extra, link_extra,
@@ -207,24 +219,19 @@ def build(cfile, outputfilename, compile_extra, link_extra,
 
     build_dir = cfile.parent / "build"
     os.makedirs(build_dir, exist_ok=True)
+    so_name = outputfilename.parts[-1]
     with open(cfile.parent / "meson.build", "wt") as fid:
+        includes = ['-I' + d for d in include_dirs]
         link_dirs = ['-L' + d for d in library_dirs]
         fid.write(textwrap.dedent(f"""\
             project('foo', 'c')
-            py = import('python').find_installation(pure: false)
-            py.extension_module(
-                '{outputfilename.parts[-1]}',
-                '{cfile.parts[-1]}',
-                c_args: {compile_extra},
-                link_args: {link_dirs},
-                include_directories: {include_dirs},
+            shared_module('{so_name}', '{cfile.parts[-1]}',
+                c_args: {includes} + {compile_extra},
+                link_args: {link_dirs} + {link_extra},
+                link_with: {libraries},
+                name_prefix: '',
+                name_suffix: 'dummy',
             )
-        """))
-    native_file_name = cfile.parent / ".mesonpy-native-file.ini"
-    with open(native_file_name, "wt") as fid:
-        fid.write(textwrap.dedent(f"""\
-            [binaries]
-            python = '{sys.executable}'
         """))
     if sys.platform == "win32":
         subprocess.check_call(["meson", "setup",
@@ -233,16 +240,11 @@ def build(cfile, outputfilename, compile_extra, link_extra,
                               cwd=build_dir,
                               )
     else:
-        subprocess.check_call(["meson", "setup", "--vsenv",
-                               "..", f'--native-file={os.fspath(native_file_name)}'],
+        subprocess.check_call(["meson", "setup", "--vsenv", ".."],
                               cwd=build_dir
                               )
-
-    so_name = outputfilename.parts[-1] + get_so_suffix()
     subprocess.check_call(["meson", "compile"], cwd=build_dir)
-    os.rename(str(build_dir / so_name), cfile.parent / so_name)
-    return cfile.parent / so_name
-
+    os.rename(str(build_dir / so_name) + ".dummy", cfile.parent / so_name)
 
 def get_so_suffix():
     ret = sysconfig.get_config_var('EXT_SUFFIX')

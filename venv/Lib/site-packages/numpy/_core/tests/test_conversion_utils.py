@@ -2,12 +2,14 @@
 Tests for numpy/_core/src/multiarray/conversion_utils.c
 """
 import re
+import sys
 
-import numpy._core._multiarray_tests as mt
 import pytest
 
-from numpy._core.multiarray import CLIP, RAISE, WRAP
-from numpy.testing import assert_raises
+import numpy as np
+import numpy._core._multiarray_tests as mt
+from numpy._core.multiarray import CLIP, WRAP, RAISE
+from numpy.testing import assert_warns, IS_PYPY
 
 
 class StringConverterTestCase:
@@ -17,13 +19,13 @@ class StringConverterTestCase:
     warn = True
 
     def _check_value_error(self, val):
-        pattern = fr'\(got {re.escape(repr(val))}\)'
+        pattern = r'\(got {}\)'.format(re.escape(repr(val)))
         with pytest.raises(ValueError, match=pattern) as exc:
             self.conv(val)
 
     def _check_conv_assert_warn(self, val, expected):
         if self.warn:
-            with assert_raises(ValueError) as exc:
+            with assert_warns(DeprecationWarning) as exc:
                 assert self.conv(val) == expected
         else:
             assert self.conv(val) == expected
@@ -121,7 +123,6 @@ class TestSelectkindConverter(StringConverterTestCase):
 class TestSearchsideConverter(StringConverterTestCase):
     """ Tests of PyArray_SearchsideConverter """
     conv = mt.run_searchside_converter
-
     def test_valid(self):
         self._check('left', 'NPY_SEARCHLEFT')
         self._check('right', 'NPY_SEARCHRIGHT')
@@ -150,7 +151,6 @@ class TestOrderConverter(StringConverterTestCase):
 class TestClipmodeConverter(StringConverterTestCase):
     """ Tests of PyArray_ClipmodeConverter """
     conv = mt.run_clipmode_converter
-
     def test_valid(self):
         self._check('clip', 'NPY_CLIP')
         self._check('wrap', 'NPY_WRAP')
@@ -187,9 +187,12 @@ class TestIntpConverter:
         assert self.conv(()) == ()
 
     def test_none(self):
-        with pytest.raises(TypeError):
+        # once the warning expires, this will raise TypeError
+        with pytest.warns(DeprecationWarning):
             assert self.conv(None) == ()
 
+    @pytest.mark.skipif(IS_PYPY and sys.implementation.version <= (7, 3, 8),
+            reason="PyPy bug in error formatting")
     def test_float(self):
         with pytest.raises(TypeError):
             self.conv(1.0)
@@ -201,6 +204,6 @@ class TestIntpConverter:
             self.conv(2**64)
 
     def test_too_many_dims(self):
-        assert self.conv([1] * 64) == (1,) * 64
+        assert self.conv([1]*64) == (1,)*64
         with pytest.raises(ValueError):
-            self.conv([1] * 65)
+            self.conv([1]*65)

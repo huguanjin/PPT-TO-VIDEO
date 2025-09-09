@@ -77,7 +77,7 @@ def enhanced_tts_preview():
                 fish_character_id = ""
                 if engine == "fish_tts":
                     # 读取Fish TTS配置文件获取角色ID映射
-                    fish_config_path = Path("config_data/fish_tts_config.json")
+                    fish_config_path = Path(__file__).parent.parent.parent / "config_data" / "fish_tts_config.json"
                     if fish_config_path.exists():
                         with open(fish_config_path, 'r', encoding='utf-8') as f:
                             fish_config = json.load(f)

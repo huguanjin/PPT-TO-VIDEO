@@ -4,6 +4,7 @@ TTS语音合成API接口
 """
 import os
 import sys
+import json
 import tempfile
 from pathlib import Path
 from flask import Blueprint, request, jsonify, send_file, current_app
@@ -143,6 +144,74 @@ def preview_edge_tts(text, output_path, voice="zh-CN-XiaoxiaoNeural", rate="+0%"
 #         asyncio.run(async_edge_tts())
 #         return True
 
+def load_config_file(filename):
+    """加载配置文件"""
+    try:
+        config_path = Path(__file__).parent.parent.parent / 'config_data' / filename
+        with open(config_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"加载配置文件 {filename} 失败: {e}")
+        return None
+
+def load_fish_tts_voices():
+    """从配置文件加载 Fish TTS 角色列表"""
+    config = load_config_file('fish_tts_config.json')
+    if not config:
+        return []
+    
+    voices = []
+    fish_config = config.get('fish_tts_characters', {})
+    
+    # 加载男性声音
+    male_voices = fish_config.get('male_voices', {}).get('characters', [])
+    for char in male_voices:
+        voices.append({
+            'id': char.get('character_id', char.get('name', '')),
+            'name': char.get('display_name', char.get('name', '')),
+            'description': char.get('description', ''),
+            'language': 'zh-CN',
+            'gender': 'male',
+            'style': char.get('style', ''),
+            'recommended_use': char.get('recommended_use', '')
+        })
+    
+    # 加载女性声音
+    female_voices = fish_config.get('female_voices', {}).get('characters', [])
+    for char in female_voices:
+        voices.append({
+            'id': char.get('character_id', char.get('name', '')),
+            'name': char.get('display_name', char.get('name', '')),
+            'description': char.get('description', ''),
+            'language': 'zh-CN',
+            'gender': 'female',
+            'style': char.get('style', ''),
+            'recommended_use': char.get('recommended_use', '')
+        })
+    
+    return voices
+
+def load_edge_tts_voices():
+    """从配置文件加载 Edge TTS 声音列表"""
+    config = load_config_file('edge_tts_voices.json')
+    if not config:
+        return []
+    
+    voices = []
+    edge_voices = config.get('edge_tts_voices', {})
+    
+    # 遍历所有语言的声音
+    for lang_code, lang_data in edge_voices.items():
+        for voice in lang_data.get('voices', []):
+            voices.append({
+                'id': voice.get('name', ''),
+                'name': voice.get('display_name', voice.get('name', '')),
+                'description': voice.get('description', ''),
+                'gender': voice.get('gender', ''),
+                'language': lang_code
+            })
+    return voices
+
 bp = Blueprint('tts', __name__)
 logger = get_logger(__name__)
 
@@ -219,12 +288,12 @@ def preview_tts():
             if engine in ['edge', 'edge_tts']:
                 # Edge TTS - 使用专为Preview设计的函数
                 voice = tts_config.get('voice', 'zh-CN-XiaoxiaoNeural')
-                rate = tts_config.get('rate', 0)
-                pitch = tts_config.get('pitch', 0)
+                rate = tts_config.get('rate', '+0%')
+                pitch = tts_config.get('pitch', '+0Hz')
                 
-                # 转换前端参数到Edge TTS格式
-                edge_rate = f"{rate:+d}%" if rate != 0 else "+0%"
-                edge_pitch = f"{pitch:+d}Hz" if pitch != 0 else "+0Hz"
+                # 直接使用前端传来的参数，它们已经是正确的格式
+                edge_rate = rate if isinstance(rate, str) else f"{rate:+d}%"
+                edge_pitch = pitch if isinstance(pitch, str) else f"{pitch:+d}Hz"
                 
                 try:
                     print(f"DEBUG: Calling preview_edge_tts with voice={voice}, rate={edge_rate}, pitch={edge_pitch}")
@@ -325,22 +394,13 @@ def get_voices():
         
         # 根据引擎返回不同的声音列表
         if engine == 'edge':
-            voices = [
-                {'id': 'zh-CN-XiaoxiaoNeural', 'name': '晓晓 (女声)', 'language': 'zh-CN'},
-                {'id': 'zh-CN-YunxiNeural', 'name': '云希 (男声)', 'language': 'zh-CN'},
-                {'id': 'zh-CN-YunyangNeural', 'name': '云扬 (男声)', 'language': 'zh-CN'},
-                {'id': 'zh-CN-XiaochenNeural', 'name': '晓辰 (女声)', 'language': 'zh-CN'},
-                {'id': 'zh-CN-XiaohanNeural', 'name': '晓涵 (女声)', 'language': 'zh-CN'},
-                {'id': 'zh-CN-XiaomoNeural', 'name': '晓墨 (女声)', 'language': 'zh-CN'},
-                {'id': 'zh-CN-XiaoqiuNeural', 'name': '晓秋 (女声)', 'language': 'zh-CN'},
-                {'id': 'zh-CN-XiaoruiNeural', 'name': '晓睿 (女声)', 'language': 'zh-CN'},
-                {'id': 'zh-CN-XiaoshuangNeural', 'name': '晓双 (女声)', 'language': 'zh-CN'},
-                {'id': 'zh-CN-XiaoxuanNeural', 'name': '晓萱 (女声)', 'language': 'zh-CN'},
-                {'id': 'zh-CN-XiaoyanNeural', 'name': '晓颜 (女声)', 'language': 'zh-CN'},
-                {'id': 'zh-CN-XiaoyouNeural', 'name': '晓悠 (女声)', 'language': 'zh-CN'},
-                {'id': 'zh-CN-YunfengNeural', 'name': '云枫 (男声)', 'language': 'zh-CN'},
-                {'id': 'zh-CN-YunjianNeural', 'name': '云健 (男声)', 'language': 'zh-CN'},
-            ]
+            voices = load_edge_tts_voices()
+            # 如果配置文件加载失败，使用默认列表
+            if not voices:
+                voices = [
+                    {'id': 'zh-CN-XiaoxiaoNeural', 'name': '晓晓 (女声)', 'language': 'zh-CN'},
+                    {'id': 'zh-CN-YunxiNeural', 'name': '云希 (男声)', 'language': 'zh-CN'},
+                ]
         elif engine == 'openai':
             voices = [
                 {'id': 'alloy', 'name': 'Alloy', 'language': 'en-US'},
@@ -351,17 +411,20 @@ def get_voices():
                 {'id': 'shimmer', 'name': 'Shimmer', 'language': 'en-US'},
             ]
         elif engine == 'azure':
-            voices = [
-                {'id': 'zh-CN-XiaoxiaoNeural', 'name': '晓晓 (女声)', 'language': 'zh-CN'},
-                {'id': 'zh-CN-YunxiNeural', 'name': '云希 (男声)', 'language': 'zh-CN'},
-                {'id': 'zh-CN-YunyangNeural', 'name': '云扬 (男声)', 'language': 'zh-CN'},
-            ]
+            # Azure TTS 使用与 Edge TTS 相同的声音
+            voices = load_edge_tts_voices()
+            if not voices:
+                voices = [
+                    {'id': 'zh-CN-XiaoxiaoNeural', 'name': '晓晓 (女声)', 'language': 'zh-CN'},
+                    {'id': 'zh-CN-YunxiNeural', 'name': '云希 (男声)', 'language': 'zh-CN'},
+                ]
         elif engine == 'fish':
-            voices = [
-                {'id': 'default', 'name': '默认角色', 'language': 'zh-CN'},
-                {'id': 'female1', 'name': '女声1', 'language': 'zh-CN'},
-                {'id': 'male1', 'name': '男声1', 'language': 'zh-CN'},
-            ]
+            voices = load_fish_tts_voices()
+            # 如果配置文件加载失败，使用默认列表
+            if not voices:
+                voices = [
+                    {'id': 'default', 'name': '默认角色', 'language': 'zh-CN'},
+                ]
         else:
             voices = []
         

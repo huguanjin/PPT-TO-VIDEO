@@ -3,8 +3,6 @@
 """
 __docformat__ = "restructuredtext en"
 
-import itertools
-
 import numpy as np
 import numpy._core.numeric as nx
 from numpy._utils import asbytes, asunicode
@@ -13,7 +11,8 @@ from numpy._utils import asbytes, asunicode
 def _decode_line(line, encoding=None):
     """Decode bytes from binary input streams.
 
-    Defaults to decoding from 'latin1'.
+    Defaults to decoding from 'latin1'. That differs from the behavior of
+    np.compat.asunicode that decodes from 'ascii'.
 
     Parameters
     ----------
@@ -181,7 +180,7 @@ class LineSplitter:
         elif hasattr(delimiter, '__iter__'):
             _handyman = self._variablewidth_splitter
             idx = np.cumsum([0] + list(delimiter))
-            delimiter = [slice(i, j) for (i, j) in itertools.pairwise(idx)]
+            delimiter = [slice(i, j) for (i, j) in zip(idx[:-1], idx[1:])]
         # Delimiter is a single integer
         elif int(delimiter):
             (_handyman, delimiter) = (
@@ -279,8 +278,8 @@ class NameValidator:
 
     """
 
-    defaultexcludelist = 'return', 'file', 'print'
-    defaultdeletechars = frozenset(r"""~!@#$%^&*()-=+~\|]}[{';: /?.>,<""")
+    defaultexcludelist = ['return', 'file', 'print']
+    defaultdeletechars = set(r"""~!@#$%^&*()-=+~\|]}[{';: /?.>,<""")
 
     def __init__(self, excludelist=None, deletechars=None,
                  case_sensitive=None, replace_space='_'):
@@ -291,7 +290,7 @@ class NameValidator:
         self.excludelist = excludelist
         # Process the list of characters to delete
         if deletechars is None:
-            delete = set(self.defaultdeletechars)
+            delete = self.defaultdeletechars
         else:
             delete = set(deletechars)
         delete.add('"')
@@ -304,7 +303,7 @@ class NameValidator:
         elif case_sensitive.startswith('l'):
             self.case_converter = lambda x: x.lower()
         else:
-            msg = f'unrecognized case_sensitive value {case_sensitive}.'
+            msg = 'unrecognized case_sensitive value %s.' % case_sensitive
             raise ValueError(msg)
 
         self.replace_space = replace_space
@@ -355,7 +354,7 @@ class NameValidator:
         replace_space = self.replace_space
         # Initializes some variables ...
         validatednames = []
-        seen = {}
+        seen = dict()
         nbempty = 0
 
         for item in names:
@@ -698,7 +697,7 @@ class StringConverter:
                 if not self._status:
                     self._checked = False
                 return self.default
-            raise ValueError(f"Cannot convert string '{value}'")
+            raise ValueError("Cannot convert string '%s'" % value)
 
     def __call__(self, value):
         return self._callingfunction(value)
@@ -870,7 +869,7 @@ def easy_dtype(ndtype, names=None, defaultfmt="f%i", **validationargs):
         elif isinstance(names, str):
             names = names.split(",")
         names = validate(names, nbfields=nbfields, defaultfmt=defaultfmt)
-        ndtype = np.dtype({"formats": ndtype, "names": names})
+        ndtype = np.dtype(dict(formats=ndtype, names=names))
     else:
         # Explicit names
         if names is not None:
@@ -890,7 +889,7 @@ def easy_dtype(ndtype, names=None, defaultfmt="f%i", **validationargs):
         elif ndtype.names is not None:
             validate = NameValidator(**validationargs)
             # Default initial names : should we change the format ?
-            numbered_names = tuple(f"f{i}" for i in range(len(ndtype.names)))
+            numbered_names = tuple("f%i" % i for i in range(len(ndtype.names)))
             if ((ndtype.names == numbered_names) and (defaultfmt != "f%i")):
                 ndtype.names = validate([''] * len(ndtype.names),
                                         defaultfmt=defaultfmt)

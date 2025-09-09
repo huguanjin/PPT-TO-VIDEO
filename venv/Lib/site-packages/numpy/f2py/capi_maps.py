@@ -7,21 +7,19 @@ terms of the NumPy License.
 NO WARRANTY IS EXPRESSED OR IMPLIED.  USE AT YOUR OWN RISK.
 """
 from . import __version__
-
 f2py_version = __version__.version
 
 import copy
-import os
 import re
-
+import os
+from .crackfortran import markoutercomma
 from . import cb_rules
-from ._isocbind import iso_c2py_map, iso_c_binding_map, isoc_c2pycode_map
+from ._isocbind import iso_c_binding_map, isoc_c2pycode_map, iso_c2py_map
 
 # The environment provided by auxfuncs.py is needed for some calls to eval.
 # As the needed functions cannot be determined by static inspection of the
 # code, it is safest to use import * pending a major refactoring of f2py.
 from .auxfuncs import *
-from .crackfortran import markoutercomma
 
 __all__ = [
     'getctype', 'getstrlength', 'getarrdims', 'getpydocsign',
@@ -154,13 +152,13 @@ def load_f2cmap_file(f2cmap_file):
     # interpreted as C 'float'. This feature is useful for F90/95 users if
     # they use PARAMETERS in type specifications.
     try:
-        outmess(f'Reading f2cmap from {f2cmap_file!r} ...\n')
+        outmess('Reading f2cmap from {!r} ...\n'.format(f2cmap_file))
         with open(f2cmap_file) as f:
             d = eval(f.read().lower(), {}, {})
         f2cmap_all, f2cmap_mapped = process_f2cmap_dict(f2cmap_all, d, c2py_map, True)
         outmess('Successfully applied user defined f2cmap changes\n')
     except Exception as msg:
-        errmess(f'Failed to apply user defined f2cmap changes: {msg}. Skipping.\n')
+        errmess('Failed to apply user defined f2cmap changes: %s. Skipping.\n' % (msg))
 
 
 cformat_map = {'double': '%g',
@@ -199,7 +197,7 @@ def getctype(var):
         if a in var['vars']:
             return getctype(var['vars'][a])
         else:
-            errmess(f'getctype: function {a} has no return value?!\n')
+            errmess('getctype: function %s has no return value?!\n' % a)
     elif issubroutine(var):
         return ctype
     elif ischaracter_or_characterarray(var):
@@ -231,8 +229,9 @@ def getctype(var):
                         errmess('getctype: "%s(kind=%s)" is mapped to C "%s" (to override define dict(%s = dict(%s="<C typespec>")) in %s/.f2py_f2cmap file).\n'
                                 % (typespec, var['kindselector']['kind'], ctype,
                                    typespec, var['kindselector']['kind'], os.getcwd()))
-    elif not isexternal(var):
-        errmess(f'getctype: No C-type found in "{var}", assuming void.\n')
+    else:
+        if not isexternal(var):
+            errmess('getctype: No C-type found in "%s", assuming void.\n' % var)
     return ctype
 
 
@@ -260,10 +259,10 @@ def getstrlength(var):
         if a in var['vars']:
             return getstrlength(var['vars'][a])
         else:
-            errmess(f'getstrlength: function {a} has no return value?!\n')
+            errmess('getstrlength: function %s has no return value?!\n' % a)
     if not isstring(var):
         errmess(
-            f'getstrlength: expected a signature of a string but got: {repr(var)}\n')
+            'getstrlength: expected a signature of a string but got: %s\n' % (repr(var)))
     len = '1'
     if 'charselector' in var:
         a = var['charselector']
@@ -332,7 +331,7 @@ def getarrdims(a, var, verbose=0):
                     ret['cbsetdims'], i, 0)
             elif verbose:
                 errmess(
-                    f'getarrdims: If in call-back function: array argument {repr(a)} must have bounded dimensions: got {repr(d)}\n')
+                    'getarrdims: If in call-back function: array argument %s must have bounded dimensions: got %s\n' % (repr(a), repr(d)))
         if ret['cbsetdims']:
             ret['cbsetdims'] = ret['cbsetdims'][:-1]
 #         if not isintent_c(var):
@@ -350,7 +349,7 @@ def getpydocsign(a, var):
         if af in var['vars']:
             return getpydocsign(af, var['vars'][af])
         else:
-            errmess(f'getctype: function {af} has no return value?!\n')
+            errmess('getctype: function %s has no return value?!\n' % af)
         return '', ''
     sig, sigout = a, a
     opt = ''
@@ -369,21 +368,22 @@ def getpydocsign(a, var):
 
     if hasinitvalue(var):
         init, showinit = getinit(a, var)
-        init = f', optional\\n    Default: {showinit}'
+        init = ', optional\\n    Default: %s' % showinit
     if isscalar(var):
         if isintent_inout(var):
             sig = '%s : %s rank-0 array(%s,\'%s\')%s' % (a, opt, c2py_map[ctype],
                                                          c2pycode_map[ctype], init)
         else:
-            sig = f'{a} : {opt} {c2py_map[ctype]}{init}'
-        sigout = f'{out_a} : {c2py_map[ctype]}'
+            sig = '%s : %s %s%s' % (a, opt, c2py_map[ctype], init)
+        sigout = '%s : %s' % (out_a, c2py_map[ctype])
     elif isstring(var):
         if isintent_inout(var):
             sig = '%s : %s rank-0 array(string(len=%s),\'c\')%s' % (
                 a, opt, getstrlength(var), init)
         else:
-            sig = f'{a} : {opt} string(len={getstrlength(var)}){init}'
-        sigout = f'{out_a} : string(len={getstrlength(var)})'
+            sig = '%s : %s string(len=%s)%s' % (
+                a, opt, getstrlength(var), init)
+        sigout = '%s : string(len=%s)' % (out_a, getstrlength(var))
     elif isarray(var):
         dim = var['dimension']
         rank = repr(len(dim))
@@ -402,23 +402,25 @@ def getpydocsign(a, var):
         if a in lcb_map and lcb_map[a] in lcb2_map and 'argname' in lcb2_map[lcb_map[a]]:
             ua = lcb2_map[lcb_map[a]]['argname']
             if not ua == a:
-                ua = f' => {ua}'
+                ua = ' => %s' % ua
             else:
                 ua = ''
-        sig = f'{a} : call-back function{ua}'
+        sig = '%s : call-back function%s' % (a, ua)
         sigout = sig
     else:
         errmess(
-            f'getpydocsign: Could not resolve docsignature for "{a}".\n')
+            'getpydocsign: Could not resolve docsignature for "%s".\n' % a)
     return sig, sigout
 
 
 def getarrdocsign(a, var):
     ctype = getctype(var)
     if isstring(var) and (not isarray(var)):
-        sig = f'{a} : rank-0 array(string(len={getstrlength(var)}),\'c\')'
+        sig = '%s : rank-0 array(string(len=%s),\'c\')' % (a,
+                                                           getstrlength(var))
     elif isscalar(var):
-        sig = f'{a} : rank-0 array({c2py_map[ctype]},\'{c2pycode_map[ctype]}\')'
+        sig = '%s : rank-0 array(%s,\'%s\')' % (a, c2py_map[ctype],
+                                                c2pycode_map[ctype],)
     elif isarray(var):
         dim = var['dimension']
         rank = repr(len(dim))
@@ -450,16 +452,17 @@ def getinit(a, var):
                     ret['init.r'], ret['init.i'] = str(v.real), str(v.imag)
             except Exception:
                 raise ValueError(
-                    f'getinit: expected complex number `(r,i)\' but got `{init}\' as initial value of {a!r}.')
+                    'getinit: expected complex number `(r,i)\' but got `%s\' as initial value of %r.' % (init, a))
             if isarray(var):
-                init = f"(capi_c.r={ret['init.r']},capi_c.i={ret['init.i']},capi_c)"
+                init = '(capi_c.r=%s,capi_c.i=%s,capi_c)' % (
+                    ret['init.r'], ret['init.i'])
         elif isstring(var):
             if not init:
                 init, showinit = '""', "''"
             if init[0] == "'":
                 init = '"%s"' % (init[1:-1].replace('"', '\\"'))
             if init[0] == '"':
-                showinit = f"'{init[1:-1]}'"
+                showinit = "'%s'" % (init[1:-1])
     return init, showinit
 
 
@@ -496,7 +499,7 @@ def sign2map(a, var):
     intent_flags = []
     for f, s in isintent_dict.items():
         if f(var):
-            intent_flags.append(f'F2PY_{s}')
+            intent_flags.append('F2PY_%s' % s)
     if intent_flags:
         # TODO: Evaluate intent_flags here.
         ret['intent'] = '|'.join(intent_flags)
@@ -552,27 +555,29 @@ def sign2map(a, var):
             if il[i](var):
                 rl.append(il[i + 1])
         if isstring(var):
-            rl.append(f"slen({a})={ret['length']}")
+            rl.append('slen(%s)=%s' % (a, ret['length']))
         if isarray(var):
             ddim = ','.join(
-                map(lambda x, y: f'{x}|{y}', var['dimension'], dim))
-            rl.append(f'dims({ddim})')
+                map(lambda x, y: '%s|%s' % (x, y), var['dimension'], dim))
+            rl.append('dims(%s)' % ddim)
         if isexternal(var):
-            ret['vardebuginfo'] = f"debug-capi:{a}=>{ret['cbname']}:{','.join(rl)}"
+            ret['vardebuginfo'] = 'debug-capi:%s=>%s:%s' % (
+                a, ret['cbname'], ','.join(rl))
         else:
             ret['vardebuginfo'] = 'debug-capi:%s %s=%s:%s' % (
                 ret['ctype'], a, ret['showinit'], ','.join(rl))
         if isscalar(var):
             if ret['ctype'] in cformat_map:
-                ret['vardebugshowvalue'] = f"debug-capi:{a}={cformat_map[ret['ctype']]}"
+                ret['vardebugshowvalue'] = 'debug-capi:%s=%s' % (
+                    a, cformat_map[ret['ctype']])
         if isstring(var):
             ret['vardebugshowvalue'] = 'debug-capi:slen(%s)=%%d %s=\\"%%s\\"' % (
                 a, a)
         if isexternal(var):
-            ret['vardebugshowvalue'] = f'debug-capi:{a}=%p'
+            ret['vardebugshowvalue'] = 'debug-capi:%s=%%p' % (a)
     if ret['ctype'] in cformat_map:
-        ret['varshowvalue'] = f"#name#:{a}={cformat_map[ret['ctype']]}"
-        ret['showvalueformat'] = f"{cformat_map[ret['ctype']]}"
+        ret['varshowvalue'] = '#name#:%s=%s' % (a, cformat_map[ret['ctype']])
+        ret['showvalueformat'] = '%s' % (cformat_map[ret['ctype']])
     if isstring(var):
         ret['varshowvalue'] = '#name#:slen(%s)=%%d %s=\\"%%s\\"' % (a, a)
     ret['pydocsign'], ret['pydocsignout'] = getpydocsign(a, var)
@@ -595,7 +600,7 @@ def routsign2map(rout):
            'name_lower': name.lower(),
            'NAME': name.upper(),
            'begintitle': gentitle(name),
-           'endtitle': gentitle(f'end of {name}'),
+           'endtitle': gentitle('end of %s' % name),
            'fortranname': fname,
            'FORTRANNAME': fname.upper(),
            'callstatement': getcallstatement(rout) or '',
@@ -701,7 +706,7 @@ def cb_sign2map(a, var, index=None):
         ret['atype'] = c2capi_map[ret['ctype']]
         ret['elsize'] = get_elsize(var)
     if ret['ctype'] in cformat_map:
-        ret['showvalueformat'] = f"{cformat_map[ret['ctype']]}"
+        ret['showvalueformat'] = '%s' % (cformat_map[ret['ctype']])
     if isarray(var):
         ret = dictappend(ret, getarrdims(a, var))
     ret['pydocsign'], ret['pydocsignout'] = getpydocsign(a, var)
@@ -716,21 +721,25 @@ def cb_routsign2map(rout, um):
     name,begintitle,endtitle,argname
     ctype,rctype,maxnofargs,nofoptargs,returncptr
     """
-    ret = {'name': f"cb_{rout['name']}_in_{um}",
+    ret = {'name': 'cb_%s_in_%s' % (rout['name'], um),
            'returncptr': ''}
     if isintent_callback(rout):
         if '_' in rout['name']:
             F_FUNC = 'F_FUNC_US'
         else:
             F_FUNC = 'F_FUNC'
-        ret['callbackname'] = f"{F_FUNC}({rout['name'].lower()},{rout['name'].upper()})"
+        ret['callbackname'] = '%s(%s,%s)' \
+                              % (F_FUNC,
+                                 rout['name'].lower(),
+                                 rout['name'].upper(),
+                                 )
         ret['static'] = 'extern'
     else:
         ret['callbackname'] = ret['name']
         ret['static'] = 'static'
     ret['argname'] = rout['name']
     ret['begintitle'] = gentitle(ret['name'])
-    ret['endtitle'] = gentitle(f"end of {ret['name']}")
+    ret['endtitle'] = gentitle('end of %s' % ret['name'])
     ret['ctype'] = getctype(rout)
     ret['rctype'] = 'void'
     if ret['ctype'] == 'string':
@@ -747,7 +756,7 @@ return_value=
         else:
             ret['returncptr'] = 'return_value='
     if ret['ctype'] in cformat_map:
-        ret['showvalueformat'] = f"{cformat_map[ret['ctype']]}"
+        ret['showvalueformat'] = '%s' % (cformat_map[ret['ctype']])
     if isstringfunction(rout):
         ret['strlength'] = getstrlength(rout)
     if isfunction(rout):
@@ -768,9 +777,10 @@ return_value=
 void
 #endif
 """
-    elif hasnote(rout):
-        ret['note'] = rout['note']
-        rout['note'] = ['See elsewhere.']
+    else:
+        if hasnote(rout):
+            ret['note'] = rout['note']
+            rout['note'] = ['See elsewhere.']
     nofargs = 0
     nofoptargs = 0
     if 'args' in rout and 'vars' in rout:
@@ -796,7 +806,7 @@ def common_sign2map(a, var):  # obsolete
         ret['atype'] = c2capi_map[ret['ctype']]
         ret['elsize'] = get_elsize(var)
     if ret['ctype'] in cformat_map:
-        ret['showvalueformat'] = f"{cformat_map[ret['ctype']]}"
+        ret['showvalueformat'] = '%s' % (cformat_map[ret['ctype']])
     if isarray(var):
         ret = dictappend(ret, getarrdims(a, var))
     elif isstring(var):

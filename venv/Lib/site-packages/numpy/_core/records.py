@@ -6,8 +6,7 @@ import warnings
 from collections import Counter
 from contextlib import nullcontext
 
-from numpy._utils import set_module
-
+from .._utils import set_module
 from . import numeric as sb
 from . import numerictypes as nt
 from .arrayprint import _get_legacy_print_mode
@@ -128,7 +127,7 @@ class format_parser:
         if isinstance(formats, list):
             dtype = sb.dtype(
                 [
-                    (f'f{i}', format_)
+                    ('f{}'.format(i), format_)
                     for i, format_ in enumerate(formats)
                 ],
                 aligned,
@@ -154,7 +153,7 @@ class format_parser:
             elif isinstance(names, str):
                 names = names.split(',')
             else:
-                raise NameError(f"illegal input names {repr(names)}")
+                raise NameError("illegal input names %s" % repr(names))
 
             self._names = [n.strip() for n in names[:self._nfields]]
         else:
@@ -169,7 +168,7 @@ class format_parser:
         # check for redundant names
         _dup = find_duplicate(self._names)
         if _dup:
-            raise ValueError(f"Duplicate field names: {_dup}")
+            raise ValueError("Duplicate field names: %s" % _dup)
 
         if titles:
             self._titles = [n.strip() for n in titles[:self._nfields]]
@@ -229,25 +228,28 @@ class record(nt.void):
             try:
                 dt = obj.dtype
             except AttributeError:
-                # happens if field is Object type
+                #happens if field is Object type
                 return obj
             if dt.names is not None:
                 return obj.view((self.__class__, obj.dtype))
             return obj
         else:
-            raise AttributeError(f"'record' object has no attribute '{attr}'")
+            raise AttributeError("'record' object has no "
+                    "attribute '%s'" % attr)
 
     def __setattr__(self, attr, val):
         if attr in ('setfield', 'getfield', 'dtype'):
-            raise AttributeError(f"Cannot set '{attr}' attribute")
+            raise AttributeError("Cannot set '%s' attribute" % attr)
         fielddict = nt.void.__getattribute__(self, 'dtype').fields
         res = fielddict.get(attr, None)
         if res:
             return self.setfield(val, *res[:2])
-        elif getattr(self, attr, None):
-            return nt.void.__setattr__(self, attr, val)
         else:
-            raise AttributeError(f"'record' object has no attribute '{attr}'")
+            if getattr(self, attr, None):
+                return nt.void.__setattr__(self, attr, val)
+            else:
+                raise AttributeError("'record' object has no "
+                        "attribute '%s'" % attr)
 
     def __getitem__(self, indx):
         obj = nt.void.__getitem__(self, indx)
@@ -426,7 +428,7 @@ class recarray(ndarray):
         try:
             res = fielddict[attr][:2]
         except (TypeError, KeyError) as e:
-            raise AttributeError(f"recarray has no attribute {attr}") from e
+            raise AttributeError("recarray has no attribute %s" % attr) from e
         obj = self.getfield(*res)
 
         # At this point obj will always be a recarray, since (see
@@ -479,7 +481,7 @@ class recarray(ndarray):
             res = fielddict[attr][:2]
         except (TypeError, KeyError) as e:
             raise AttributeError(
-                f"record array has no attribute {attr}"
+                "record array has no attribute %s" % attr
             ) from e
         return self.setfield(val, *res)
 
@@ -529,9 +531,9 @@ class recarray(ndarray):
                 self, separator=', ', prefix=prefix, suffix=',')
         else:
             # show zero-length shape unless it is (0,)
-            lst = f"[], shape={repr(self.shape)}"
+            lst = "[], shape=%s" % (repr(self.shape),)
 
-        lf = '\n' + ' ' * len(prefix)
+        lf = '\n'+' '*len(prefix)
         if _get_legacy_print_mode() <= 113:
             lf = ' ' + lf  # trailing space
         return fmt % (lst, lf, repr_dtype)

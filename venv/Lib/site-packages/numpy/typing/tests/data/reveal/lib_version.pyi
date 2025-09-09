@@ -1,6 +1,6 @@
-from typing import assert_type
-
 from numpy.lib import NumpyVersion
+
+from typing_extensions import assert_type
 
 version = NumpyVersion("1.8.0")
 

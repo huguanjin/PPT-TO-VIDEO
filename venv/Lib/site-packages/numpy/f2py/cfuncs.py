@@ -9,8 +9,8 @@ terms of the NumPy License.
 
 NO WARRANTY IS EXPRESSED OR IMPLIED.  USE AT YOUR OWN RISK.
 """
-import copy
 import sys
+import copy
 
 from . import __version__
 
@@ -27,7 +27,6 @@ def errmess(s: str) -> None:
         sys.stderr.write(s)
 
 ##################### Definitions ##################
-
 
 outneeds = {'includes0': [], 'includes': [], 'typedefs': [], 'typedefs_generated': [],
             'userincludes': [],
@@ -598,37 +597,32 @@ static int calcarrindextr(int *i,PyArrayObject *arr) {
     return ii;
 }"""
 cfuncs['forcomb'] = """
-struct ForcombCache { int nd;npy_intp *d;int *i,*i_tr,tr; };
-static int initforcomb(struct ForcombCache *cache, npy_intp *dims,int nd,int tr) {
+static struct { int nd;npy_intp *d;int *i,*i_tr,tr; } forcombcache;
+static int initforcomb(npy_intp *dims,int nd,int tr) {
   int k;
   if (dims==NULL) return 0;
   if (nd<0) return 0;
-  cache->nd = nd;
-  cache->d = dims;
-  cache->tr = tr;
-
-  cache->i = (int *)malloc(sizeof(int)*nd);
-  if (cache->i==NULL) return 0;
-  cache->i_tr = (int *)malloc(sizeof(int)*nd);
-  if (cache->i_tr==NULL) {free(cache->i); return 0;};
-
+  forcombcache.nd = nd;
+  forcombcache.d = dims;
+  forcombcache.tr = tr;
+  if ((forcombcache.i = (int *)malloc(sizeof(int)*nd))==NULL) return 0;
+  if ((forcombcache.i_tr = (int *)malloc(sizeof(int)*nd))==NULL) return 0;
   for (k=1;k<nd;k++) {
-    cache->i[k] = cache->i_tr[nd-k-1] = 0;
+    forcombcache.i[k] = forcombcache.i_tr[nd-k-1] = 0;
   }
-  cache->i[0] = cache->i_tr[nd-1] = -1;
+  forcombcache.i[0] = forcombcache.i_tr[nd-1] = -1;
   return 1;
 }
-static int *nextforcomb(struct ForcombCache *cache) {
-  if (cache==NULL) return NULL;
+static int *nextforcomb(void) {
   int j,*i,*i_tr,k;
-  int nd=cache->nd;
-  if ((i=cache->i) == NULL) return NULL;
-  if ((i_tr=cache->i_tr) == NULL) return NULL;
-  if (cache->d == NULL) return NULL;
+  int nd=forcombcache.nd;
+  if ((i=forcombcache.i) == NULL) return NULL;
+  if ((i_tr=forcombcache.i_tr) == NULL) return NULL;
+  if (forcombcache.d == NULL) return NULL;
   i[0]++;
-  if (i[0]==cache->d[0]) {
+  if (i[0]==forcombcache.d[0]) {
     j=1;
-    while ((j<nd) && (i[j]==cache->d[j]-1)) j++;
+    while ((j<nd) && (i[j]==forcombcache.d[j]-1)) j++;
     if (j==nd) {
       free(i);
       free(i_tr);
@@ -639,7 +633,7 @@ static int *nextforcomb(struct ForcombCache *cache) {
     i_tr[nd-j-1]++;
   } else
     i_tr[nd-1]++;
-  if (cache->tr) return i_tr;
+  if (forcombcache.tr) return i_tr;
   return i;
 }"""
 needs['try_pyarr_from_string'] = ['STRINGCOPYN', 'PRINTPYOBJERR', 'string']
@@ -1052,12 +1046,9 @@ long_double_from_pyobj(long_double* v, PyObject *obj, const char *errmess)
             PyArray_ScalarAsCtype(obj, v);
             return 1;
         }
-        else if (PyArray_Check(obj)) {
-            PyArrayObject *arr = (PyArrayObject *)obj;
-            if (PyArray_TYPE(arr) == NPY_LONGDOUBLE) {
-                (*v) = *((npy_longdouble *)PyArray_DATA(arr));
-                return 1;
-            }
+        else if (PyArray_Check(obj) && PyArray_TYPE(obj) == NPY_LONGDOUBLE) {
+            (*v) = *((npy_longdouble *)PyArray_DATA(obj));
+            return 1;
         }
     }
     if (double_from_pyobj(&d, obj, errmess)) {
@@ -1139,13 +1130,10 @@ complex_long_double_from_pyobj(complex_long_double* v, PyObject *obj, const char
             PyArray_ScalarAsCtype(obj, v);
             return 1;
         }
-        else if (PyArray_Check(obj)) {
-            PyArrayObject *arr = (PyArrayObject *)obj;
-            if (PyArray_TYPE(arr)==NPY_CLONGDOUBLE) {
-                (*v).r = npy_creall(*(((npy_clongdouble *)PyArray_DATA(arr))));
-                (*v).i = npy_cimagl(*(((npy_clongdouble *)PyArray_DATA(arr))));
-                return 1;
-            }
+        else if (PyArray_Check(obj) && PyArray_TYPE(obj)==NPY_CLONGDOUBLE) {
+            (*v).r = npy_creall(*(((npy_clongdouble *)PyArray_DATA(obj))));
+            (*v).i = npy_cimagl(*(((npy_clongdouble *)PyArray_DATA(obj))));
+            return 1;
         }
     }
     if (complex_double_from_pyobj(&cd,obj,errmess)) {
@@ -1450,14 +1438,14 @@ capi_fail:
 def buildcfuncs():
     from .capi_maps import c2capi_map
     for k in c2capi_map.keys():
-        m = f'pyarr_from_p_{k}1'
+        m = 'pyarr_from_p_%s1' % k
         cppmacros[
-            m] = f'#define {m}(v) (PyArray_SimpleNewFromData(0,NULL,{c2capi_map[k]},(char *)v))'
+            m] = '#define %s(v) (PyArray_SimpleNewFromData(0,NULL,%s,(char *)v))' % (m, c2capi_map[k])
     k = 'string'
-    m = f'pyarr_from_p_{k}1'
+    m = 'pyarr_from_p_%s1' % k
     # NPY_CHAR compatibility, NPY_STRING with itemsize 1
     cppmacros[
-        m] = f'#define {m}(v,dims) (PyArray_New(&PyArray_Type, 1, dims, NPY_STRING, NULL, v, 1, NPY_ARRAY_CARRAY, NULL))'
+        m] = '#define %s(v,dims) (PyArray_New(&PyArray_Type, 1, dims, NPY_STRING, NULL, v, 1, NPY_ARRAY_CARRAY, NULL))' % (m)
 
 
 ############ Auxiliary functions for sorting needs ###################
@@ -1489,7 +1477,7 @@ def append_needs(need, flag=1):
         elif need in commonhooks:
             n = 'commonhooks'
         else:
-            errmess(f'append_needs: unknown need {repr(need)}\n')
+            errmess('append_needs: unknown need %s\n' % (repr(need)))
             return
         if need in outneeds[n]:
             return
@@ -1525,7 +1513,8 @@ def append_needs(need, flag=1):
             tmp[n].append(need)
             return tmp
     else:
-        errmess(f'append_needs: expected list or string but got :{repr(need)}\n')
+        errmess('append_needs: expected list or string but got :%s\n' %
+                (repr(need)))
 
 
 def get_needs():

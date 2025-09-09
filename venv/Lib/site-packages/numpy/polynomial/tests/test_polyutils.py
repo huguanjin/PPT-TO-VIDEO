@@ -4,11 +4,8 @@
 import numpy as np
 import numpy.polynomial.polyutils as pu
 from numpy.testing import (
-    assert_,
-    assert_almost_equal,
-    assert_equal,
-    assert_raises,
-)
+    assert_almost_equal, assert_raises, assert_equal, assert_,
+    )
 
 
 class TestMisc:

@@ -1,43 +1,40 @@
-from __future__ import annotations
-
 import ssl
 import sys
-import types
-import typing
+from types import TracebackType
+from typing import Iterable, Iterator, Iterable, List, Optional, Type
 
 from .._backends.sync import SyncBackend
 from .._backends.base import SOCKET_OPTION, NetworkBackend
 from .._exceptions import ConnectionNotAvailable, UnsupportedProtocol
-from .._models import Origin, Proxy, Request, Response
-from .._synchronization import Event, ShieldCancellation, ThreadLock
+from .._models import Origin, Request, Response
+from .._synchronization import Event, Lock, ShieldCancellation
 from .connection import HTTPConnection
 from .interfaces import ConnectionInterface, RequestInterface
 
 
-class PoolRequest:
-    def __init__(self, request: Request) -> None:
+class RequestStatus:
+    def __init__(self, request: Request):
         self.request = request
-        self.connection: ConnectionInterface | None = None
+        self.connection: Optional[ConnectionInterface] = None
         self._connection_acquired = Event()
 
-    def assign_to_connection(self, connection: ConnectionInterface | None) -> None:
+    def set_connection(self, connection: ConnectionInterface) -> None:
+        assert self.connection is None
         self.connection = connection
         self._connection_acquired.set()
 
-    def clear_connection(self) -> None:
+    def unset_connection(self) -> None:
+        assert self.connection is not None
         self.connection = None
         self._connection_acquired = Event()
 
     def wait_for_connection(
-        self, timeout: float | None = None
+        self, timeout: Optional[float] = None
     ) -> ConnectionInterface:
         if self.connection is None:
             self._connection_acquired.wait(timeout=timeout)
         assert self.connection is not None
         return self.connection
-
-    def is_queued(self) -> bool:
-        return self.connection is None
 
 
 class ConnectionPool(RequestInterface):
@@ -47,18 +44,17 @@ class ConnectionPool(RequestInterface):
 
     def __init__(
         self,
-        ssl_context: ssl.SSLContext | None = None,
-        proxy: Proxy | None = None,
-        max_connections: int | None = 10,
-        max_keepalive_connections: int | None = None,
-        keepalive_expiry: float | None = None,
+        ssl_context: Optional[ssl.SSLContext] = None,
+        max_connections: Optional[int] = 10,
+        max_keepalive_connections: Optional[int] = None,
+        keepalive_expiry: Optional[float] = None,
         http1: bool = True,
         http2: bool = False,
         retries: int = 0,
-        local_address: str | None = None,
-        uds: str | None = None,
-        network_backend: NetworkBackend | None = None,
-        socket_options: typing.Iterable[SOCKET_OPTION] | None = None,
+        local_address: Optional[str] = None,
+        uds: Optional[str] = None,
+        network_backend: Optional[NetworkBackend] = None,
+        socket_options: Optional[Iterable[SOCKET_OPTION]] = None,
     ) -> None:
         """
         A connection pool for making HTTP requests.
@@ -90,7 +86,7 @@ class ConnectionPool(RequestInterface):
              in the TCP socket when the connection was established.
         """
         self._ssl_context = ssl_context
-        self._proxy = proxy
+
         self._max_connections = (
             sys.maxsize if max_connections is None else max_connections
         )
@@ -110,61 +106,15 @@ class ConnectionPool(RequestInterface):
         self._local_address = local_address
         self._uds = uds
 
+        self._pool: List[ConnectionInterface] = []
+        self._requests: List[RequestStatus] = []
+        self._pool_lock = Lock()
         self._network_backend = (
             SyncBackend() if network_backend is None else network_backend
         )
         self._socket_options = socket_options
 
-        # The mutable state on a connection pool is the queue of incoming requests,
-        # and the set of connections that are servicing those requests.
-        self._connections: list[ConnectionInterface] = []
-        self._requests: list[PoolRequest] = []
-
-        # We only mutate the state of the connection pool within an 'optional_thread_lock'
-        # context. This holds a threading lock unless we're running in async mode,
-        # in which case it is a no-op.
-        self._optional_thread_lock = ThreadLock()
-
     def create_connection(self, origin: Origin) -> ConnectionInterface:
-        if self._proxy is not None:
-            if self._proxy.url.scheme in (b"socks5", b"socks5h"):
-                from .socks_proxy import Socks5Connection
-
-                return Socks5Connection(
-                    proxy_origin=self._proxy.url.origin,
-                    proxy_auth=self._proxy.auth,
-                    remote_origin=origin,
-                    ssl_context=self._ssl_context,
-                    keepalive_expiry=self._keepalive_expiry,
-                    http1=self._http1,
-                    http2=self._http2,
-                    network_backend=self._network_backend,
-                )
-            elif origin.scheme == b"http":
-                from .http_proxy import ForwardHTTPConnection
-
-                return ForwardHTTPConnection(
-                    proxy_origin=self._proxy.url.origin,
-                    proxy_headers=self._proxy.headers,
-                    proxy_ssl_context=self._proxy.ssl_context,
-                    remote_origin=origin,
-                    keepalive_expiry=self._keepalive_expiry,
-                    network_backend=self._network_backend,
-                )
-            from .http_proxy import TunnelHTTPConnection
-
-            return TunnelHTTPConnection(
-                proxy_origin=self._proxy.url.origin,
-                proxy_headers=self._proxy.headers,
-                proxy_ssl_context=self._proxy.ssl_context,
-                remote_origin=origin,
-                ssl_context=self._ssl_context,
-                keepalive_expiry=self._keepalive_expiry,
-                http1=self._http1,
-                http2=self._http2,
-                network_backend=self._network_backend,
-            )
-
         return HTTPConnection(
             origin=origin,
             ssl_context=self._ssl_context,
@@ -179,7 +129,7 @@ class ConnectionPool(RequestInterface):
         )
 
     @property
-    def connections(self) -> list[ConnectionInterface]:
+    def connections(self) -> List[ConnectionInterface]:
         """
         Return a list of the connections currently in the pool.
 
@@ -194,7 +144,64 @@ class ConnectionPool(RequestInterface):
         ]
         ```
         """
-        return list(self._connections)
+        return list(self._pool)
+
+    def _attempt_to_acquire_connection(self, status: RequestStatus) -> bool:
+        """
+        Attempt to provide a connection that can handle the given origin.
+        """
+        origin = status.request.url.origin
+
+        # If there are queued requests in front of us, then don't acquire a
+        # connection. We handle requests strictly in order.
+        waiting = [s for s in self._requests if s.connection is None]
+        if waiting and waiting[0] is not status:
+            return False
+
+        # Reuse an existing connection if one is currently available.
+        for idx, connection in enumerate(self._pool):
+            if connection.can_handle_request(origin) and connection.is_available():
+                self._pool.pop(idx)
+                self._pool.insert(0, connection)
+                status.set_connection(connection)
+                return True
+
+        # If the pool is currently full, attempt to close one idle connection.
+        if len(self._pool) >= self._max_connections:
+            for idx, connection in reversed(list(enumerate(self._pool))):
+                if connection.is_idle():
+                    connection.close()
+                    self._pool.pop(idx)
+                    break
+
+        # If the pool is still full, then we cannot acquire a connection.
+        if len(self._pool) >= self._max_connections:
+            return False
+
+        # Otherwise create a new connection.
+        connection = self.create_connection(origin)
+        self._pool.insert(0, connection)
+        status.set_connection(connection)
+        return True
+
+    def _close_expired_connections(self) -> None:
+        """
+        Clean up the connection pool by closing off any connections that have expired.
+        """
+        # Close any connections that have expired their keep-alive time.
+        for idx, connection in reversed(list(enumerate(self._pool))):
+            if connection.has_expired():
+                connection.close()
+                self._pool.pop(idx)
+
+        # If the pool size exceeds the maximum number of allowed keep-alive connections,
+        # then close off idle connections as required.
+        pool_size = len(self._pool)
+        for idx, connection in reversed(list(enumerate(self._pool))):
+            if connection.is_idle() and pool_size > self._max_keepalive_connections:
+                connection.close()
+                self._pool.pop(idx)
+                pool_size -= 1
 
     def handle_request(self, request: Request) -> Response:
         """
@@ -212,209 +219,138 @@ class ConnectionPool(RequestInterface):
                 f"Request URL has an unsupported protocol '{scheme}://'."
             )
 
-        timeouts = request.extensions.get("timeout", {})
-        timeout = timeouts.get("pool", None)
+        status = RequestStatus(request)
 
-        with self._optional_thread_lock:
-            # Add the incoming request to our request queue.
-            pool_request = PoolRequest(request)
-            self._requests.append(pool_request)
+        with self._pool_lock:
+            self._requests.append(status)
+            self._close_expired_connections()
+            self._attempt_to_acquire_connection(status)
 
-        try:
-            while True:
-                with self._optional_thread_lock:
-                    # Assign incoming requests to available connections,
-                    # closing or creating new connections as required.
-                    closing = self._assign_requests_to_connections()
-                self._close_connections(closing)
+        while True:
+            timeouts = request.extensions.get("timeout", {})
+            timeout = timeouts.get("pool", None)
+            try:
+                connection = status.wait_for_connection(timeout=timeout)
+            except BaseException as exc:
+                # If we timeout here, or if the task is cancelled, then make
+                # sure to remove the request from the queue before bubbling
+                # up the exception.
+                with self._pool_lock:
+                    # Ensure only remove when task exists.
+                    if status in self._requests:
+                        self._requests.remove(status)
+                    raise exc
 
-                # Wait until this request has an assigned connection.
-                connection = pool_request.wait_for_connection(timeout=timeout)
+            try:
+                response = connection.handle_request(request)
+            except ConnectionNotAvailable:
+                # The ConnectionNotAvailable exception is a special case, that
+                # indicates we need to retry the request on a new connection.
+                #
+                # The most common case where this can occur is when multiple
+                # requests are queued waiting for a single connection, which
+                # might end up as an HTTP/2 connection, but which actually ends
+                # up as HTTP/1.1.
+                with self._pool_lock:
+                    # Maintain our position in the request queue, but reset the
+                    # status so that the request becomes queued again.
+                    status.unset_connection()
+                    self._attempt_to_acquire_connection(status)
+            except BaseException as exc:
+                with ShieldCancellation():
+                    self.response_closed(status)
+                raise exc
+            else:
+                break
 
-                try:
-                    # Send the request on the assigned connection.
-                    response = connection.handle_request(
-                        pool_request.request
-                    )
-                except ConnectionNotAvailable:
-                    # In some cases a connection may initially be available to
-                    # handle a request, but then become unavailable.
-                    #
-                    # In this case we clear the connection and try again.
-                    pool_request.clear_connection()
-                else:
-                    break  # pragma: nocover
-
-        except BaseException as exc:
-            with self._optional_thread_lock:
-                # For any exception or cancellation we remove the request from
-                # the queue, and then re-assign requests to connections.
-                self._requests.remove(pool_request)
-                closing = self._assign_requests_to_connections()
-
-            self._close_connections(closing)
-            raise exc from None
-
-        # Return the response. Note that in this case we still have to manage
-        # the point at which the response is closed.
-        assert isinstance(response.stream, typing.Iterable)
+        # When we return the response, we wrap the stream in a special class
+        # that handles notifying the connection pool once the response
+        # has been released.
+        assert isinstance(response.stream, Iterable)
         return Response(
             status=response.status,
             headers=response.headers,
-            content=PoolByteStream(
-                stream=response.stream, pool_request=pool_request, pool=self
-            ),
+            content=ConnectionPoolByteStream(response.stream, self, status),
             extensions=response.extensions,
         )
 
-    def _assign_requests_to_connections(self) -> list[ConnectionInterface]:
+    def response_closed(self, status: RequestStatus) -> None:
         """
-        Manage the state of the connection pool, assigning incoming
-        requests to connections as available.
+        This method acts as a callback once the request/response cycle is complete.
 
-        Called whenever a new request is added or removed from the pool.
-
-        Any closing connections are returned, allowing the I/O for closing
-        those connections to be handled seperately.
+        It is called into from the `ConnectionPoolByteStream.close()` method.
         """
-        closing_connections = []
+        assert status.connection is not None
+        connection = status.connection
 
-        # First we handle cleaning up any connections that are closed,
-        # have expired their keep-alive, or surplus idle connections.
-        for connection in list(self._connections):
-            if connection.is_closed():
-                # log: "removing closed connection"
-                self._connections.remove(connection)
-            elif connection.has_expired():
-                # log: "closing expired connection"
-                self._connections.remove(connection)
-                closing_connections.append(connection)
-            elif (
-                connection.is_idle()
-                and len([connection.is_idle() for connection in self._connections])
-                > self._max_keepalive_connections
-            ):
-                # log: "closing idle connection"
-                self._connections.remove(connection)
-                closing_connections.append(connection)
+        with self._pool_lock:
+            # Update the state of the connection pool.
+            if status in self._requests:
+                self._requests.remove(status)
 
-        # Assign queued requests to connections.
-        queued_requests = [request for request in self._requests if request.is_queued()]
-        for pool_request in queued_requests:
-            origin = pool_request.request.url.origin
-            available_connections = [
-                connection
-                for connection in self._connections
-                if connection.can_handle_request(origin) and connection.is_available()
-            ]
-            idle_connections = [
-                connection for connection in self._connections if connection.is_idle()
-            ]
+            if connection.is_closed() and connection in self._pool:
+                self._pool.remove(connection)
 
-            # There are three cases for how we may be able to handle the request:
-            #
-            # 1. There is an existing connection that can handle the request.
-            # 2. We can create a new connection to handle the request.
-            # 3. We can close an idle connection and then create a new connection
-            #    to handle the request.
-            if available_connections:
-                # log: "reusing existing connection"
-                connection = available_connections[0]
-                pool_request.assign_to_connection(connection)
-            elif len(self._connections) < self._max_connections:
-                # log: "creating new connection"
-                connection = self.create_connection(origin)
-                self._connections.append(connection)
-                pool_request.assign_to_connection(connection)
-            elif idle_connections:
-                # log: "closing idle connection"
-                connection = idle_connections[0]
-                self._connections.remove(connection)
-                closing_connections.append(connection)
-                # log: "creating new connection"
-                connection = self.create_connection(origin)
-                self._connections.append(connection)
-                pool_request.assign_to_connection(connection)
+            # Since we've had a response closed, it's possible we'll now be able
+            # to service one or more requests that are currently pending.
+            for status in self._requests:
+                if status.connection is None:
+                    acquired = self._attempt_to_acquire_connection(status)
+                    # If we could not acquire a connection for a queued request
+                    # then we don't need to check anymore requests that are
+                    # queued later behind it.
+                    if not acquired:
+                        break
 
-        return closing_connections
-
-    def _close_connections(self, closing: list[ConnectionInterface]) -> None:
-        # Close connections which have been removed from the pool.
-        with ShieldCancellation():
-            for connection in closing:
-                connection.close()
+            # Housekeeping.
+            self._close_expired_connections()
 
     def close(self) -> None:
-        # Explicitly close the connection pool.
-        # Clears all existing requests and connections.
-        with self._optional_thread_lock:
-            closing_connections = list(self._connections)
-            self._connections = []
-        self._close_connections(closing_connections)
+        """
+        Close any connections in the pool.
+        """
+        with self._pool_lock:
+            for connection in self._pool:
+                connection.close()
+            self._pool = []
+            self._requests = []
 
-    def __enter__(self) -> ConnectionPool:
+    def __enter__(self) -> "ConnectionPool":
         return self
 
     def __exit__(
         self,
-        exc_type: type[BaseException] | None = None,
-        exc_value: BaseException | None = None,
-        traceback: types.TracebackType | None = None,
+        exc_type: Optional[Type[BaseException]] = None,
+        exc_value: Optional[BaseException] = None,
+        traceback: Optional[TracebackType] = None,
     ) -> None:
         self.close()
 
-    def __repr__(self) -> str:
-        class_name = self.__class__.__name__
-        with self._optional_thread_lock:
-            request_is_queued = [request.is_queued() for request in self._requests]
-            connection_is_idle = [
-                connection.is_idle() for connection in self._connections
-            ]
 
-            num_active_requests = request_is_queued.count(False)
-            num_queued_requests = request_is_queued.count(True)
-            num_active_connections = connection_is_idle.count(False)
-            num_idle_connections = connection_is_idle.count(True)
+class ConnectionPoolByteStream:
+    """
+    A wrapper around the response byte stream, that additionally handles
+    notifying the connection pool when the response has been closed.
+    """
 
-        requests_info = (
-            f"Requests: {num_active_requests} active, {num_queued_requests} queued"
-        )
-        connection_info = (
-            f"Connections: {num_active_connections} active, {num_idle_connections} idle"
-        )
-
-        return f"<{class_name} [{requests_info} | {connection_info}]>"
-
-
-class PoolByteStream:
     def __init__(
         self,
-        stream: typing.Iterable[bytes],
-        pool_request: PoolRequest,
+        stream: Iterable[bytes],
         pool: ConnectionPool,
+        status: RequestStatus,
     ) -> None:
         self._stream = stream
-        self._pool_request = pool_request
         self._pool = pool
-        self._closed = False
+        self._status = status
 
-    def __iter__(self) -> typing.Iterator[bytes]:
-        try:
-            for part in self._stream:
-                yield part
-        except BaseException as exc:
-            self.close()
-            raise exc from None
+    def __iter__(self) -> Iterator[bytes]:
+        for part in self._stream:
+            yield part
 
     def close(self) -> None:
-        if not self._closed:
-            self._closed = True
+        try:
+            if hasattr(self._stream, "close"):
+                self._stream.close()
+        finally:
             with ShieldCancellation():
-                if hasattr(self._stream, "close"):
-                    self._stream.close()
-
-            with self._pool._optional_thread_lock:
-                self._pool._requests.remove(self._pool_request)
-                closing = self._pool._assign_requests_to_connections()
-
-            self._pool._close_connections(closing)
+                self._pool.response_closed(self._status)

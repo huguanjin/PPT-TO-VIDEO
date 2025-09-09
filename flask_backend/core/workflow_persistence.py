@@ -48,6 +48,7 @@ class WorkflowStepResult:
             self.input_files = []
 
 @dataclass 
+@dataclass
 class WorkflowExecution:
     """工作流执行记录"""
     execution_id: str
@@ -55,7 +56,7 @@ class WorkflowExecution:
     workflow_status: WorkflowStatus
     start_time: str
     end_time: Optional[str] = None
-    steps: Dict[str, WorkflowStepResult] = None
+    steps: Optional[Dict[str, WorkflowStepResult]] = None
     current_step: Optional[str] = None
     total_progress: float = 0.0
     config: Optional[Dict[str, Any]] = None
@@ -71,10 +72,10 @@ class WorkflowPersistenceManager:
     def __init__(self, project_dir: Path):
         self.project_dir = Path(project_dir)
         self.file_manager = FileManager(project_dir)
-        self.logger = get_logger(__name__, project_dir / "logs")
+        self.logger = get_logger(__name__, self.project_dir / "logs")
         
         # 工作流记录目录
-        self.workflow_dir = project_dir / "workflow_history"
+        self.workflow_dir = self.project_dir / "workflow_history"
         self.workflow_dir.mkdir(exist_ok=True)
         
         # 定义工作流步骤和依赖关系
@@ -83,6 +84,12 @@ class WorkflowPersistenceManager:
                 "name": "数据准备",
                 "required_inputs": ["slides_metadata.json", "slides/*.png"],
                 "expected_outputs": ["scripts/scripts_metadata.json"],
+                "can_skip_if_complete": True
+            },
+            "step01b_ai_content_optimization": {
+                "name": "AI内容优化",
+                "required_inputs": ["scripts/scripts_metadata.json"],
+                "expected_outputs": ["scripts/scripts_metadata.json"],  # 优化后的脚本
                 "can_skip_if_complete": True
             },
             "step02_tts_generation": {

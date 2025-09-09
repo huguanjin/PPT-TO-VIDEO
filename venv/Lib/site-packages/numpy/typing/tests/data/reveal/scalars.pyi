@@ -1,6 +1,8 @@
-from typing import Any, Literal, TypeAlias, assert_type
+from typing import Any, Literal, TypeAlias
+from typing_extensions import Unpack, assert_type
 
 import numpy as np
+import numpy.typing as npt
 
 _1: TypeAlias = Literal[1]
 
@@ -120,7 +122,7 @@ assert_type(
     S.reshape(1, 1, 1, 1, 1),
     np.ndarray[
         # len(shape) >= 5
-        tuple[_1, _1, _1, _1, _1, *tuple[_1, ...]],
+        tuple[_1, _1, _1, _1, _1, Unpack[tuple[_1, ...]]],
         np.dtype[np.bytes_],
     ],
 )

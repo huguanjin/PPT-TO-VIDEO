@@ -3,15 +3,13 @@ Provide python-space access to the functions exposed in numpy/__init__.pxd
 for testing.
 """
 
-import os
-from distutils.core import setup
-
 import Cython
-from Cython.Build import cythonize
-from setuptools.extension import Extension
-
 import numpy as np
 from numpy._utils import _pep440
+from distutils.core import setup
+from Cython.Build import cythonize
+from setuptools.extension import Extension
+import os
 
 macros = [
     ("NPY_NO_DEPRECATED_API", 0),

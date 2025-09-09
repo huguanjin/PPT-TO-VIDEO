@@ -1,3 +1,14 @@
 {
-    "chat.agent.maxRequests": 25
+    "chat.agent.maxRequests": 25,
+    "python.analysis.extraPaths": [
+        "./flask_backend",
+        "./flask_backend/core",
+        "./flask_backend/api"
+    ],
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.typeCheckingMode": "basic",
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": false,
+    "python.analysis.diagnosticMode": "workspace"
 }

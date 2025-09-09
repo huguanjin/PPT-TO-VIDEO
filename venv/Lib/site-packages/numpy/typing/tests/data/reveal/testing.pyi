@@ -1,15 +1,17 @@
-import contextlib
 import re
 import sys
+import warnings
 import types
 import unittest
-import warnings
+import contextlib
 from collections.abc import Callable
+from typing import Any, TypeVar
 from pathlib import Path
-from typing import Any, TypeVar, assert_type
 
 import numpy as np
 import numpy.typing as npt
+
+from typing_extensions import assert_type
 
 AR_f8: npt.NDArray[np.float64]
 AR_i8: npt.NDArray[np.int64]
@@ -21,8 +23,8 @@ FT = TypeVar("FT", bound=Callable[..., Any])
 def func() -> int: ...
 
 def func2(
-    x: npt.NDArray[np.number],
-    y: npt.NDArray[np.number],
+    x: npt.NDArray[np.number[Any]],
+    y: npt.NDArray[np.number[Any]],
 ) -> npt.NDArray[np.bool]: ...
 
 assert_type(np.testing.KnownFailureException(), np.testing.KnownFailureException)
@@ -76,7 +78,7 @@ assert_type(np.testing.assert_(2, msg=lambda: "test"), None)
 if sys.platform == "win32" or sys.platform == "cygwin":
     assert_type(np.testing.memusage(), int)
 elif sys.platform == "linux":
-    assert_type(np.testing.memusage(), int | None)
+    assert_type(np.testing.memusage(), None | int)
 
 assert_type(np.testing.jiffies(), int)
 

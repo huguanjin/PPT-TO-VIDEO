@@ -120,7 +120,7 @@ def get_enhanced_config():
         
         # 如果app_config中没有TTS配置，则从tts_config.json读取（兼容性后备）
         if not tts_config:
-            tts_config_path = Path("config_data/tts_config.json")
+            tts_config_path = Path(__file__).parent.parent.parent / "config_data" / "tts_config.json"
             if tts_config_path.exists():
                 with open(tts_config_path, 'r', encoding='utf-8') as f:
                     tts_config = json.load(f)
@@ -191,7 +191,7 @@ def update_enhanced_config():
         
         # 如果是Fish TTS，同时更新fish_tts_config.json（仅用于Fish角色配置）
         if config.tts['preferred_engine'] == "fish_tts":
-            fish_config_path = Path("config_data/fish_tts_config.json")
+            fish_config_path = Path(__file__).parent.parent.parent / "config_data" / "fish_tts_config.json"
             
             # 读取现有的fish配置
             if fish_config_path.exists():

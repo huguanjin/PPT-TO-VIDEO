@@ -630,9 +630,9 @@ class IntegratedTTSManager:
 # 配置加载函数
 def load_tts_config_from_app_config() -> TTSConfig:
     """从app_config.json加载TTS配置（优先选择）"""
-    # 获取Flask后端目录
-    flask_backend_dir = Path(__file__).parent.parent
-    app_config_path = flask_backend_dir / "config_data" / "app_config.json"
+    # 使用动态路径解析，自适应 flask_backend 或 backend 目录
+    from utils.path_resolver import get_config_dir
+    app_config_path = get_config_dir() / "app_config.json"
     
     if app_config_path.exists():
         try:
@@ -666,13 +666,17 @@ def load_tts_config_from_app_config() -> TTSConfig:
     # 如果app_config.json不存在或加载失败，回退到tts_config.json
     return load_tts_config_from_file()
 
-def load_tts_config_from_file(config_file_path: str = "config_data/tts_config.json") -> TTSConfig:
+def load_tts_config_from_file(config_file_path: str = None) -> TTSConfig:
     """从配置文件加载TTS配置"""
+    if config_file_path is None:
+        # 使用相对于当前文件的配置路径
+        config_file_path = Path(__file__).parent.parent / "config_data" / "tts_config.json"
+    
     # 确保使用正确的配置文件路径
     if not os.path.isabs(config_file_path):
-        # 如果是相对路径，相对于Flask后端目录
-        flask_backend_dir = Path(__file__).parent.parent
-        config_path = flask_backend_dir / config_file_path
+        # 如果是相对路径，使用动态路径解析
+        from utils.path_resolver import get_backend_root
+        config_path = get_backend_root() / config_file_path
     else:
         config_path = Path(config_file_path)
     
@@ -701,13 +705,17 @@ def load_tts_config_from_file(config_file_path: str = "config_data/tts_config.js
     else:
         return TTSConfig()
 
-def save_tts_config_to_file(config: TTSConfig, config_file_path: str = "config_data/tts_config.json"):
+def save_tts_config_to_file(config: TTSConfig, config_file_path: str = None):
     """保存TTS配置到文件"""
+    if config_file_path is None:
+        # 使用相对于当前文件的配置路径
+        config_file_path = Path(__file__).parent.parent / "config_data" / "tts_config.json"
+    
     # 确保使用正确的配置文件路径
     if not os.path.isabs(config_file_path):
-        # 如果是相对路径，相对于Flask后端目录
-        flask_backend_dir = Path(__file__).parent.parent
-        config_path = flask_backend_dir / config_file_path
+        # 如果是相对路径，使用动态路径解析
+        from utils.path_resolver import get_backend_root
+        config_path = get_backend_root() / config_file_path
     else:
         config_path = Path(config_file_path)
         

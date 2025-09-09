@@ -8,33 +8,10 @@ or subclasses ndarray.
 
 """
 from numpy._core import (
-    absolute,
-    add,
-    arange,
-    array,
-    asarray,
-    bitwise_and,
-    bitwise_or,
-    bitwise_xor,
-    divide,
-    equal,
-    greater,
-    greater_equal,
-    invert,
-    left_shift,
-    less,
-    less_equal,
-    multiply,
-    not_equal,
-    power,
-    remainder,
-    reshape,
-    right_shift,
-    shape,
-    sin,
-    sqrt,
-    subtract,
-    transpose,
+    array, asarray, absolute, add, subtract, multiply, divide,
+    remainder, power, left_shift, right_shift, bitwise_and, bitwise_or,
+    bitwise_xor, invert, less, less_equal, not_equal, equal, greater,
+    greater_equal, shape, reshape, arange, sin, sqrt, transpose
 )
 from numpy._core.overrides import set_module
 
@@ -49,6 +26,7 @@ class container:
     Methods
     -------
     copy
+    tostring
     byteswap
     astype
 
@@ -109,6 +87,16 @@ class container:
 
     def __imul__(self, other):
         multiply(self.array, other, self.array)
+        return self
+
+    def __div__(self, other):
+        return self._rc(divide(self.array, asarray(other)))
+
+    def __rdiv__(self, other):
+        return self._rc(divide(asarray(other), self.array))
+
+    def __idiv__(self, other):
+        divide(self.array, other, self.array)
         return self
 
     def __mod__(self, other):
@@ -238,6 +226,10 @@ class container:
     def copy(self):
         ""
         return self._rc(self.array.copy())
+
+    def tostring(self):
+        ""
+        return self.array.tostring()
 
     def tobytes(self):
         ""

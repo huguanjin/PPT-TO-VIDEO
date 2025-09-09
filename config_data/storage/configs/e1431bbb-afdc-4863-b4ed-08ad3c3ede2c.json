@@ -1,0 +1,17 @@
+{
+  "id": "e1431bbb-afdc-4863-b4ed-08ad3c3ede2c",
+  "name": "存储测试配置",
+  "preset_key": "storage_test",
+  "config_data": {
+    "test_parameter": "test_value",
+    "timestamp": "2025-09-09T22:09:00.571215"
+  },
+  "description": "存储系统测试配置",
+  "tags": [
+    "test",
+    "storage"
+  ],
+  "created_at": "2025-09-09T22:09:00.575332",
+  "version": "3.0.0",
+  "updated_at": "2025-09-09T22:09:00.617102"
+}

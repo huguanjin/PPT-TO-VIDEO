@@ -244,9 +244,11 @@ class FFmpegFinalMerger:
             "total_duration": video_data.get("total_duration_seconds", 0)
         }
     
-    def _execute_ffmpeg_merge(self, params: Dict[str, Any], 
-                            progress_callback: Optional[Callable[[int], None]] = None) -> Dict[str, Any]:
+    def _execute_ffmpeg_merge(self, params: Dict[str, Any], progress_callback: Optional[Callable] = None) -> Dict[str, Any]:
         """执行FFmpeg合并操作"""
+        # 导入必要的模块，确保Path在整个方法中可用
+        import sys
+        from pathlib import Path
         
         try:
             # 第一步：合并视频片段
@@ -282,10 +284,6 @@ class FFmpegFinalMerger:
             if params["subtitle_file"]:
                 # 读取字幕配置
                 try:
-                    # 尝试导入应用配置函数
-                    import sys
-                    from pathlib import Path
-                    
                     # 添加项目根目录到Python路径
                     project_root = Path(__file__).parent.parent
                     if str(project_root) not in sys.path:

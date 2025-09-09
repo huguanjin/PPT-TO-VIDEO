@@ -1,17 +1,6 @@
 # This contains the main Connection class. Everything in h11 revolves around
 # this.
-from typing import (
-    Any,
-    Callable,
-    cast,
-    Dict,
-    List,
-    Optional,
-    overload,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import Any, Callable, cast, Dict, List, Optional, Tuple, Type, Union
 
 from ._events import (
     ConnectionClosed,
@@ -67,7 +56,6 @@ class PAUSED(Sentinel, metaclass=Sentinel):
 # - IIS: 16 * 1024
 # - Apache: <8 KiB per line>
 DEFAULT_MAX_INCOMPLETE_EVENT_SIZE = 16 * 1024
-
 
 # RFC 7230's rules for connection lifecycles:
 # - If either side says they want to close the connection, then the connection
@@ -172,7 +160,7 @@ class Connection:
         self._max_incomplete_event_size = max_incomplete_event_size
         # State and role tracking
         if our_role not in (CLIENT, SERVER):
-            raise ValueError(f"expected CLIENT or SERVER, not {our_role!r}")
+            raise ValueError("expected CLIENT or SERVER, not {!r}".format(our_role))
         self.our_role = our_role
         self.their_role: Type[Sentinel]
         if our_role is CLIENT:
@@ -428,7 +416,7 @@ class Connection:
                 # return that event, and then the state will change and we'll
                 # get called again to generate the actual ConnectionClosed().
                 if hasattr(self._reader, "read_eof"):
-                    event = self._reader.read_eof()
+                    event = self._reader.read_eof()  # type: ignore[attr-defined]
                 else:
                     event = ConnectionClosed()
         if event is None:
@@ -499,20 +487,6 @@ class Connection:
                 exc._reraise_as_remote_protocol_error()
             else:
                 raise
-
-    @overload
-    def send(self, event: ConnectionClosed) -> None:
-        ...
-
-    @overload
-    def send(
-        self, event: Union[Request, InformationalResponse, Response, Data, EndOfMessage]
-    ) -> bytes:
-        ...
-
-    @overload
-    def send(self, event: Event) -> Optional[bytes]:
-        ...
 
     def send(self, event: Event) -> Optional[bytes]:
         """Convert a high-level event into bytes that can be sent to the peer,

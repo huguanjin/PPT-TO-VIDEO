@@ -1,4 +1,4 @@
-from numpy import ufunc
+from .. import ufunc
 
 _UFunc_Nin1_Nout1 = ufunc
 _UFunc_Nin2_Nout1 = ufunc

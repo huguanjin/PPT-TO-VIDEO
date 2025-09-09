@@ -81,10 +81,10 @@ class TTSGenerator:
     
     async def generate_audio(self, scripts_data: Dict[str, Any], progress_callback: Optional[Callable[[int], None]] = None) -> Dict[str, Any]:
         """
-        生成所有讲话稿的音频文件 - 支持多引擎
+        生成所有讲话稿的音频文件 - 支持多引擎和AI优化数据
         
         Args:
-            scripts_data: 讲话稿数据
+            scripts_data: 讲话稿数据（支持原始格式和AI优化格式）
             progress_callback: 进度回调函数
             
         Returns:
@@ -96,36 +96,77 @@ class TTSGenerator:
             # 确保音频目录存在
             self.file_manager.audio_dir.mkdir(parents=True, exist_ok=True)
             
+            # 判断数据格式（原始 vs AI优化）
             scripts = scripts_data.get("scripts", [])
-            total_scripts = len(scripts)
+            if not scripts:
+                raise ValueError("没有找到讲话稿数据")
+            
+            # 检查是否为AI优化的数据格式
+            is_ai_optimized = self._is_ai_optimized_format(scripts)
+            self.logger.info(f"数据格式: {'AI优化分段' if is_ai_optimized else '原始格式'}")
             
             audio_data = {
-                "total_audio_files": total_scripts,
+                "total_audio_files": 0,
                 "generation_completed": False,
                 "generation_timestamp": datetime.now().isoformat(),
                 "tts_config": dataclasses.asdict(self.tts_config),
                 "audio_files": [],
-                "total_duration_seconds": 0.0
+                "total_duration_seconds": 0.0,
+                "ai_optimized": is_ai_optimized
             }
             
             cumulative_time = 0.0
             
-            for i, script in enumerate(scripts):
-                if progress_callback:
-                    progress = int((i / total_scripts) * 100)
-                    progress_callback(progress)
+            if is_ai_optimized:
+                # 处理AI优化的分段数据
+                total_segments = sum(len(page.get("segments", [])) for page in scripts)
+                audio_data["total_audio_files"] = total_segments
                 
-                self.logger.info(f"生成第 {script['slide_number']} 页音频")
+                segment_count = 0
+                for page_data in scripts:
+                    page_num = page_data.get("page_num", 1)
+                    segments = page_data.get("segments", [])
+                    
+                    for seg_idx, segment in enumerate(segments):
+                        if progress_callback:
+                            progress = int((segment_count / total_segments) * 100)
+                            progress_callback(progress)
+                        
+                        self.logger.info(f"生成第 {page_num} 页第 {seg_idx + 1} 段音频")
+                        
+                        # 生成分段音频
+                        audio_info = await self._generate_segment_audio(
+                            page_num, seg_idx, segment, cumulative_time
+                        )
+                        audio_data["audio_files"].append(audio_info)
+                        
+                        # 更新累积时间
+                        cumulative_time += audio_info["duration_seconds"]
+                        segment_count += 1
+                        
+                        # 模拟处理延迟
+                        await asyncio.sleep(0.1)
+            else:
+                # 处理原始格式数据
+                total_scripts = len(scripts)
+                audio_data["total_audio_files"] = total_scripts
                 
-                # 生成单个音频文件
-                audio_info = await self._generate_single_audio(script, cumulative_time)
-                audio_data["audio_files"].append(audio_info)
-                
-                # 更新累积时间
-                cumulative_time += audio_info["duration_seconds"]
-                
-                # 模拟处理延迟
-                await asyncio.sleep(0.5)
+                for i, script in enumerate(scripts):
+                    if progress_callback:
+                        progress = int((i / total_scripts) * 100)
+                        progress_callback(progress)
+                    
+                    self.logger.info(f"生成第 {script['slide_number']} 页音频")
+                    
+                    # 生成单个音频文件
+                    audio_info = await self._generate_single_audio(script, cumulative_time)
+                    audio_data["audio_files"].append(audio_info)
+                    
+                    # 更新累积时间
+                    cumulative_time += audio_info["duration_seconds"]
+                    
+                    # 模拟处理延迟
+                    await asyncio.sleep(0.5)
             
             # 计算总时长
             audio_data["total_duration_seconds"] = cumulative_time
@@ -142,6 +183,155 @@ class TTSGenerator:
             
         except Exception as e:
             self.logger.error(f"音频生成失败: {e}", exc_info=True)
+            raise
+    
+    def _is_ai_optimized_format(self, scripts: List[Dict]) -> bool:
+        """检查是否为AI优化的数据格式"""
+        if not scripts:
+            return False
+        
+        # AI优化格式的特征：包含segments字段
+        first_script = scripts[0]
+        return isinstance(first_script, dict) and "segments" in first_script
+    
+    async def _generate_segment_audio(self, page_num: int, seg_idx: int, 
+                                    segment: Dict[str, Any], start_time: float) -> Dict[str, Any]:
+        """
+        生成AI优化分段的音频文件
+        
+        Args:
+            page_num: 页面编号
+            seg_idx: 分段索引
+            segment: 分段数据
+            start_time: 开始时间（累积时间）
+            
+        Returns:
+            音频信息字典
+        """
+        content = segment.get("content", "")
+        
+        # 清理HTML标签
+        content = self._clean_html_tags(content)
+        
+        if not content or not content.strip():
+            # 如果没有内容，生成短静默音频
+            return await self._generate_segment_silence(page_num, seg_idx, start_time)
+        
+        # 音频文件路径
+        audio_filename = f"audio_{page_num:03d}_seg_{seg_idx:02d}.wav"
+        audio_path = self.file_manager.audio_dir / audio_filename
+        
+        try:
+            # 使用集成TTS管理器生成音频
+            self.logger.info(f"正在合成分段语音: {content}")
+            
+            # 使用多引擎TTS合成音频
+            result = await self.tts_manager.synthesize_speech(
+                content, 
+                audio_path, 
+                preferred_engine=self.preferred_engine
+            )
+            
+            if result["success"]:
+                duration = result["duration"]
+                file_size = result["file_size"]
+                engine_used = result["engine"]
+                
+                self.logger.info(f"分段音频生成成功: {audio_path}, 引擎: {engine_used}, 时长: {duration:.2f}秒")
+                
+                audio_info = {
+                    "audio_id": f"{page_num:03d}_seg_{seg_idx:02d}",
+                    "page_number": page_num,
+                    "segment_index": seg_idx,
+                    "audio_file": audio_filename,
+                    "duration_seconds": duration,
+                    "file_size_bytes": file_size,
+                    "sample_rate": self.tts_config.sample_rate,
+                    "channels": 1,
+                    "start_time": start_time,
+                    "end_time": start_time + duration,
+                    "generation_timestamp": datetime.now().isoformat(),
+                    "script_content": content,
+                    "voice_used": self.tts_config.edge_voice,
+                    "engine_used": engine_used,
+                    "is_silence": False,
+                    "is_segment": True,
+                    "segment_length": segment.get("length", len(content)),
+                    "estimated_from_text": result.get("estimated", False),
+                    "retry_count": result.get("retry_count", 0)
+                }
+            
+            return audio_info
+            
+        except Exception as e:
+            self.logger.error(f"生成分段音频失败 {audio_filename}: {e}")
+            # 如果TTS失败，生成静默音频作为备选
+            return await self._generate_segment_silence(page_num, seg_idx, start_time, error=str(e))
+    
+    async def _generate_segment_silence(self, page_num: int, seg_idx: int, 
+                                      start_time: float, error: str = None) -> Dict[str, Any]:
+        """
+        生成分段静默音频
+        
+        Args:
+            page_num: 页面编号
+            seg_idx: 分段索引
+            start_time: 开始时间
+            error: 错误信息（如果有）
+            
+        Returns:
+            音频信息字典
+        """
+        audio_filename = f"audio_{page_num:03d}_seg_{seg_idx:02d}.wav"
+        audio_path = self.file_manager.audio_dir / audio_filename
+        
+        # 分段静默使用较短时长
+        duration = 1.0
+        sample_rate = 22050
+        
+        try:
+            # 创建静默音频数据
+            silence_samples = int(duration * sample_rate)
+            silence_data = b'\x00\x00' * silence_samples  # 16位静默数据
+            
+            # 保存为WAV文件
+            with wave.open(str(audio_path), 'wb') as wav_file:
+                wav_file.setnchannels(1)  # 单声道
+                wav_file.setsampwidth(2)  # 16位
+                wav_file.setframerate(sample_rate)
+                wav_file.writeframes(silence_data)
+            
+            file_size = audio_path.stat().st_size
+            
+            if error:
+                self.logger.warning(f"分段TTS失败，生成静默音频: {audio_filename}, 错误: {error}")
+            else:
+                self.logger.info(f"生成分段静默音频: {audio_filename} (时长: {duration}s)")
+            
+            audio_info = {
+                "audio_id": f"{page_num:03d}_seg_{seg_idx:02d}",
+                "page_number": page_num,
+                "segment_index": seg_idx,
+                "audio_file": audio_filename,
+                "duration_seconds": duration,
+                "file_size_bytes": file_size,
+                "sample_rate": sample_rate,
+                "channels": 1,
+                "start_time": start_time,
+                "end_time": start_time + duration,
+                "generation_timestamp": datetime.now().isoformat(),
+                "script_content": "",
+                "voice_used": "silence",
+                "is_silence": True,
+                "is_segment": True,
+                "error": error,
+                "estimated_from_text": False
+            }
+            
+            return audio_info
+            
+        except Exception as e:
+            self.logger.error(f"生成分段静默音频失败: {e}")
             raise
     
     async def _generate_single_audio(self, script: Dict[str, Any], start_time: float) -> Dict[str, Any]:

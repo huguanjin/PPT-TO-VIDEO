@@ -1,41 +1,32 @@
 """
 IO related functions.
 """
-import contextlib
+import os
+import re
 import functools
 import itertools
-import operator
-import os
-import pickle
-import re
 import warnings
 import weakref
-from collections.abc import Mapping
+import contextlib
+import operator
 from operator import itemgetter
+from collections.abc import Mapping
+import pickle
 
 import numpy as np
-from numpy._core import overrides
-from numpy._core._multiarray_umath import _load_from_filelike
-from numpy._core.multiarray import packbits, unpackbits
-from numpy._core.overrides import finalize_array_function_like, set_module
-from numpy._utils import asbytes, asunicode
-
 from . import format
-from ._datasource import DataSource  # noqa: F401
-from ._format_impl import _MAX_HEADER_SIZE
+from ._datasource import DataSource
+from numpy._core import overrides
+from numpy._core.multiarray import packbits, unpackbits
+from numpy._core._multiarray_umath import _load_from_filelike
+from numpy._core.overrides import finalize_array_function_like, set_module
 from ._iotools import (
-    ConversionWarning,
-    ConverterError,
-    ConverterLockError,
-    LineSplitter,
-    NameValidator,
-    StringConverter,
-    _decode_line,
-    _is_string_like,
-    easy_dtype,
-    flatten_dtype,
-    has_nested_fields,
-)
+    LineSplitter, NameValidator, StringConverter, ConverterError,
+    ConverterLockError, ConversionWarning, _is_string_like,
+    has_nested_fields, flatten_dtype, easy_dtype, _decode_line
+    )
+from numpy._utils import asunicode, asbytes
+
 
 __all__ = [
     'savetxt', 'loadtxt', 'genfromtxt', 'load', 'save', 'savez',
@@ -144,7 +135,7 @@ class NpzFile(Mapping):
     pickle_kwargs : dict, optional
         Additional keyword arguments to pass on to pickle.load.
         These are only useful when loading object arrays saved on
-        Python 2.
+        Python 2 when using Python 3.
     max_header_size : int, optional
         Maximum allowed size of the header.  Large headers may not be safe
         to load securely and thus require explicitly passing a larger value.
@@ -191,17 +182,20 @@ class NpzFile(Mapping):
 
     def __init__(self, fid, own_fid=False, allow_pickle=False,
                  pickle_kwargs=None, *,
-                 max_header_size=_MAX_HEADER_SIZE):
+                 max_header_size=format._MAX_HEADER_SIZE):
         # Import is postponed to here since zipfile depends on gzip, an
         # optional component of the so-called standard library.
         _zip = zipfile_factory(fid)
-        _files = _zip.namelist()
-        self.files = [name.removesuffix(".npy") for name in _files]
-        self._files = dict(zip(self.files, _files))
-        self._files.update(zip(_files, _files))
+        self._files = _zip.namelist()
+        self.files = []
         self.allow_pickle = allow_pickle
         self.max_header_size = max_header_size
         self.pickle_kwargs = pickle_kwargs
+        for x in self._files:
+            if x.endswith('.npy'):
+                self.files.append(x[:-4])
+            else:
+                self.files.append(x)
         self.zip = _zip
         self.f = BagObj(self)
         if own_fid:
@@ -237,34 +231,37 @@ class NpzFile(Mapping):
         return len(self.files)
 
     def __getitem__(self, key):
-        try:
-            key = self._files[key]
-        except KeyError:
-            raise KeyError(f"{key} is not a file in the archive") from None
+        # FIXME: This seems like it will copy strings around
+        #   more than is strictly necessary.  The zipfile
+        #   will read the string and then
+        #   the format.read_array will copy the string
+        #   to another place in memory.
+        #   It would be better if the zipfile could read
+        #   (or at least uncompress) the data
+        #   directly into the array memory.
+        member = False
+        if key in self._files:
+            member = True
+        elif key in self.files:
+            member = True
+            key += '.npy'
+        if member:
+            bytes = self.zip.open(key)
+            magic = bytes.read(len(format.MAGIC_PREFIX))
+            bytes.close()
+            if magic == format.MAGIC_PREFIX:
+                bytes = self.zip.open(key)
+                return format.read_array(bytes,
+                                         allow_pickle=self.allow_pickle,
+                                         pickle_kwargs=self.pickle_kwargs,
+                                         max_header_size=self.max_header_size)
+            else:
+                return self.zip.read(key)
         else:
-            with self.zip.open(key) as bytes:
-                magic = bytes.read(len(format.MAGIC_PREFIX))
-                bytes.seek(0)
-                if magic == format.MAGIC_PREFIX:
-                    # FIXME: This seems like it will copy strings around
-                    #   more than is strictly necessary.  The zipfile
-                    #   will read the string and then
-                    #   the format.read_array will copy the string
-                    #   to another place in memory.
-                    #   It would be better if the zipfile could read
-                    #   (or at least uncompress) the data
-                    #   directly into the array memory.
-                    return format.read_array(
-                        bytes,
-                        allow_pickle=self.allow_pickle,
-                        pickle_kwargs=self.pickle_kwargs,
-                        max_header_size=self.max_header_size
-                    )
-                else:
-                    return bytes.read()
+            raise KeyError(f"{key} is not a file in the archive")
 
     def __contains__(self, key):
-        return (key in self._files)
+        return (key in self._files or key in self.files)
 
     def __repr__(self):
         # Get filename or default to `object`
@@ -310,7 +307,7 @@ class NpzFile(Mapping):
 
 @set_module('numpy')
 def load(file, mmap_mode=None, allow_pickle=False, fix_imports=True,
-         encoding='ASCII', *, max_header_size=_MAX_HEADER_SIZE):
+         encoding='ASCII', *, max_header_size=format._MAX_HEADER_SIZE):
     """
     Load arrays or pickled objects from ``.npy``, ``.npz`` or pickled files.
 
@@ -340,13 +337,13 @@ def load(file, mmap_mode=None, allow_pickle=False, fix_imports=True,
         execute arbitrary code. If pickles are disallowed, loading object
         arrays will fail. Default: False
     fix_imports : bool, optional
-        Only useful when loading Python 2 generated pickled files,
+        Only useful when loading Python 2 generated pickled files on Python 3,
         which includes npy/npz files containing object arrays. If `fix_imports`
         is True, pickle will try to map the old Python 2 names to the new names
         used in Python 3.
     encoding : str, optional
         What encoding to use when reading Python 2 strings. Only useful when
-        loading Python 2 generated pickled files, which includes
+        loading Python 2 generated pickled files in Python 3, which includes
         npy/npz files containing object arrays. Values other than 'latin1',
         'ASCII', and 'bytes' are not allowed, as they can corrupt numerical
         data. Default: 'ASCII'
@@ -444,7 +441,7 @@ def load(file, mmap_mode=None, allow_pickle=False, fix_imports=True,
         # result can similarly silently corrupt numerical data.
         raise ValueError("encoding must be 'ASCII', 'latin1', or 'bytes'")
 
-    pickle_kwargs = {'encoding': encoding, 'fix_imports': fix_imports}
+    pickle_kwargs = dict(encoding=encoding, fix_imports=fix_imports)
 
     with contextlib.ExitStack() as stack:
         if hasattr(file, 'read'):
@@ -528,7 +525,7 @@ def save(file, arr, allow_pickle=True, fix_imports=np._NoValue):
 
         .. deprecated:: 2.1
             This flag is ignored since NumPy 1.17 and was only needed to
-            support loading in Python 2 some files written in Python 3.
+            support loading some files in Python 2 written in Python 3.
 
     See Also
     --------
@@ -582,7 +579,7 @@ def save(file, arr, allow_pickle=True, fix_imports=np._NoValue):
     with file_ctx as fid:
         arr = np.asanyarray(arr)
         format.write_array(fid, arr, allow_pickle=allow_pickle,
-                           pickle_kwargs={'fix_imports': fix_imports})
+                           pickle_kwargs=dict(fix_imports=fix_imports))
 
 
 def _savez_dispatcher(file, *args, allow_pickle=True, **kwds):
@@ -781,7 +778,7 @@ def _savez(file, args, kwds, compress, allow_pickle=True, pickle_kwargs=None):
         key = 'arr_%d' % i
         if key in namedict.keys():
             raise ValueError(
-                f"Cannot use un-named variables and keyword {key}")
+                "Cannot use un-named variables and keyword %s" % key)
         namedict[key] = val
 
     if compress:
@@ -950,8 +947,8 @@ def _read(fname, *, delimiter=',', comment='#', quote='"',
     dtype = np.dtype(dtype)
 
     read_dtype_via_object_chunks = None
-    if dtype.kind in 'SUM' and dtype in {
-            np.dtype("S0"), np.dtype("U0"), np.dtype("M8"), np.dtype("m8")}:
+    if dtype.kind in 'SUM' and (
+            dtype == "S0" or dtype == "U0" or dtype == "M8" or dtype == 'm8'):
         # This is a legacy "flexible" dtype.  We do not truly support
         # parametric dtypes currently (no dtype discovery step in the core),
         # but have to support these for backward compatibility.
@@ -987,12 +984,13 @@ def _read(fname, *, delimiter=',', comment='#', quote='"',
             if isinstance(comments[0], str) and len(comments[0]) == 1:
                 comment = comments[0]
                 comments = None
-        # Input validation if there are multiple comment characters
-        elif delimiter in comments:
-            raise TypeError(
-                f"Comment characters '{comments}' cannot include the "
-                f"delimiter '{delimiter}'"
-            )
+        else:
+            # Input validation if there are multiple comment characters
+            if delimiter in comments:
+                raise TypeError(
+                    f"Comment characters '{comments}' cannot include the "
+                    f"delimiter '{delimiter}'"
+                )
 
     # comment is now either a 1 or 0 character string or a tuple:
     if comments is not None:
@@ -1194,7 +1192,7 @@ def loadtxt(fname, dtype=float, comments='#', delimiter=None,
         that ensures you receive byte arrays as results if possible and passes
         'latin1' encoded strings to converters. Override this value to receive
         unicode arrays and pass strings as input to converters.  If set to None
-        the system default is used. The default value is None.
+        the system default is used. The default value is 'bytes'.
 
         .. versionchanged:: 2.0
             Before NumPy 2, the default was ``'bytes'`` for Python 2
@@ -1595,14 +1593,14 @@ def savetxt(fname, X, fmt='%.18e', delimiter=' ', newline='\n', header='',
         # list of formats.  E.g. '%10.5f\t%10d' or ('%10.5f', '$10d')
         if type(fmt) in (list, tuple):
             if len(fmt) != ncol:
-                raise AttributeError(f'fmt has wrong shape.  {str(fmt)}')
+                raise AttributeError('fmt has wrong shape.  %s' % str(fmt))
             format = delimiter.join(fmt)
         elif isinstance(fmt, str):
             n_fmt_chars = fmt.count('%')
-            error = ValueError(f'fmt has wrong number of % formats:  {fmt}')
+            error = ValueError('fmt has wrong number of %% formats:  %s' % fmt)
             if n_fmt_chars == 1:
                 if iscomplex_X:
-                    fmt = [f' ({fmt}+{fmt}j)', ] * ncol
+                    fmt = [' (%s+%sj)' % (fmt, fmt), ] * ncol
                 else:
                     fmt = [fmt, ] * ncol
                 format = delimiter.join(fmt)
@@ -1613,7 +1611,7 @@ def savetxt(fname, X, fmt='%.18e', delimiter=' ', newline='\n', header='',
             else:
                 format = fmt
         else:
-            raise ValueError(f'invalid fmt: {fmt!r}')
+            raise ValueError('invalid fmt: %r' % (fmt,))
 
         if len(header) > 0:
             header = header.replace('\n', '\n' + comments)
@@ -1622,7 +1620,8 @@ def savetxt(fname, X, fmt='%.18e', delimiter=' ', newline='\n', header='',
             for row in X:
                 row2 = []
                 for number in row:
-                    row2.extend((number.real, number.imag))
+                    row2.append(number.real)
+                    row2.append(number.imag)
                 s = format % tuple(row2) + newline
                 fh.write(s.replace('+-', '-'))
         else:
@@ -1751,7 +1750,7 @@ def genfromtxt(fname, dtype=float, comments='#', delimiter=None,
                skip_header=0, skip_footer=0, converters=None,
                missing_values=None, filling_values=None, usecols=None,
                names=None, excludelist=None,
-               deletechars=''.join(sorted(NameValidator.defaultdeletechars)),  # noqa: B008
+               deletechars=''.join(sorted(NameValidator.defaultdeletechars)),
                replace_space='_', autostrip=False, case_sensitive=True,
                defaultfmt="f%i", unpack=None, usemask=False, loose=True,
                invalid_raise=True, max_rows=None, encoding=None,
@@ -2028,7 +2027,7 @@ def genfromtxt(fname, dtype=float, comments='#', delimiter=None,
             first_line = ''
             first_values = []
             warnings.warn(
-                f'genfromtxt: Empty input file: "{fname}"', stacklevel=2
+                'genfromtxt: Empty input file: "%s"' % fname, stacklevel=2
             )
 
         # Should we take the first values as names ?
@@ -2285,9 +2284,9 @@ def genfromtxt(fname, dtype=float, comments='#', delimiter=None,
             # Store the values
             append_to_rows(tuple(values))
             if usemask:
-                append_to_masks(tuple(v.strip() in m
+                append_to_masks(tuple([v.strip() in m
                                        for (v, m) in zip(values,
-                                                         missing_values)))
+                                                         missing_values)]))
             if len(rows) == max_rows:
                 break
 
@@ -2298,14 +2297,14 @@ def genfromtxt(fname, dtype=float, comments='#', delimiter=None,
             try:
                 converter.iterupgrade(current_column)
             except ConverterLockError:
-                errmsg = f"Converter #{i} is locked and cannot be upgraded: "
+                errmsg = "Converter #%i is locked and cannot be upgraded: " % i
                 current_column = map(itemgetter(i), rows)
                 for (j, value) in enumerate(current_column):
                     try:
                         converter.upgrade(value)
                     except (ConverterError, ValueError):
-                        line_number = j + 1 + skip_header
-                        errmsg += f"(occurred line #{line_number} for value '{value}')"
+                        errmsg += "(occurred line #%i for value '%s')"
+                        errmsg %= (j + 1 + skip_header, value)
                         raise ConverterError(errmsg)
 
     # Check that we don't have invalid values
@@ -2313,7 +2312,7 @@ def genfromtxt(fname, dtype=float, comments='#', delimiter=None,
     if nbinvalid > 0:
         nbrows = len(rows) + nbinvalid - skip_footer
         # Construct the error message
-        template = f"    Line #%i (got %i columns instead of {nbcols})"
+        template = "    Line #%%i (got %%i columns instead of %i)" % nbcols
         if skip_footer > 0:
             nbinvalid_skipped = len([_ for _ in invalid
                                      if _[0] > nbrows + skip_header])
@@ -2385,7 +2384,7 @@ def genfromtxt(fname, dtype=float, comments='#', delimiter=None,
                     column_types[i] = np.bytes_
 
         # Update string types to be the right length
-        sized_column_types = column_types.copy()
+        sized_column_types = column_types[:]
         for i, col_type in enumerate(column_types):
             if np.issubdtype(col_type, np.character):
                 n_chars = max(len(row[i]) for row in data)

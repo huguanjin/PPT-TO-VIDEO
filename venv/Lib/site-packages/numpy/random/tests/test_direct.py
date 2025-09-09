@@ -1,28 +1,17 @@
 import os
-import sys
 from os.path import join
-
-import pytest
+import sys
 
 import numpy as np
+from numpy.testing import (assert_equal, assert_allclose, assert_array_equal,
+                           assert_raises)
+import pytest
+
 from numpy.random import (
-    MT19937,
-    PCG64,
-    PCG64DXSM,
-    SFC64,
-    Generator,
-    Philox,
-    RandomState,
-    SeedSequence,
-    default_rng,
+    Generator, MT19937, PCG64, PCG64DXSM, Philox, RandomState, SeedSequence,
+    SFC64, default_rng
 )
 from numpy.random._common import interface
-from numpy.testing import (
-    assert_allclose,
-    assert_array_equal,
-    assert_equal,
-    assert_raises,
-)
 
 try:
     import cffi  # noqa: F401
@@ -141,11 +130,9 @@ def gauss_from_uint(x, n, bits):
 
 
 def test_seedsequence():
-    from numpy.random.bit_generator import (
-        ISeedSequence,
-        ISpawnableSeedSequence,
-        SeedlessSeedSequence,
-    )
+    from numpy.random.bit_generator import (ISeedSequence,
+                                            ISpawnableSeedSequence,
+                                            SeedlessSeedSequence)
 
     s1 = SeedSequence(range(10), spawn_key=(1, 2), pool_size=6)
     s1.spawn(10)
@@ -443,6 +430,7 @@ class TestPCG64(Base):
         state = pcg.state["state"]
         advanced_state = 135275564607035429730177404003164635391
         assert state["state"] == advanced_state
+
 
 
 class TestPCG64DXSM(Base):

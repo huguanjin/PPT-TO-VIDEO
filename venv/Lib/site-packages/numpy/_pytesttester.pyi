@@ -10,9 +10,9 @@ class PytestTester:
         self,
         label: L["fast", "full"] = ...,
         verbose: int = ...,
-        extra_argv: Iterable[str] | None = ...,
+        extra_argv: None | Iterable[str] = ...,
         doctests: L[False] = ...,
         coverage: bool = ...,
         durations: int = ...,
-        tests: Iterable[str] | None = ...,
+        tests: None | Iterable[str] = ...,
     ) -> bool: ...

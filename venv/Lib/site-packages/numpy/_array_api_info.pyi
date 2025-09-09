@@ -1,7 +1,6 @@
 from typing import (
     ClassVar,
     Literal,
-    Never,
     TypeAlias,
     TypedDict,
     TypeVar,
@@ -9,11 +8,13 @@ from typing import (
     overload,
     type_check_only,
 )
+from typing_extensions import Never
 
 import numpy as np
 
+
 _Device: TypeAlias = Literal["cpu"]
-_DeviceLike: TypeAlias = _Device | None
+_DeviceLike: TypeAlias = None | _Device
 
 _Capabilities = TypedDict(
     "_Capabilities",
@@ -33,6 +34,7 @@ _DefaultDTypes = TypedDict(
     },
 )
 
+
 _KindBool: TypeAlias = Literal["bool"]
 _KindInt: TypeAlias = Literal["signed integer"]
 _KindUInt: TypeAlias = Literal["unsigned integer"]
@@ -49,6 +51,7 @@ _Kind: TypeAlias = (
     | _KindComplex
     | _KindNumber
 )
+
 
 _T1 = TypeVar("_T1")
 _T2 = TypeVar("_T2")

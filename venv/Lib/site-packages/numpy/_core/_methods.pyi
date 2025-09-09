@@ -1,5 +1,7 @@
 from collections.abc import Callable
-from typing import Any, Concatenate, TypeAlias
+from typing import Any, TypeAlias
+
+from typing_extensions import Concatenate
 
 import numpy as np
 

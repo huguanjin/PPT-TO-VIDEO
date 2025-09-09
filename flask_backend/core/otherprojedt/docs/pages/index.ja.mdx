@@ -1,0 +1,104 @@
+---
+title: VideoLingo
+---
+
+import Landing from '@/components/landing'
+
+export const getStaticProps = ({ params }) => {
+    return Promise.all([
+        fetch(`https://api.github.com/repos/Huanshere/VideoLingo`).then(res => res.json()),
+        fetch(`https://api.github.com/repos/Huanshere/VideoLingo/contributors?per_page=16`).then(res => res.json())
+    ]).then(([repo, stargazers]) => ({
+        props: {
+            ssg: {
+                stars: repo.stargazers_count,
+                recentStargazers: stargazers
+            }
+        },
+        revalidate: 60
+    }))
+}
+
+export default function Component() {
+    const landingData = {
+        hero: {
+            title: "VideoLingo: 世界の一コマ一コマをつなぐ",
+            description: "Netflixレベルの字幕分割、翻訳、同期、さらに吹き替えまで、ワンクリックで全自動の動画翻訳AIチーム",
+            videoSrc: "/videos/demo.mp4"
+        },
+        features: {
+            title: "強力な機能で創造性を解き放つ",
+            items: [
+                {
+                    title: 'インテリジェントな字幕分割',
+                    description: 'NLPとLLM技術を使用し、文意に基づいて字幕を正確に分割し、各フレーズが適切であることを保証します。',
+                    icon: 'CheckCircle',
+                },
+                {
+                    title: 'コンテキスト認識翻訳',
+                    description: 'GPTで用語知識ベースを要約・抽出し、文脈に沿った一貫性のある翻訳を実現。自然で流暢な翻訳を提供します。',
+                    icon: 'ArrowRight',
+                },
+                {
+                    title: '3ステップ翻訳プロセス',
+                    description: '直接翻訳 - 反省 - 意訳の多重保証で、プロの字幕翻訳チームに匹敵する品質を実現。',
+                    icon: 'CheckCircle',
+                },
+                {
+                    title: '精密な字幕同期',
+                    description: 'WhisperXを使用して単語レベルのタイムライン字幕認識を行い、すべての単語を正確に同期させます。',
+                    icon: 'ArrowRight',
+                },
+                {
+                    title: '高品質な吹き替え',
+                    description: 'GPT-SoVITS技術を含む複数のTTSソリューションをサポートし、高品質でパーソナライズされた吹き替えで動画をより魅力的に。',
+                    icon: 'CheckCircle',
+                },
+                {
+                    title: '開発者フレンドリー',
+                    description: '構造化されたファイル設計で、開発者によるカスタマイズと機能拡張が容易。複数のデプロイメント方法をサポート。',
+                    icon: 'ArrowRight',
+                },
+            ]
+        },
+        comments: {
+            title: "VideoLingoユーザーの声",
+            items: [
+                {
+                    content: "以前は1日かかっていたことが、今では1時間で完了します！",
+                    author: "k",
+                    title: "ビリビリ動画30万フォロワーの配信者"
+                },
+                {
+                    content: "この吹き替えは私の話し方よりも正確で、たくさんの面白いアイデアが浮かびました🤩",
+                    author: "アービョウ",
+                    title: "小紅書10万フォロワーの広東語配信者"
+                },
+                {
+                    content: "仕事帰りに単純に遊びで投稿したら、思わぬ大ヒットになりました😂",
+                    author: "X",
+                    title: "Douyin（TikTok中国版）で1日7000フォロワー増の配信者"
+                }
+            ]
+        },
+        faq: {
+            title: "よくある質問",
+            items: [
+                {
+                    question: "翻訳の品質はどうですか？",
+                    description: "Netflixの字幕基準に厳密に従い、最先端のClaude 3.5モデルを使用して多段階の翻訳を行っています。"
+                },
+                {
+                    question: "1つの動画の処理にどのくらい時間がかかりますか？",
+                    answer: "処理時間は動画の長さと選択したサービスによって異なります。通常、60分の動画の翻訳と吹き替えには約40分かかります。"
+                },
+                {
+                    question: "料金はどうなっていますか？",
+                    answer: "VideoLingoはオープンソースプロジェクトで、すでにGitHubで3k以上のスターを獲得しています。商用版の発表が間もなく予定されており、さらに多くの機能が追加される予定です。"
+                },
+            ]
+        }
+    }
+
+    return <Landing data={landingData} />
+}

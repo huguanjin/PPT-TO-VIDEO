@@ -1,19 +1,17 @@
-from __future__ import annotations
-
-import contextlib
-import typing
+from contextlib import contextmanager
+from typing import Iterator, Optional, Union
 
 from ._models import URL, Extensions, HeaderTypes, Response
 from ._sync.connection_pool import ConnectionPool
 
 
 def request(
-    method: bytes | str,
-    url: URL | bytes | str,
+    method: Union[bytes, str],
+    url: Union[URL, bytes, str],
     *,
     headers: HeaderTypes = None,
-    content: bytes | typing.Iterator[bytes] | None = None,
-    extensions: Extensions | None = None,
+    content: Union[bytes, Iterator[bytes], None] = None,
+    extensions: Optional[Extensions] = None,
 ) -> Response:
     """
     Sends an HTTP request, returning the response.
@@ -47,15 +45,15 @@ def request(
         )
 
 
-@contextlib.contextmanager
+@contextmanager
 def stream(
-    method: bytes | str,
-    url: URL | bytes | str,
+    method: Union[bytes, str],
+    url: Union[URL, bytes, str],
     *,
     headers: HeaderTypes = None,
-    content: bytes | typing.Iterator[bytes] | None = None,
-    extensions: Extensions | None = None,
-) -> typing.Iterator[Response]:
+    content: Union[bytes, Iterator[bytes], None] = None,
+    extensions: Optional[Extensions] = None,
+) -> Iterator[Response]:
     """
     Sends an HTTP request, returning the response within a content manager.
 

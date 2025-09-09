@@ -1,15 +1,15 @@
+from importlib.util import spec_from_file_location, module_from_spec
 import os
+import pytest
 import shutil
 import subprocess
 import sys
 import sysconfig
 import warnings
-from importlib.util import module_from_spec, spec_from_file_location
-
-import pytest
 
 import numpy as np
-from numpy.testing import IS_EDITABLE, IS_WASM
+from numpy.testing import IS_WASM, IS_EDITABLE
+
 
 try:
     import cffi
@@ -54,8 +54,6 @@ else:
 )
 @pytest.mark.skipif(IS_WASM, reason="Can't start subprocess")
 @pytest.mark.skipif(cython is None, reason="requires cython")
-@pytest.mark.skipif(sysconfig.get_platform() == 'win-arm64',
-                    reason='Meson unable to find MSVC linker on win-arm64')
 @pytest.mark.slow
 def test_cython(tmp_path):
     import glob
@@ -96,7 +94,8 @@ def test_cython(tmp_path):
             if txt_to_find in line:
                 break
         else:
-            assert False, f"Could not find '{txt_to_find}' in C file, wrong pxd used"
+            assert False, ("Could not find '{}' in C file, "
+                           "wrong pxd used".format(txt_to_find))
     # import without adding the directory to sys.path
     suffix = sysconfig.get_config_var('EXT_SUFFIX')
 

@@ -1,13 +1,13 @@
 import io
-from typing import Any, TypeAlias, assert_type
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
 
-_RecArray: TypeAlias = np.recarray[tuple[Any, ...], np.dtype[np.record]]
+from typing_extensions import assert_type
 
 AR_i8: npt.NDArray[np.int64]
-REC_AR_V: _RecArray
+REC_AR_V: np.recarray[tuple[int, ...], np.dtype[np.record]]
 AR_LIST: list[npt.NDArray[np.int64]]
 
 record: np.record
@@ -43,7 +43,7 @@ assert_type(
         order="K",
         byteorder="|",
     ),
-    _RecArray,
+    np.recarray[Any, np.dtype[np.record]],
 )
 
 assert_type(
@@ -52,13 +52,13 @@ assert_type(
         dtype=[("f8", np.float64), ("i8", np.int64)],
         strides=(5, 5),
     ),
-    np.recarray,
+    np.recarray[Any, np.dtype[Any]],
 )
 
-assert_type(np.rec.fromarrays(AR_LIST), np.recarray)
+assert_type(np.rec.fromarrays(AR_LIST), np.recarray[Any, np.dtype[Any]])
 assert_type(
     np.rec.fromarrays(AR_LIST, dtype=np.int64),
-    np.recarray,
+    np.recarray[Any, np.dtype[Any]],
 )
 assert_type(
     np.rec.fromarrays(
@@ -66,12 +66,12 @@ assert_type(
         formats=[np.int64, np.float64],
         names=["i8", "f8"]
     ),
-    _RecArray,
+    np.recarray[Any, np.dtype[np.record]],
 )
 
 assert_type(
     np.rec.fromrecords((1, 1.5)),
-    _RecArray
+    np.recarray[Any, np.dtype[np.record]]
 )
 
 assert_type(
@@ -79,7 +79,7 @@ assert_type(
         [(1, 1.5)],
         dtype=[("i8", np.int64), ("f8", np.float64)],
     ),
-    _RecArray,
+    np.recarray[Any, np.dtype[np.record]],
 )
 
 assert_type(
@@ -88,7 +88,7 @@ assert_type(
         formats=[np.int64, np.float64],
         names=["i8", "f8"]
     ),
-    _RecArray,
+    np.recarray[Any, np.dtype[np.record]],
 )
 
 assert_type(
@@ -96,7 +96,7 @@ assert_type(
         b"(1, 1.5)",
         dtype=[("i8", np.int64), ("f8", np.float64)],
     ),
-    _RecArray,
+    np.recarray[Any, np.dtype[np.record]],
 )
 
 assert_type(
@@ -105,16 +105,13 @@ assert_type(
         formats=[np.int64, np.float64],
         names=["i8", "f8"]
     ),
-    _RecArray,
+    np.recarray[Any, np.dtype[np.record]],
 )
 
-assert_type(
-    np.rec.fromfile(
-        "test_file.txt",
-        dtype=[("i8", np.int64), ("f8", np.float64)],
-    ),
-    np.recarray,
-)
+assert_type(np.rec.fromfile(
+    "test_file.txt",
+    dtype=[("i8", np.int64), ("f8", np.float64)],
+), np.recarray[Any, np.dtype[Any]])
 
 assert_type(
     np.rec.fromfile(
@@ -122,14 +119,14 @@ assert_type(
         formats=[np.int64, np.float64],
         names=["i8", "f8"]
     ),
-    _RecArray,
+    np.recarray[Any, np.dtype[np.record]],
 )
 
-assert_type(np.rec.array(AR_i8), np.recarray[tuple[Any, ...], np.dtype[np.int64]])
+assert_type(np.rec.array(AR_i8), np.recarray[Any, np.dtype[np.int64]])
 
 assert_type(
     np.rec.array([(1, 1.5)], dtype=[("i8", np.int64), ("f8", np.float64)]),
-    np.recarray,
+    np.recarray[Any, np.dtype[Any]],
 )
 
 assert_type(
@@ -138,7 +135,7 @@ assert_type(
         formats=[np.int64, np.float64],
         names=["i8", "f8"]
     ),
-    _RecArray,
+    np.recarray[Any, np.dtype[np.record]],
 )
 
 assert_type(
@@ -147,7 +144,7 @@ assert_type(
         dtype=np.float64,
         shape=(10, 3),
     ),
-    np.recarray,
+    np.recarray[Any, np.dtype[Any]],
 )
 
 assert_type(
@@ -157,15 +154,15 @@ assert_type(
         names=["i8", "f8"],
         shape=(10, 3),
     ),
-    _RecArray,
+    np.recarray[Any, np.dtype[np.record]],
 )
 
 assert_type(
     np.rec.array(file_obj, dtype=np.float64),
-    np.recarray,
+    np.recarray[Any, np.dtype[Any]],
 )
 
 assert_type(
     np.rec.array(file_obj, formats=[np.int64, np.float64], names=["i8", "f8"]),
-    _RecArray,
+    np.recarray[Any, np.dtype[np.record]],
 )

@@ -1,12 +1,10 @@
-from typing import Any, assert_type
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
-from numpy.lib._arraysetops_impl import (
-    UniqueAllResult,
-    UniqueCountsResult,
-    UniqueInverseResult,
-)
+from numpy.lib._arraysetops_impl import UniqueAllResult, UniqueCountsResult, UniqueInverseResult
+
+from typing_extensions import assert_type
 
 AR_b: npt.NDArray[np.bool]
 AR_i8: npt.NDArray[np.int64]

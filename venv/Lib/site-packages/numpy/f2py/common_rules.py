@@ -9,11 +9,13 @@ terms of the NumPy License
 NO WARRANTY IS EXPRESSED OR IMPLIED.  USE AT YOUR OWN RISK.
 """
 from . import __version__
-
 f2py_version = __version__.version
 
-from . import capi_maps, func2subr
-from .auxfuncs import getuseblocks, hasbody, hascommon, hasnote, isintent_hide, outmess
+from .auxfuncs import (
+    hasbody, hascommon, hasnote, isintent_hide, outmess, getuseblocks
+)
+from . import capi_maps
+from . import func2subr
 from .crackfortran import rmbadname
 
 
@@ -43,19 +45,19 @@ def buildhooks(m):
     fwrap = ['']
 
     def fadd(line, s=fwrap):
-        s[0] = f'{s[0]}\n      {line}'
+        s[0] = '%s\n      %s' % (s[0], line)
     chooks = ['']
 
     def cadd(line, s=chooks):
-        s[0] = f'{s[0]}\n{line}'
+        s[0] = '%s\n%s' % (s[0], line)
     ihooks = ['']
 
     def iadd(line, s=ihooks):
-        s[0] = f'{s[0]}\n{line}'
+        s[0] = '%s\n%s' % (s[0], line)
     doc = ['']
 
     def dadd(line, s=doc):
-        s[0] = f'{s[0]}\n{line}'
+        s[0] = '%s\n%s' % (s[0], line)
     for (name, vnames, vars) in findcommonblocks(m):
         lower_name = name.lower()
         hnames, inames = [], []
@@ -70,17 +72,17 @@ def buildhooks(m):
         else:
             outmess('\t\tConstructing COMMON block support for "%s"...\n\t\t  %s\n' % (
                 name, ','.join(inames)))
-        fadd(f'subroutine f2pyinit{name}(setupfunc)')
+        fadd('subroutine f2pyinit%s(setupfunc)' % name)
         for usename in getuseblocks(m):
             fadd(f'use {usename}')
         fadd('external setupfunc')
         for n in vnames:
             fadd(func2subr.var2fixfortran(vars, n))
         if name == '_BLNK_':
-            fadd(f"common {','.join(vnames)}")
+            fadd('common %s' % (','.join(vnames)))
         else:
-            fadd(f"common /{name}/ {','.join(vnames)}")
-        fadd(f"call setupfunc({','.join(inames)})")
+            fadd('common /%s/ %s' % (name, ','.join(vnames)))
+        fadd('call setupfunc(%s)' % (','.join(inames)))
         fadd('end\n')
         cadd('static FortranDataDef f2py_%s_def[] = {' % (name))
         idims = []
@@ -90,7 +92,7 @@ def buildhooks(m):
             at = capi_maps.c2capi_map[ct]
             dm = capi_maps.getarrdims(n, vars[n])
             if dm['dims']:
-                idims.append(f"({dm['dims']})")
+                idims.append('(%s)' % (dm['dims']))
             else:
                 idims.append('')
             dms = dm['dims'].strip()
@@ -104,7 +106,7 @@ def buildhooks(m):
         cadd('static void f2py_setup_%s(%s) {' % (name, inames1_tps))
         cadd('\tint i_f2py=0;')
         for n in inames1:
-            cadd(f'\tf2py_{name}_def[i_f2py++].data = {n};')
+            cadd('\tf2py_%s_def[i_f2py++].data = %s;' % (name, n))
         cadd('}')
         if '_' in lower_name:
             F_FUNC = 'F_FUNC_US'
@@ -117,9 +119,10 @@ def buildhooks(m):
         cadd('\t%s(f2pyinit%s,F2PYINIT%s)(f2py_setup_%s);'
              % (F_FUNC, lower_name, name.upper(), name))
         cadd('}\n')
-        iadd(f'\ttmp = PyFortranObject_New(f2py_{name}_def,f2py_init_{name});')
+        iadd('\ttmp = PyFortranObject_New(f2py_%s_def,f2py_init_%s);' % (name, name))
         iadd('\tif (tmp == NULL) return NULL;')
-        iadd(f'\tif (F2PyDict_SetItemString(d, "{name}", tmp) == -1) return NULL;')
+        iadd('\tif (F2PyDict_SetItemString(d, \"%s\", tmp) == -1) return NULL;'
+             % name)
         iadd('\tPy_DECREF(tmp);')
         tname = name.replace('_', '\\_')
         dadd('\\subsection{Common block \\texttt{%s}}\n' % (tname))
@@ -131,10 +134,10 @@ def buildhooks(m):
                 note = vars[n]['note']
                 if isinstance(note, list):
                     note = '\n'.join(note)
-                dadd(f'--- {note}')
+                dadd('--- %s' % (note))
         dadd('\\end{description}')
         ret['docs'].append(
-            f"\"\t/{name}/ {','.join(map(lambda v, d: v + d, inames, idims))}\\n\"")
+            '"\t/%s/ %s\\n"' % (name, ','.join(map(lambda v, d: v + d, inames, idims))))
     ret['commonhooks'] = chooks
     ret['initcommonhooks'] = ihooks
     ret['latexdoc'] = doc[0]

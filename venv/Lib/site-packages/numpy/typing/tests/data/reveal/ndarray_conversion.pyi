@@ -1,7 +1,9 @@
-from typing import Any, assert_type
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
+
+from typing_extensions import assert_type
 
 b1_0d: np.ndarray[tuple[()], np.dtype[np.bool]]
 u2_1d: np.ndarray[tuple[int], np.dtype[np.uint16]]
@@ -39,6 +41,7 @@ assert_type(any_sctype.tolist(), Any)
 
 
 # itemset does not return a value
+# tostring is pretty simple
 # tobytes is pretty simple
 # tofile does not return a value
 # dump does not return a value
@@ -59,8 +62,8 @@ assert_type(i4_2d.astype(np.uint16), np.ndarray[tuple[int, int], np.dtype[np.uin
 assert_type(np.astype(i4_2d, np.uint16), np.ndarray[tuple[int, int], np.dtype[np.uint16]])
 assert_type(f8_3d.astype(np.int16), np.ndarray[tuple[int, int, int], np.dtype[np.int16]])
 assert_type(np.astype(f8_3d, np.int16), np.ndarray[tuple[int, int, int], np.dtype[np.int16]])
-assert_type(i4_2d.astype(uncertain_dtype), np.ndarray[tuple[int, int], np.dtype[np.generic]])
-assert_type(np.astype(i4_2d, uncertain_dtype), np.ndarray[tuple[int, int], np.dtype])
+assert_type(i4_2d.astype(uncertain_dtype), np.ndarray[tuple[int, int], np.dtype[np.generic[Any]]])
+assert_type(np.astype(i4_2d, uncertain_dtype), np.ndarray[tuple[int, int], np.dtype[Any]])
 
 # byteswap
 assert_type(i0_nd.byteswap(), npt.NDArray[np.int_])

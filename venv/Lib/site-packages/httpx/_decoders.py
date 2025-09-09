@@ -3,34 +3,13 @@ Handlers for Content-Encoding.
 
 See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding
 """
-
-from __future__ import annotations
-
 import codecs
 import io
 import typing
 import zlib
 
+from ._compat import brotli
 from ._exceptions import DecodingError
-
-# Brotli support is optional
-try:
-    # The C bindings in `brotli` are recommended for CPython.
-    import brotli
-except ImportError:  # pragma: no cover
-    try:
-        # The CFFI bindings in `brotlicffi` are recommended for PyPy
-        # and other environments.
-        import brotlicffi as brotli
-    except ImportError:
-        brotli = None
-
-
-# Zstandard support is optional
-try:
-    import zstandard
-except ImportError:  # pragma: no cover
-    zstandard = None  # type: ignore
 
 
 class ContentDecoder:
@@ -158,48 +137,6 @@ class BrotliDecoder(ContentDecoder):
             raise DecodingError(str(exc)) from exc
 
 
-class ZStandardDecoder(ContentDecoder):
-    """
-    Handle 'zstd' RFC 8878 decoding.
-
-    Requires `pip install zstandard`.
-    Can be installed as a dependency of httpx using `pip install httpx[zstd]`.
-    """
-
-    # inspired by the ZstdDecoder implementation in urllib3
-    def __init__(self) -> None:
-        if zstandard is None:  # pragma: no cover
-            raise ImportError(
-                "Using 'ZStandardDecoder', ..."
-                "Make sure to install httpx using `pip install httpx[zstd]`."
-            ) from None
-
-        self.decompressor = zstandard.ZstdDecompressor().decompressobj()
-        self.seen_data = False
-
-    def decode(self, data: bytes) -> bytes:
-        assert zstandard is not None
-        self.seen_data = True
-        output = io.BytesIO()
-        try:
-            output.write(self.decompressor.decompress(data))
-            while self.decompressor.eof and self.decompressor.unused_data:
-                unused_data = self.decompressor.unused_data
-                self.decompressor = zstandard.ZstdDecompressor().decompressobj()
-                output.write(self.decompressor.decompress(unused_data))
-        except zstandard.ZstdError as exc:
-            raise DecodingError(str(exc)) from exc
-        return output.getvalue()
-
-    def flush(self) -> bytes:
-        if not self.seen_data:
-            return b""
-        ret = self.decompressor.flush()  # note: this is a no-op
-        if not self.decompressor.eof:
-            raise DecodingError("Zstandard data is incomplete")  # pragma: no cover
-        return bytes(ret)
-
-
 class MultiDecoder(ContentDecoder):
     """
     Handle the case where multiple encodings have been applied.
@@ -230,11 +167,11 @@ class ByteChunker:
     Handles returning byte content in fixed-size chunks.
     """
 
-    def __init__(self, chunk_size: int | None = None) -> None:
+    def __init__(self, chunk_size: typing.Optional[int] = None) -> None:
         self._buffer = io.BytesIO()
         self._chunk_size = chunk_size
 
-    def decode(self, content: bytes) -> list[bytes]:
+    def decode(self, content: bytes) -> typing.List[bytes]:
         if self._chunk_size is None:
             return [content] if content else []
 
@@ -257,7 +194,7 @@ class ByteChunker:
         else:
             return []
 
-    def flush(self) -> list[bytes]:
+    def flush(self) -> typing.List[bytes]:
         value = self._buffer.getvalue()
         self._buffer.seek(0)
         self._buffer.truncate()
@@ -269,13 +206,13 @@ class TextChunker:
     Handles returning text content in fixed-size chunks.
     """
 
-    def __init__(self, chunk_size: int | None = None) -> None:
+    def __init__(self, chunk_size: typing.Optional[int] = None) -> None:
         self._buffer = io.StringIO()
         self._chunk_size = chunk_size
 
-    def decode(self, content: str) -> list[str]:
+    def decode(self, content: str) -> typing.List[str]:
         if self._chunk_size is None:
-            return [content] if content else []
+            return [content]
 
         self._buffer.write(content)
         if self._buffer.tell() >= self._chunk_size:
@@ -296,7 +233,7 @@ class TextChunker:
         else:
             return []
 
-    def flush(self) -> list[str]:
+    def flush(self) -> typing.List[str]:
         value = self._buffer.getvalue()
         self._buffer.seek(0)
         self._buffer.truncate()
@@ -308,7 +245,7 @@ class TextDecoder:
     Handles incrementally decoding bytes into text
     """
 
-    def __init__(self, encoding: str = "utf-8") -> None:
+    def __init__(self, encoding: str = "utf-8"):
         self.decoder = codecs.getincrementaldecoder(encoding)(errors="replace")
 
     def decode(self, data: bytes) -> str:
@@ -322,15 +259,14 @@ class LineDecoder:
     """
     Handles incrementally reading lines from text.
 
-    Has the same behaviour as the stdllib splitlines,
-    but handling the input iteratively.
+    Has the same behaviour as the stdllib splitlines, but handling the input iteratively.
     """
 
     def __init__(self) -> None:
-        self.buffer: list[str] = []
+        self.buffer: typing.List[str] = []
         self.trailing_cr: bool = False
 
-    def decode(self, text: str) -> list[str]:
+    def decode(self, text: str) -> typing.List[str]:
         # See https://docs.python.org/3/library/stdtypes.html#str.splitlines
         NEWLINE_CHARS = "\n\r\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029"
 
@@ -343,9 +279,7 @@ class LineDecoder:
             text = text[:-1]
 
         if not text:
-            # NOTE: the edge case input of empty text doesn't occur in practice,
-            # because other httpx internals filter out this value
-            return []  # pragma: no cover
+            return []
 
         trailing_newline = text[-1] in NEWLINE_CHARS
         lines = text.splitlines()
@@ -368,7 +302,7 @@ class LineDecoder:
 
         return lines
 
-    def flush(self) -> list[str]:
+    def flush(self) -> typing.List[str]:
         if not self.buffer and not self.trailing_cr:
             return []
 
@@ -383,11 +317,8 @@ SUPPORTED_DECODERS = {
     "gzip": GZipDecoder,
     "deflate": DeflateDecoder,
     "br": BrotliDecoder,
-    "zstd": ZStandardDecoder,
 }
 
 
 if brotli is None:
     SUPPORTED_DECODERS.pop("br")  # pragma: no cover
-if zstandard is None:
-    SUPPORTED_DECODERS.pop("zstd")  # pragma: no cover

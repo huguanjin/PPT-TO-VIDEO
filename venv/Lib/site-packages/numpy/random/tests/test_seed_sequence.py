@@ -1,6 +1,7 @@
 import numpy as np
+from numpy.testing import assert_array_equal, assert_array_compare
+
 from numpy.random import SeedSequence
-from numpy.testing import assert_array_compare, assert_array_equal
 
 
 def test_reference_data():

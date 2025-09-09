@@ -1,10 +1,8 @@
-import operator
 from contextlib import nullcontext
-
+import operator
 import numpy as np
-from numpy._utils import set_module
-
-from .numeric import dtype, ndarray, uint8
+from .._utils import set_module
+from .numeric import uint8, ndarray, dtype
 
 __all__ = ['memmap']
 
@@ -13,10 +11,10 @@ valid_filemodes = ["r", "c", "r+", "w+"]
 writeable_filemodes = ["r+", "w+"]
 
 mode_equivalents = {
-    "readonly": "r",
-    "copyonwrite": "c",
-    "readwrite": "r+",
-    "write": "w+"
+    "readonly":"r",
+    "copyonwrite":"c",
+    "readwrite":"r+",
+    "write":"w+"
     }
 
 
@@ -222,9 +220,9 @@ class memmap(ndarray):
             mode = mode_equivalents[mode]
         except KeyError as e:
             if mode not in valid_filemodes:
-                all_modes = valid_filemodes + list(mode_equivalents.keys())
                 raise ValueError(
-                    f"mode must be one of {all_modes!r} (got {mode!r})"
+                    "mode must be one of {!r} (got {!r})"
+                    .format(valid_filemodes + list(mode_equivalents.keys()), mode)
                 ) from None
 
         if mode == 'w+' and shape is None:
@@ -235,7 +233,7 @@ class memmap(ndarray):
         else:
             f_ctx = open(
                 os.fspath(filename),
-                ('r' if mode == 'c' else mode) + 'b'
+                ('r' if mode == 'c' else mode)+'b'
             )
 
         with f_ctx as fid:
@@ -252,17 +250,17 @@ class memmap(ndarray):
                 size = bytes // _dbytes
                 shape = (size,)
             else:
-                if not isinstance(shape, (tuple, list)):
+                if type(shape) not in (tuple, list):
                     try:
                         shape = [operator.index(shape)]
                     except TypeError:
                         pass
                 shape = tuple(shape)
-                size = np.intp(1)  # avoid overflows
+                size = np.intp(1)  # avoid default choice of np.int_, which might overflow
                 for k in shape:
                     size *= k
 
-            bytes = int(offset + size * _dbytes)
+            bytes = int(offset + size*_dbytes)
 
             if mode in ('w+', 'r+'):
                 # gh-27723

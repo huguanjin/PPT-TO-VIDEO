@@ -21,6 +21,15 @@ moviepy==1.0.3
 # 字幕处理
 pysrt==1.1.2
 
+# NLP语法分析
+spacy>=3.4.0
+# 中文语言模型（需要单独安装）
+# python -m spacy download zh_core_web_sm
+# 英文语言模型（需要单独安装）  
+# python -m spacy download en_core_web_sm
+# 日文语言模型（需要单独安装）
+# python -m spacy download ja_core_news_sm
+
 # 数据处理
 pandas==2.1.1
 numpy==1.24.3

@@ -9,14 +9,14 @@ NO WARRANTY IS EXPRESSED OR IMPLIED.  USE AT YOUR OWN RISK.
 """
 __all__ = ['run_main', 'get_include']
 
-import os
-import subprocess
 import sys
+import subprocess
+import os
 import warnings
 
 from numpy.exceptions import VisibleDeprecationWarning
-
-from . import diagnose, f2py2e
+from . import f2py2e
+from . import diagnose
 
 run_main = f2py2e.run_main
 main = f2py2e.main
@@ -79,7 +79,8 @@ def __getattr__(attr):
         return test
 
     else:
-        raise AttributeError(f"module {__name__!r} has no attribute {attr!r}")
+        raise AttributeError("module {!r} has no attribute "
+                              "{!r}".format(__name__, attr))
 
 
 def __dir__():

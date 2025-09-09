@@ -1,11 +1,17 @@
-from __future__ import annotations
-
 import enum
 import logging
-import ssl
 import time
-import types
-import typing
+from types import TracebackType
+from typing import (
+    AsyncIterable,
+    AsyncIterator,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 import h11
 
@@ -26,7 +32,7 @@ logger = logging.getLogger("httpcore.http11")
 
 
 # A subset of `h11.Event` types supported by `_send_event`
-H11SendEvent = typing.Union[
+H11SendEvent = Union[
     h11.Request,
     h11.Data,
     h11.EndOfMessage,
@@ -48,12 +54,12 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
         self,
         origin: Origin,
         stream: AsyncNetworkStream,
-        keepalive_expiry: float | None = None,
+        keepalive_expiry: Optional[float] = None,
     ) -> None:
         self._origin = origin
         self._network_stream = stream
-        self._keepalive_expiry: float | None = keepalive_expiry
-        self._expire_at: float | None = None
+        self._keepalive_expiry: Optional[float] = keepalive_expiry
+        self._expire_at: Optional[float] = None
         self._state = HTTPConnectionState.NEW
         self._state_lock = AsyncLock()
         self._request_count = 0
@@ -102,7 +108,6 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
                     status,
                     reason_phrase,
                     headers,
-                    trailing_data,
                 ) = await self._receive_response_headers(**kwargs)
                 trace.return_value = (
                     http_version,
@@ -111,14 +116,6 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
                     headers,
                 )
 
-            network_stream = self._network_stream
-
-            # CONNECT or Upgrade request
-            if (status == 101) or (
-                (request.method == b"CONNECT") and (200 <= status < 300)
-            ):
-                network_stream = AsyncHTTP11UpgradeStream(network_stream, trailing_data)
-
             return Response(
                 status=status,
                 headers=headers,
@@ -126,7 +123,7 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
                 extensions={
                     "http_version": http_version,
                     "reason_phrase": reason_phrase,
-                    "network_stream": network_stream,
+                    "network_stream": self._network_stream,
                 },
             )
         except BaseException as exc:
@@ -153,14 +150,16 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
         timeouts = request.extensions.get("timeout", {})
         timeout = timeouts.get("write", None)
 
-        assert isinstance(request.stream, typing.AsyncIterable)
+        assert isinstance(request.stream, AsyncIterable)
         async for chunk in request.stream:
             event = h11.Data(data=chunk)
             await self._send_event(event, timeout=timeout)
 
         await self._send_event(h11.EndOfMessage(), timeout=timeout)
 
-    async def _send_event(self, event: h11.Event, timeout: float | None = None) -> None:
+    async def _send_event(
+        self, event: h11.Event, timeout: Optional[float] = None
+    ) -> None:
         bytes_to_send = self._h11_state.send(event)
         if bytes_to_send is not None:
             await self._network_stream.write(bytes_to_send, timeout=timeout)
@@ -169,7 +168,7 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
 
     async def _receive_response_headers(
         self, request: Request
-    ) -> tuple[bytes, int, bytes, list[tuple[bytes, bytes]], bytes]:
+    ) -> Tuple[bytes, int, bytes, List[Tuple[bytes, bytes]]]:
         timeouts = request.extensions.get("timeout", {})
         timeout = timeouts.get("read", None)
 
@@ -189,13 +188,9 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
         # raw header casing, rather than the enforced lowercase headers.
         headers = event.headers.raw_items()
 
-        trailing_data, _ = self._h11_state.trailing_data
+        return http_version, event.status_code, event.reason, headers
 
-        return http_version, event.status_code, event.reason, headers, trailing_data
-
-    async def _receive_response_body(
-        self, request: Request
-    ) -> typing.AsyncIterator[bytes]:
+    async def _receive_response_body(self, request: Request) -> AsyncIterator[bytes]:
         timeouts = request.extensions.get("timeout", {})
         timeout = timeouts.get("read", None)
 
@@ -207,8 +202,8 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
                 break
 
     async def _receive_event(
-        self, timeout: float | None = None
-    ) -> h11.Event | type[h11.PAUSED]:
+        self, timeout: Optional[float] = None
+    ) -> Union[h11.Event, Type[h11.PAUSED]]:
         while True:
             with map_exceptions({h11.RemoteProtocolError: RemoteProtocolError}):
                 event = self._h11_state.next_event()
@@ -233,7 +228,7 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
                 self._h11_state.receive_data(data)
             else:
                 # mypy fails to narrow the type in the above if statement above
-                return event  # type: ignore[return-value]
+                return cast(Union[h11.Event, Type[h11.PAUSED]], event)
 
     async def _response_closed(self) -> None:
         async with self._state_lock:
@@ -309,14 +304,14 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
     # These context managers are not used in the standard flow, but are
     # useful for testing or working with connection instances directly.
 
-    async def __aenter__(self) -> AsyncHTTP11Connection:
+    async def __aenter__(self) -> "AsyncHTTP11Connection":
         return self
 
     async def __aexit__(
         self,
-        exc_type: type[BaseException] | None = None,
-        exc_value: BaseException | None = None,
-        traceback: types.TracebackType | None = None,
+        exc_type: Optional[Type[BaseException]] = None,
+        exc_value: Optional[BaseException] = None,
+        traceback: Optional[TracebackType] = None,
     ) -> None:
         await self.aclose()
 
@@ -327,7 +322,7 @@ class HTTP11ConnectionByteStream:
         self._request = request
         self._closed = False
 
-    async def __aiter__(self) -> typing.AsyncIterator[bytes]:
+    async def __aiter__(self) -> AsyncIterator[bytes]:
         kwargs = {"request": self._request}
         try:
             async with Trace("receive_response_body", logger, self._request, kwargs):
@@ -346,34 +341,3 @@ class HTTP11ConnectionByteStream:
             self._closed = True
             async with Trace("response_closed", logger, self._request):
                 await self._connection._response_closed()
-
-
-class AsyncHTTP11UpgradeStream(AsyncNetworkStream):
-    def __init__(self, stream: AsyncNetworkStream, leading_data: bytes) -> None:
-        self._stream = stream
-        self._leading_data = leading_data
-
-    async def read(self, max_bytes: int, timeout: float | None = None) -> bytes:
-        if self._leading_data:
-            buffer = self._leading_data[:max_bytes]
-            self._leading_data = self._leading_data[max_bytes:]
-            return buffer
-        else:
-            return await self._stream.read(max_bytes, timeout)
-
-    async def write(self, buffer: bytes, timeout: float | None = None) -> None:
-        await self._stream.write(buffer, timeout)
-
-    async def aclose(self) -> None:
-        await self._stream.aclose()
-
-    async def start_tls(
-        self,
-        ssl_context: ssl.SSLContext,
-        server_hostname: str | None = None,
-        timeout: float | None = None,
-    ) -> AsyncNetworkStream:
-        return await self._stream.start_tls(ssl_context, server_hostname, timeout)
-
-    def get_extra_info(self, info: str) -> typing.Any:
-        return self._stream.get_extra_info(info)

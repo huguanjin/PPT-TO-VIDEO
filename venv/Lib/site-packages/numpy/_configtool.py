@@ -1,9 +1,9 @@
 import argparse
-import sys
 from pathlib import Path
+import sys
 
-from .lib._utils_impl import get_include
 from .version import __version__
+from .lib._utils_impl import get_include
 
 
 def main() -> None:

@@ -3,14 +3,12 @@
 """
 import types
 import warnings
-
-import pytest
-
 import numpy as np
-from numpy import double, half, longdouble, single
+import pytest
 from numpy._core import finfo, iinfo
+from numpy import half, single, double, longdouble
+from numpy.testing import assert_equal, assert_, assert_raises
 from numpy._core.getlimits import _discovered_machar, _float_ma
-from numpy.testing import assert_, assert_equal, assert_raises
 
 ##################################################
 
@@ -109,7 +107,7 @@ class TestRepr:
         assert_equal(repr(np.iinfo(np.int16)), expected)
 
     def test_finfo_repr(self):
-        expected = "finfo(resolution=1e-06, min=-3.4028235e+38,"\
+        expected = "finfo(resolution=1e-06, min=-3.4028235e+38," + \
                    " max=3.4028235e+38, dtype=float32)"
         assert_equal(repr(np.finfo(np.float32)), expected)
 

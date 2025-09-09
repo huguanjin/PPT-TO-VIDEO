@@ -1,6 +1,5 @@
+from numpy.testing import IS_WASM, IS_EDITABLE
 import pytest
-
-from numpy.testing import IS_EDITABLE, IS_WASM
 
 if IS_WASM:
     pytest.skip(

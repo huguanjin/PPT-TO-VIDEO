@@ -1,9 +1,8 @@
+import pytest
 import sysconfig
 
-import pytest
-
 import numpy as np
-from numpy.testing import IS_WASM, assert_raises
+from numpy.testing import assert_, assert_raises, IS_WASM
 
 # The floating point emulation on ARM EABI systems lacking a hardware FPU is
 # known to be buggy. This is an attempt to identify these hosts. It may not
@@ -47,7 +46,6 @@ class TestErrstate:
                         reason='platform/cpu issue with FPU (gh-15562)')
     def test_errcall(self):
         count = 0
-
         def foo(*args):
             nonlocal count
             count += 1

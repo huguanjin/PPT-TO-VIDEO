@@ -1,7 +1,5 @@
-import numpy as np
-
 from . import util
-
+import numpy as np
 
 class TestF2Cmap(util.F2PyTest):
     sources = [

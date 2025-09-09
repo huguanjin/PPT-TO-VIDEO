@@ -17,13 +17,37 @@ def download_project_file(project_name, filename):
         # 构建文件路径
         output_dir = Path(current_app.config.get('OUTPUT_FOLDER', 'output'))
         
-        # 单机版本：直接在output目录中查找文件
-        file_path = output_dir / filename
-        
-        # 如果不存在，尝试final子目录（最终视频文件通常在这里）
-        if not file_path.exists() and filename.startswith('final_video_'):
-            file_path = output_dir / 'final' / filename
-            logger.info(f"尝试从final目录查找文件: {file_path}")
+        # 特殊处理 final_video.mp4 请求
+        if filename == 'final_video.mp4':
+            # 在final目录中查找最新的final_video_*.mp4文件
+            final_dir = output_dir / 'final'
+            if final_dir.exists():
+                video_files = list(final_dir.glob('final_video_*.mp4'))
+                if video_files:
+                    # 选择最新的文件
+                    latest_video = max(video_files, key=lambda f: f.stat().st_mtime)
+                    file_path = latest_video
+                    logger.info(f"找到最新的最终视频文件: {file_path}")
+                else:
+                    logger.warning(f"在final目录中未找到final_video_*.mp4文件")
+                    return jsonify({
+                        'success': False,
+                        'message': f'文件 {filename} 不存在'
+                    }), 404
+            else:
+                logger.warning(f"final目录不存在: {final_dir}")
+                return jsonify({
+                    'success': False,
+                    'message': f'文件 {filename} 不存在'
+                }), 404
+        else:
+            # 单机版本：直接在output目录中查找文件
+            file_path = output_dir / filename
+            
+            # 如果不存在，尝试final子目录（最终视频文件通常在这里）
+            if not file_path.exists() and filename.startswith('final_video_'):
+                file_path = output_dir / 'final' / filename
+                logger.info(f"尝试从final目录查找文件: {file_path}")
         
         # 检查文件是否存在
         if not file_path.exists():

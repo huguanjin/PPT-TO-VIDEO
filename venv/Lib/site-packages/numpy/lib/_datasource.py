@@ -36,7 +36,8 @@ Example::
 """
 import os
 
-from numpy._utils import set_module
+from .._utils import set_module
+
 
 _open = open
 
@@ -56,7 +57,7 @@ def _check_mode(mode, encoding, newline):
     """
     if "t" in mode:
         if "b" in mode:
-            raise ValueError(f"Invalid mode: {mode!r}")
+            raise ValueError("Invalid mode: %r" % (mode,))
     else:
         if encoding is not None:
             raise ValueError("Argument 'encoding' not supported in binary mode")
@@ -147,7 +148,6 @@ class _FileOpeners:
     def __getitem__(self, key):
         self._load()
         return self._file_openers[key]
-
 
 _file_openers = _FileOpeners()
 
@@ -293,7 +293,7 @@ class DataSource:
         if not self._iszip(filename):
             for zipext in _file_openers.keys():
                 if zipext:
-                    names.append(filename + zipext)
+                    names.append(filename+zipext)
         return names
 
     def _isurl(self, path):
@@ -461,8 +461,8 @@ class DataSource:
 
         # We import this here because importing urllib is slow and
         # a significant fraction of numpy's total import time.
-        from urllib.error import URLError
         from urllib.request import urlopen
+        from urllib.error import URLError
 
         # Test cached url
         upath = self.abspath(path)
@@ -474,7 +474,7 @@ class DataSource:
             try:
                 netfile = urlopen(path)
                 netfile.close()
-                del netfile
+                del(netfile)
                 return True
             except URLError:
                 return False

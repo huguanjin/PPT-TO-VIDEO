@@ -95,10 +95,33 @@ class FileManager:
         except Exception as e:
             logger.warning(f"保存Excel格式失败，但不影响主要功能: {e}")
         
-    def load_scripts_metadata(self) -> Optional[Dict[str, Any]]:
-        """加载讲话稿元数据"""
-        file_path = self.scripts_dir / "scripts_metadata.json"
+    def load_scripts_metadata(self, filename: str = "scripts_metadata.json") -> Optional[Dict[str, Any]]:
+        """
+        加载讲话稿元数据
+        
+        Args:
+            filename: 文件名，默认为scripts_metadata.json
+            
+        Returns:
+            讲话稿元数据字典
+        """
+        file_path = self.scripts_dir / filename
         return self.load_json(file_path)
+    
+    def save_scripts_metadata(self, metadata: Dict[str, Any], filename: str = "scripts_metadata.json"):
+        """
+        保存讲话稿元数据
+        
+        Args:
+            metadata: 讲话稿元数据
+            filename: 文件名，默认为scripts_metadata.json
+        """
+        file_path = self.scripts_dir / filename
+        self.save_json(metadata, file_path)
+        
+        # 只为原始文件生成Excel
+        if filename == "scripts_metadata.json":
+            self._save_scripts_to_excel(metadata)
     
     def _save_scripts_to_excel(self, metadata: Dict[str, Any]):
         """

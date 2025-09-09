@@ -1,14 +1,12 @@
-import os
-import sys
-from ctypes import POINTER, c_double, c_float, c_int, c_longlong, cast, pointer
-from os import path
-
-import pytest
-from numpy._core._multiarray_umath import __cpu_features__
-
 import numpy as np
+import os
+from os import path
+import sys
+import pytest
+from ctypes import c_longlong, c_double, c_float, c_int, cast, pointer, POINTER
 from numpy.testing import assert_array_max_ulp
 from numpy.testing._private.utils import _glibc_older_than
+from numpy._core._multiarray_umath import __cpu_features__
 
 UNARY_UFUNCS = [obj for obj in np._core.umath.__dict__.values() if
         isinstance(obj, np.ufunc)]
@@ -43,7 +41,6 @@ def convert(s, datatype="np.float32"):
 
     return fp.contents.value         # dereference the pointer, get the float
 
-
 str_to_float = np.vectorize(convert)
 
 class TestAccuracy:
@@ -60,15 +57,15 @@ class TestAccuracy:
                         r for r in fid if r[0] not in ('$', '#')
                     )
                     data = np.genfromtxt(file_without_comments,
-                                         dtype=('|S39', '|S39', '|S39', int),
-                                         names=('type', 'input', 'output', 'ulperr'),
+                                         dtype=('|S39','|S39','|S39',int),
+                                         names=('type','input','output','ulperr'),
                                          delimiter=',',
                                          skip_header=1)
                     npname = path.splitext(filename)[0].split('-')[3]
                     npfunc = getattr(np, npname)
                     for datatype in np.unique(data['type']):
                         data_subset = data[data['type'] == datatype]
-                        inval = np.array(str_to_float(data_subset['input'].astype(str), data_subset['type'].astype(str)), dtype=eval(datatype))
+                        inval  = np.array(str_to_float(data_subset['input'].astype(str), data_subset['type'].astype(str)), dtype=eval(datatype))
                         outval = np.array(str_to_float(data_subset['output'].astype(str), data_subset['type'].astype(str)), dtype=eval(datatype))
                         perm = np.random.permutation(len(inval))
                         inval = inval[perm]
@@ -77,7 +74,7 @@ class TestAccuracy:
                         assert_array_max_ulp(npfunc(inval), outval, maxulperr)
 
     @pytest.mark.skipif(IS_AVX512FP16,
-            reason="SVML FP16 have slightly higher ULP errors")
+            reason = "SVML FP16 have slightly higher ULP errors")
     @pytest.mark.parametrize("ufunc", UNARY_OBJECT_UFUNCS)
     def test_validate_fp16_transcendentals(self, ufunc):
         with np.errstate(all='ignore'):

@@ -1,10 +1,10 @@
-from io import StringIO
-
 import pytest
 
 import numpy as np
-import numpy.lib._utils_impl as _utils_impl
 from numpy.testing import assert_raises_regex
+import numpy.lib._utils_impl as _utils_impl
+
+from io import StringIO
 
 
 def test_assert_raises_regex_context_manager():

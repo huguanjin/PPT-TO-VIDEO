@@ -1,6 +1,5 @@
 def __getattr__(attr_name):
     from numpy._core import numeric
-
     from ._utils import _raise_warning
 
     sentinel = object()

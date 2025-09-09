@@ -1,8 +1,9 @@
 import types
-from typing import assert_type
 
 import numpy as np
 from numpy import f2py
+
+from typing_extensions import assert_type
 
 assert_type(np, types.ModuleType)
 
