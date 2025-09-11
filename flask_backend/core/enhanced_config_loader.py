@@ -49,6 +49,9 @@ class EnhancedSubtitleConfigLoader:
     
     def _load_from_file(self):
         """从文件加载配置"""
+        if not self.config_path:
+            raise ValueError("配置文件路径不能为空")
+            
         logger.info(f"从文件加载配置: {self.config_path}")
         
         with open(self.config_path, 'r', encoding='utf-8') as f:

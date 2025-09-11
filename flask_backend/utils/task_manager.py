@@ -171,7 +171,7 @@ class TaskManager:
             return None
     
     def update_task_status(self, task_id: str, status: TaskStatus, 
-                          start_time: str = None, end_time: str = None,
+                          start_time: Optional[str] = None, end_time: Optional[str] = None,
                           duration: float = 0, error_msg: str = "",
                           result: str = "") -> bool:
         """更新任务状态"""

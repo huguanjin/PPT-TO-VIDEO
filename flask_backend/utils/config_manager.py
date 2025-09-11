@@ -11,7 +11,7 @@ import streamlit as st
 class ConfigManager:
     """配置管理器"""
     
-    def __init__(self, config_dir: Path = None):
+    def __init__(self, config_dir: Optional[Path] = None):
         """初始化配置管理器"""
         if config_dir is None:
             # 相对于当前文件所在目录的config_data目录
@@ -256,7 +256,7 @@ class ConfigManager:
         else:
             return False
     
-    def get_ai_config(self, service: str = None) -> Dict[str, Any]:
+    def get_ai_config(self, service: Optional[str] = None) -> Dict[str, Any]:
         """
         获取AI服务配置
         
@@ -304,7 +304,7 @@ class ConfigManager:
                 success = False
         return success
     
-    def validate_ai_config(self, service: str = None) -> Dict[str, Any]:
+    def validate_ai_config(self, service: Optional[str] = None) -> Dict[str, Any]:
         """
         验证AI配置
         
@@ -336,7 +336,7 @@ class ConfigManager:
             'config': config
         }
     
-    def get_ai_display_info(self, service: str = None) -> Dict[str, str]:
+    def get_ai_display_info(self, service: Optional[str] = None) -> Dict[str, str]:
         """获取AI配置显示信息"""
         if service is None:
             service = self.load_key('ai.default_service') or 'openai'
@@ -354,7 +354,7 @@ class ConfigManager:
             masked_key = "未设置"
         
         return {
-            "AI服务": service.upper(),
+            "AI服务": service.upper() if service else "未指定",
             "API密钥": masked_key,
             "Base URL": config.get('base_url', '未设置'),
             "模型": config.get('model', '未设置'),
@@ -420,7 +420,7 @@ class ConfigManager:
             st.error(f"添加自定义模型失败: {e}")
             return False
     
-    def reset_to_defaults(self, service: str = None) -> bool:
+    def reset_to_defaults(self, service: Optional[str] = None) -> bool:
         """重置AI配置为默认值"""
         try:
             if service:

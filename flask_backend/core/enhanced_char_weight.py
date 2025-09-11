@@ -5,7 +5,7 @@
 """
 
 import unicodedata
-from typing import Dict, Set
+from typing import Dict, Set, Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -213,7 +213,7 @@ class EnhancedCharacterWeightCalculator:
         return total_weight
     
     @classmethod
-    def get_char_info(cls, char: str) -> Dict[str, any]:
+    def get_char_info(cls, char: str) -> Dict[str, Any]:
         """
         获取字符的详细信息（用于调试和分析）
         

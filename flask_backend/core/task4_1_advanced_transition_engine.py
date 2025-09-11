@@ -62,7 +62,7 @@ class TransitionConfig:
     # 高级参数
     blur_amount: float = 0.0           # 模糊程度
     color_overlay: Optional[str] = None # 颜色叠加
-    opacity_curve: List[float] = None   # 自定义透明度曲线
+    opacity_curve: Optional[List[float]] = None   # 自定义透明度曲线
     
     # 音频配置
     audio_fade: bool = True            # 音频淡入淡出
@@ -78,7 +78,7 @@ class VideoClip:
     width: int
     height: int
     fps: float
-    metadata: Dict[str, Any] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 @dataclass
 class TransitionResult:
@@ -559,6 +559,8 @@ class AdvancedTransitionEngine:
             stderr_data = b""
             while True:
                 try:
+                    if process.stderr is None:
+                        break
                     line = await asyncio.wait_for(process.stderr.readline(), timeout=1.0)
                     if not line:
                         break
@@ -581,7 +583,8 @@ class AdvancedTransitionEngine:
             
             if process.returncode != 0:
                 error_msg = stderr_data.decode('utf-8', errors='ignore')
-                raise subprocess.CalledProcessError(process.returncode, cmd, error_msg)
+                returncode = process.returncode or -1  # 使用-1作为默认值
+                raise subprocess.CalledProcessError(returncode, cmd, error_msg)
             
             return {
                 "success": True,

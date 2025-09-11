@@ -5,7 +5,7 @@ PPTist数据导入模块
 import json
 import os
 import base64
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Callable
 from pathlib import Path
 from dataclasses import dataclass, asdict
 import asyncio
@@ -42,7 +42,7 @@ class PPTistImportResult:
 class PPTistImporter:
     """PPTist数据导入器"""
     
-    def __init__(self, project_name: str, base_output_dir: Path = None):
+    def __init__(self, project_name: str, base_output_dir: Optional[Path] = None):
         self.project_name = project_name
         if base_output_dir is None:
             # 使用flask_backend/output目录，而不是项目根目录
@@ -58,7 +58,7 @@ class PPTistImporter:
         self, 
         json_data: Dict[str, Any], 
         images_data: List[Dict[str, str]],
-        progress_callback: Optional[callable] = None
+        progress_callback: Optional[Callable[[int], None]] = None
     ) -> PPTistImportResult:
         """
         导入PPTist数据
@@ -306,12 +306,15 @@ class PPTistImporter:
         metadata_file = self.output_dir / "project_metadata.json"
         if metadata_file.exists():
             metadata = self.file_manager.load_project_metadata()
-            return {
-                "status": "imported",
-                "project_name": metadata.get("project_name"),
-                "slides_count": metadata.get("import_info", {}).get("total_slides", 0),
-                "import_time": metadata.get("import_info", {}).get("imported_at"),
-                "processing_ready": metadata.get("processing_ready", False)
-            }
+            if metadata is not None:
+                return {
+                    "status": "imported",
+                    "project_name": metadata.get("project_name"),
+                    "slides_count": metadata.get("import_info", {}).get("total_slides", 0),
+                    "import_time": metadata.get("import_info", {}).get("imported_at"),
+                    "processing_ready": metadata.get("processing_ready", False)
+                }
+            else:
+                return {"status": "incomplete", "message": "元数据加载失败"}
         
         return {"status": "incomplete", "message": "导入未完成"}

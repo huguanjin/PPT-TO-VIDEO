@@ -96,6 +96,10 @@ class EnhancedWorkflowExecutor:
                 if not next_step:
                     break
                 
+                # 确保next_step不为None
+                if next_step is None:
+                    break
+                
                 # 检查是否可以跳过
                 can_skip, skip_reason = self.persistence_manager.check_step_can_skip(next_step, execution)
                 
@@ -121,9 +125,11 @@ class EnhancedWorkflowExecutor:
                 try:
                     # 创建步骤特定的进度回调
                     def step_progress_callback(progress: float):
-                        self.persistence_manager.update_step_status(
-                            execution, next_step, StepStatus.RUNNING, progress
-                        )
+                        # next_step在此处已确保不为None
+                        if next_step is not None:
+                            self.persistence_manager.update_step_status(
+                                execution, next_step, StepStatus.RUNNING, progress
+                            )
                         if progress_callback:
                             asyncio.create_task(progress_callback(execution))
                     
@@ -290,7 +296,11 @@ class EnhancedWorkflowExecutor:
                 # 修正配置目录路径 - 配置文件在flask_backend/config_data目录
                 config_dir = Path(__file__).parent.parent / "config_data"
                 config_loader = SmartSubtitleConfigLoader(config_dir)
-                ai_config = config_loader.load_ai_config()
+                if hasattr(config_loader, 'load_ai_config'):
+                    ai_config = config_loader.load_ai_config()  # type: ignore
+                else:
+                    self.logger.warning("SmartSubtitleConfigLoader不支持load_ai_config方法")
+                    ai_config = None
                 
                 if not ai_config or not ai_config.get("api_key"):
                     self.logger.warning("AI配置不可用，跳过AI内容优化")

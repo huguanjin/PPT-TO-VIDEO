@@ -50,7 +50,7 @@ class SmartSubtitleConfigLoader:
     4. 兼容性保证
     """
     
-    def __init__(self, project_dir: str = None):
+    def __init__(self, project_dir: Optional[str] = None):
         self.project_dir = project_dir or os.getcwd()
         self.config_presets = ConfigPresets()
         self.logger = logging.getLogger(__name__)
@@ -67,8 +67,8 @@ class SmartSubtitleConfigLoader:
     
     def load_smart_config(self, 
                          preset_name: str = "standard",
-                         user_overrides: Dict[str, Any] = None,
-                         context: ConfigContext = None) -> Dict[str, Any]:
+                         user_overrides: Optional[Dict[str, Any]] = None,
+                         context: Optional[ConfigContext] = None) -> Dict[str, Any]:
         """
         智能加载配置
         
@@ -86,6 +86,10 @@ class SmartSubtitleConfigLoader:
             if not base_config:
                 self.logger.warning(f"预设 '{preset_name}' 不存在，使用标准配置")
                 base_config = self._load_preset_config("standard")
+                
+            # 确保base_config不为None
+            if not base_config:
+                raise ValueError(f"无法加载基础配置，预设: {preset_name}")
             
             # 2. 应用用户配置覆盖
             if user_overrides:
@@ -255,7 +259,7 @@ class SmartSubtitleConfigLoader:
     def create_preset_from_config(self, 
                                 config: Dict[str, Any], 
                                 preset_name: str,
-                                description: str = None) -> bool:
+                                description: Optional[str] = None) -> bool:
         """
         从当前配置创建新预设
         """
@@ -289,7 +293,7 @@ class SmartSubtitleConfigLoader:
             return False
     
     def auto_select_preset(self, 
-                          project_type: str = None,
+                          project_type: Optional[str] = None,
                           performance_requirement: str = 'balanced',
                           user_level: str = 'beginner') -> str:
         """
@@ -376,7 +380,7 @@ class SmartSubtitleConfigLoader:
 
 # 便捷函数
 def create_smart_config(preset_name: str = "standard", 
-                       project_dir: str = None,
+                       project_dir: Optional[str] = None,
                        **overrides) -> Dict[str, Any]:
     """
     快速创建智能配置（便捷函数）
@@ -392,17 +396,17 @@ def create_smart_config(preset_name: str = "standard",
     return loader.load_smart_config(preset_name, overrides)
 
 
-def create_videolingo_config(project_dir: str = None, **overrides) -> Dict[str, Any]:
+def create_videolingo_config(project_dir: Optional[str] = None, **overrides) -> Dict[str, Any]:
     """
     创建VideoLingo兼容配置（便捷函数）
     """
     return create_smart_config("videolingo_compat", project_dir, **overrides)
 
 
-def auto_config(project_type: str = None,
+def auto_config(project_type: Optional[str] = None,
                performance: str = 'balanced',
                user_level: str = 'beginner',
-               project_dir: str = None) -> Dict[str, Any]:
+               project_dir: Optional[str] = None) -> Dict[str, Any]:
     """
     自动选择最佳配置（便捷函数）
     """

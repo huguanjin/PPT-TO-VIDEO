@@ -24,34 +24,6 @@ try:
     WIN32_AVAILABLE = True
 except ImportError:
     WIN32_AVAILABLE = False
-                    if hasattr(shape, 'text') and shape.text.strip():
-                        # 返回第一个非空文本作为标题
-                        text = shape.text.strip()
-                        if len(text) <= 50:  # 标题通常较短
-                            return text
-                        else:
-                            # 如果文本太长，取前50个字符作为标题
-                            return text[:50] + "..."
-            return None
-        except Exception as e:
-            self.logger.warning(f"提取幻灯片标题失败: {e}")
-            return None
-    
-    def _extract_slide_text(self, slide: Slide) -> Optional[str]:
-        """
-        提取幻灯片所有文本内容（用于占位符图片）
-        """
-        try:
-            all_text = []
-            if hasattr(slide, 'shapes'):
-                for shape in slide.shapes:
-                    if hasattr(shape, 'text') and shape.text.strip():
-                        all_text.append(shape.text.strip())
-            
-            return "\n".join(all_text) if all_text else None
-        except Exception as e:
-            self.logger.warning(f"提取幻灯片文本失败: {e}")
-            return Noneport FileManager
 
 class PPTParser:
     """PPT解析器"""
@@ -164,7 +136,7 @@ class PPTParser:
         """提取幻灯片标题"""
         try:
             if hasattr(slide, 'shapes'):
-                for shape in slide.shapes:
+                for shape in slide.shapes:  # type: ignore
                     if hasattr(shape, 'text') and shape.text.strip():
                         # 通常第一个有文字的形状是标题
                         return shape.text.strip()
@@ -184,6 +156,42 @@ class PPTParser:
             return None
         except Exception as e:
             self.logger.warning(f"提取备注失败: {e}")
+            return None
+    
+    def _extract_slide_title(self, slide: Slide) -> Optional[str]:
+        """
+        提取幻灯片标题（用于占位符图片）
+        """
+        try:
+            if hasattr(slide, 'shapes'):
+                for shape in slide.shapes:  # type: ignore
+                    if hasattr(shape, 'text') and shape.text.strip():
+                        # 返回第一个非空文本作为标题
+                        text = shape.text.strip()
+                        if len(text) <= 50:  # 标题通常较短
+                            return text
+                        else:
+                            # 如果文本太长，取前50个字符作为标题
+                            return text[:50] + "..."
+            return None
+        except Exception as e:
+            self.logger.warning(f"提取幻灯片标题失败: {e}")
+            return None
+    
+    def _extract_slide_text(self, slide: Slide) -> Optional[str]:
+        """
+        提取幻灯片所有文本内容（用于占位符图片）
+        """
+        try:
+            all_text = []
+            if hasattr(slide, 'shapes'):
+                for shape in slide.shapes:  # type: ignore
+                    if hasattr(shape, 'text') and shape.text.strip():
+                        all_text.append(shape.text.strip())
+            
+            return "\n".join(all_text) if all_text else None
+        except Exception as e:
+            self.logger.warning(f"提取幻灯片文本失败: {e}")
             return None
     
     async def _save_slide_image(self, slide: Slide, slide_number: int) -> str:

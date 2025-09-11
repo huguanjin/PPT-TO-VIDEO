@@ -50,6 +50,10 @@ class ProgressTracker:
             self.initialize()
             progress = self._load_progress()
         
+        if not progress:
+            logger.error("无法加载进度数据")
+            return
+        
         progress["steps_completed"][step_name] = True
         progress["last_updated"] = datetime.now().isoformat()
         

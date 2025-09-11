@@ -390,6 +390,9 @@ class NetflixSubtitlePresets:
         # 基于标准预设创建
         base_preset = cls.get_preset("netflix_standard")
         
+        if base_preset is None:
+            raise ValueError("无法获取Netflix标准预设配置")
+        
         # 应用覆盖配置
         if style_overrides:
             for key, value in style_overrides.items():

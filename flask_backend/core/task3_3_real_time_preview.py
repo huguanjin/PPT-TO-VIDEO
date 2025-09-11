@@ -24,7 +24,7 @@ import threading
 import time
 
 # 引入已完成的智能系统
-from .smart_sentence_splitter import AdvancedSentenceSplitter
+from .smart_sentence_splitter import AdvancedSentenceSplitter, SmartSentenceSplitterManager
 from .multilingual_integration import MultilingualSubtitleIntegrator
 from .step04_subtitle_generator_enhanced import EnhancedSubtitleGenerator
 
@@ -87,9 +87,9 @@ class RealTimeSubtitlePreview:
         self.logger = logging.getLogger(__name__)
         
         # 初始化智能处理组件
-        self.sentence_splitter = AdvancedSentenceSplitter()
+        self.sentence_splitter = SmartSentenceSplitterManager()
         self.multilingual_integrator = MultilingualSubtitleIntegrator()
-        self.enhanced_generator = EnhancedSubtitleGenerator()
+        self.enhanced_generator = EnhancedSubtitleGenerator(project_dir=Path("."))
         
         # 预览状态管理
         self.preview_items: List[PreviewItem] = []
@@ -147,10 +147,10 @@ class RealTimeSubtitlePreview:
             self.logger.debug(f"实时更新文本: {len(text)} 字符")
             
             # 智能断句处理
-            splitting_result = await self.sentence_splitter.split_text_advanced(
+            splitting_result = await self.sentence_splitter.split_text_smart(
                 text, 
                 strategy="hybrid",
-                enable_cache=self.config.enable_caching
+                language="auto"
             )
             
             # 多语言处理（如果需要）
@@ -212,19 +212,24 @@ class RealTimeSubtitlePreview:
         """根据需要进行多语言处理"""
         try:
             # 检测语言
-            detected_languages = await self.multilingual_integrator.language_detector.detect_language_comprehensive(
+            primary_lang, confidence = self.multilingual_integrator.language_detector.detect_language(
                 original_text
             )
+            detected_languages = {
+                "primary_language": primary_lang,
+                "confidence": confidence,
+                "detected_languages": [primary_lang]
+            }
             
             # 如果检测到多语言或非中文，启用多语言处理
-            if len(detected_languages.detected_languages) > 1 or \
-               detected_languages.primary_language.value != "zh":
+            if len(detected_languages["detected_languages"]) > 1 or \
+               detected_languages["primary_language"] != "zh":
                 
                 # 进行多语言增强处理
                 config = {
                     "multilingual_processing": {
                         "enabled": True,
-                        "primary_language": detected_languages.primary_language.value,
+                        "primary_language": detected_languages["primary_language"],
                         "auto_detect_secondary": True
                     }
                 }
@@ -1095,11 +1100,17 @@ class Task3_3_RealTimePreviewSystem:
     
     async def start_real_time_preview(self, text: str) -> Dict[str, Any]:
         """开始实时预览"""
-        return await self.preview_engine.update_text_realtime(text)
+        result = await self.preview_engine.update_text_realtime(text)
+        if isinstance(result, PreviewUpdate):
+            return asdict(result)
+        return result
     
     async def update_preview(self, text: str) -> Dict[str, Any]:
         """更新预览"""
-        return await self.preview_engine.update_text_realtime(text)
+        result = await self.preview_engine.update_text_realtime(text)
+        if isinstance(result, PreviewUpdate):
+            return asdict(result)
+        return result
     
     async def edit_subtitle(self, item_id: str, new_text: str) -> Dict[str, Any]:
         """编辑字幕"""
@@ -1184,7 +1195,7 @@ if __name__ == "__main__":
             result = await preview_system.start_real_time_preview(text)
             
             # 模拟一些编辑操作
-            if result.total_count > 0:
+            if result.get("total_count", 0) > 0:
                 # 编辑第一个字幕
                 items = preview_system.preview_engine.preview_items
                 if items:

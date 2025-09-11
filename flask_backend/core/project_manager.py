@@ -27,7 +27,7 @@ class PPTProject:
     project_path: str = ""
     pptist_data: Optional[Dict[str, Any]] = None
     auto_save_enabled: bool = True
-    workflow_executions: List[str] = None  # 工作流执行ID列表
+    workflow_executions: Optional[List[str]] = None  # 工作流执行ID列表
     
     def __post_init__(self):
         if self.workflow_executions is None:
@@ -40,7 +40,7 @@ class PPTProject:
 class ProjectManager:
     """项目管理器"""
     
-    def __init__(self, workspace_dir: Path = None):
+    def __init__(self, workspace_dir: Optional[Path] = None):
         if workspace_dir is None:
             workspace_dir = Path("projects_workspace")
         

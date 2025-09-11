@@ -4,9 +4,12 @@
 """
 import re
 import unicodedata
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Tuple, Dict, Any, Optional, TYPE_CHECKING
 import logging
 from datetime import datetime
+
+if TYPE_CHECKING:
+    from .algorithms.dp_sentence_splitter import DynamicProgrammingSplitter
 
 # 导入增强的字符权重计算器
 try:
@@ -214,6 +217,8 @@ class SemanticTextSplitter:
 class SmartSubtitleProcessor:
     """智能字幕处理器 - 整合所有功能"""
     
+    dp_splitter: Optional['DynamicProgrammingSplitter']
+    
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         """
         初始化智能字幕处理器
@@ -351,6 +356,11 @@ class SmartSubtitleProcessor:
             分割后的文本行列表
         """
         try:
+            # 确保dp_splitter可用
+            if self.dp_splitter is None:
+                self.logger.warning("DP分割器不可用，回退到传统方法")
+                return self.splitter.split_text_by_weight(text)
+            
             # 自动检测语言（简单实现）
             language = self.detect_language(text)
             

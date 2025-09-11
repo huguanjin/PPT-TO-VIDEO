@@ -90,7 +90,7 @@ NETFLIX_SUBTITLE_PROMPTS = {
 class AISemanticSplitter:
     """AI语义分割器"""
     
-    def __init__(self, ai_config: Optional[Dict[str, Any]] = None, service: str = None):
+    def __init__(self, ai_config: Optional[Dict[str, Any]] = None, service: Optional[str] = None):
         """
         初始化AI语义分割器
         
@@ -121,9 +121,22 @@ class AISemanticSplitter:
         elif self.use_config_manager:
             # 从配置管理器加载配置
             if service is None:
-                service = self.config_manager.load_key('ai.default_service') or 'openai'
+                if hasattr(self.config_manager, 'load_key'):
+                    service = self.config_manager.load_key('ai.default_service') or 'openai'  # type: ignore
+                else:
+                    service = 'openai'
             self.ai_service_type = service
-            self.ai_config = self.config_manager.get_ai_config(service)
+            if hasattr(self.config_manager, 'get_ai_config'):
+                self.ai_config = self.config_manager.get_ai_config(service)  # type: ignore
+            else:
+                self.ai_config = {
+                    'api_key': '',
+                    'base_url': '',
+                    'model': 'gpt-3.5-turbo',
+                    'timeout': 300,
+                    'max_retries': 3,
+                    'support_json': True
+                }
         else:
             # 使用默认配置（从配置管理器获取默认值）
             if ConfigManager is not None:
@@ -277,10 +290,10 @@ class AISemanticSplitter:
                     params["response_format"] = {"type": "json_object"}
                 
                 response = await asyncio.to_thread(
-                    self.ai_client.chat.completions.create,
+                    self.ai_client.chat.completions.create,  # type: ignore
                     **params
                 )
-                return response.choices[0].message.content
+                return response.choices[0].message.content or ""
                 
             except Exception as e:
                 self.logger.warning(f"OpenAI API调用失败 (第{attempt + 1}次尝试): {e}")
@@ -288,6 +301,9 @@ class AISemanticSplitter:
                     raise
                 # 等待后重试
                 await asyncio.sleep(2 ** attempt)
+        
+        # 如果所有尝试都失败，返回空字符串
+        return ""
     
     async def _call_anthropic(self, messages: List[Dict]) -> str:
         """调用Anthropic API"""
@@ -304,14 +320,14 @@ class AISemanticSplitter:
                         user_messages.append(msg)
                 
                 response = await asyncio.to_thread(
-                    self.ai_client.messages.create,
+                    self.ai_client.messages.create,  # type: ignore
                     model=self.model,
                     max_tokens=1000,
                     system=system_message,
                     messages=user_messages,
                     timeout=self.timeout
                 )
-                return response.content[0].text
+                return response.content[0].text if hasattr(response.content[0], 'text') else str(response.content[0])  # type: ignore
                 
             except Exception as e:
                 self.logger.warning(f"Anthropic API调用失败 (第{attempt + 1}次尝试): {e}")
@@ -319,25 +335,9 @@ class AISemanticSplitter:
                     raise
                 # 等待后重试
                 await asyncio.sleep(2 ** attempt)
-    
-    async def _call_anthropic(self, messages: List[Dict]) -> str:
-        """调用Anthropic API"""
-        try:
-            # 转换消息格式
-            system_msg = next((msg["content"] for msg in messages if msg["role"] == "system"), "")
-            user_msg = next((msg["content"] for msg in messages if msg["role"] == "user"), "")
-            
-            response = await asyncio.to_thread(
-                self.ai_client.messages.create,
-                model=self.model,
-                system=system_msg,
-                messages=[{"role": "user", "content": user_msg}],
-                max_tokens=1000
-            )
-            return response.content[0].text
-        except Exception as e:
-            self.logger.error(f"Anthropic API调用失败: {e}")
-            raise
+        
+        # 如果所有尝试都失败，返回空字符串
+        return ""
     
     def _parse_ai_response(self, response: str) -> Dict[str, Any]:
         """解析AI响应"""

@@ -225,7 +225,7 @@ class PPTParser:
         """提取幻灯片标题"""
         try:
             if hasattr(slide, 'shapes'):
-                for shape in slide.shapes:
+                for shape in slide.shapes:  # type: ignore
                     if hasattr(shape, 'text') and shape.text.strip():
                         # 通常第一个有文字的形状是标题
                         return shape.text.strip()
@@ -303,6 +303,8 @@ class PPTParser:
             ppt_app.Visible = True  # 必须设置为True，否则会出错
             
             # 打开PPT文件，确保路径编码正确
+            if self._current_ppt_file is None:
+                raise ValueError("PPT文件路径不能为空")
             abs_ppt_path = str(Path(self._current_ppt_file).absolute())
             
             # 处理中文路径，确保COM接口能够正确处理
@@ -455,10 +457,10 @@ class PPTParser:
         try:
             # 尝试获取幻灯片背景
             if hasattr(slide, 'background'):
-                background = slide.background
-                if hasattr(background, 'fill') and hasattr(background.fill, 'fore_color'):
+                background = slide.background  # type: ignore
+                if hasattr(background, 'fill') and hasattr(background.fill, 'fore_color'):  # type: ignore
                     try:
-                        color = background.fill.fore_color.rgb
+                        color = background.fill.fore_color.rgb  # type: ignore
                         if color:
                             # 处理RGBColor对象，转换为RGB元组
                             if hasattr(color, '__int__'):
@@ -472,7 +474,7 @@ class PPTParser:
             
             # 如果无法获取背景，检查是否有背景形状
             if hasattr(slide, 'shapes'):
-                for shape in slide.shapes:
+                for shape in slide.shapes:  # type: ignore
                     if hasattr(shape, 'fill') and hasattr(shape.fill, 'fore_color'):
                         try:
                             color = shape.fill.fore_color.rgb
@@ -599,7 +601,7 @@ class PPTParser:
         """
         try:
             if hasattr(slide, 'shapes'):
-                for shape in slide.shapes:
+                for shape in slide.shapes:  # type: ignore
                     if hasattr(shape, 'text') and shape.text.strip():
                         # 返回第一个非空文本作为标题
                         text = shape.text.strip()
@@ -620,7 +622,7 @@ class PPTParser:
         try:
             all_text = []
             if hasattr(slide, 'shapes'):
-                for shape in slide.shapes:
+                for shape in slide.shapes:  # type: ignore
                     if hasattr(shape, 'text') and shape.text.strip():
                         all_text.append(shape.text.strip())
             

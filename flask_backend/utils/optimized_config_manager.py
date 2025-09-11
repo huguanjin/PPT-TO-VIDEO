@@ -10,10 +10,11 @@ from typing import Dict, Any, Optional
 class OptimizedConfigManager:
     """优化的配置管理器"""
     
-    def __init__(self, config_dir: str = None):
+    def __init__(self, config_dir: Optional[str] = None):
         if config_dir is None:
-            config_dir = Path(__file__).parent.parent / 'config_data'
-        self.config_dir = Path(config_dir)
+            self.config_dir = Path(__file__).parent.parent / 'config_data'
+        else:
+            self.config_dir = Path(config_dir)
         
         # 缓存配置文件
         self._cache = {}
@@ -104,7 +105,7 @@ class OptimizedConfigManager:
         if 'app_config_optimized' in self._cache:
             del self._cache['app_config_optimized']
     
-    def update_tts_preference(self, engine: str, voice: str = None) -> None:
+    def update_tts_preference(self, engine: str, voice: Optional[str] = None) -> None:
         """更新TTS引擎偏好设置"""
         app_config = self.get_app_config()
         app_config['tts']['preferred_engine'] = engine

@@ -247,7 +247,7 @@ class PPTistImageExporter:
 
 # 兼容性函数 - 为现有工作流提供接口
 async def export_ppt_to_images(project_dir: Path, ppt_data: Dict[str, Any], 
-                             config: Dict[str, Any] = None,
+                             config: Optional[Dict[str, Any]] = None,
                              progress_callback: Optional[Callable] = None) -> Dict[str, Any]:
     """
     将PPT导出为图片文件

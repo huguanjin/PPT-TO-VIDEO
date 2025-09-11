@@ -10,11 +10,12 @@ from typing import Dict, Any, Optional
 class ServerConfigManager:
     """服务器配置管理器"""
     
-    def __init__(self, config_file: str = None):
+    def __init__(self, config_file: Optional[str] = None):
         if config_file is None:
             # 使用相对于当前文件的配置路径
-            config_file = Path(__file__).parent.parent / "config_data" / "server_config.json"
-        self.config_file = Path(config_file)
+            self.config_file = Path(__file__).parent.parent / "config_data" / "server_config.json"
+        else:
+            self.config_file = Path(config_file)
         self.config = self._load_config()
         
     def _load_config(self) -> Dict[str, Any]:

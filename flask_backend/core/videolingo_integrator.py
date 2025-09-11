@@ -70,7 +70,7 @@ class VideoLingoIntegrator:
     5. 性能优化和降级机制
     """
     
-    def __init__(self, project_dir: str = None):
+    def __init__(self, project_dir: Optional[str] = None):
         self.project_dir = project_dir or os.getcwd()
         self.logger = logging.getLogger(__name__)
         
@@ -123,8 +123,8 @@ class VideoLingoIntegrator:
     def process_text_smart(self, 
                           text: str,
                           config_preset: str = "standard",
-                          custom_config: Dict[str, Any] = None,
-                          context: Dict[str, Any] = None) -> ProcessingResult:
+                          custom_config: Optional[Dict[str, Any]] = None,
+                          context: Optional[Dict[str, Any]] = None) -> ProcessingResult:
         """
         智能文本处理（主入口方法）
         
@@ -186,8 +186,8 @@ class VideoLingoIntegrator:
     
     def _load_smart_config(self, 
                           preset_name: str,
-                          custom_config: Dict[str, Any] = None,
-                          context: Dict[str, Any] = None) -> Dict[str, Any]:
+                          custom_config: Optional[Dict[str, Any]] = None,
+                          context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """加载智能配置"""
         if self.config_loader:
             # 创建配置上下文
@@ -312,7 +312,7 @@ class VideoLingoIntegrator:
         
         try:
             language = config.get('language', 'auto')
-            use_spacy = config.get('use_spacy', False) and self.spacy_processor
+            use_spacy = config.get('use_spacy', False) and self.spacy_processor is not None
             
             return self.dp_splitter.split_text(text, language, use_spacy)
         
@@ -329,7 +329,7 @@ class VideoLingoIntegrator:
             language = config.get('language', 'auto')
             max_length = config.get('max_length', 75)
             
-            return self.spacy_processor.smart_split_with_grammar(text, max_length, language)
+            return self.spacy_processor.smart_split_with_grammar(text, max_length, language)  # type: ignore
         
         except Exception as e:
             self.logger.warning(f"增强Spacy分割失败: {e}")
@@ -359,7 +359,7 @@ class VideoLingoIntegrator:
             max_length = config.get('max_length', 75)
             
             # 使用较简单的分析避免过度计算
-            return self.spacy_processor.smart_split_with_grammar(text, max_length, language)
+            return self.spacy_processor.smart_split_with_grammar(text, max_length, language)  # type: ignore
         
         except Exception as e:
             self.logger.warning(f"平衡Spacy分割失败: {e}")
@@ -413,7 +413,10 @@ class VideoLingoIntegrator:
                 return segments
             
             # 如果没有好的分割点，直接使用动态规划
-            return self.dp_splitter.split_text(text, config.get('language', 'auto'))
+            if self.dp_splitter:
+                return self.dp_splitter.split_text(text, config.get('language', 'auto'))
+            else:
+                return self._rule_based_split(text, config)
         
         except Exception as e:
             self.logger.warning(f"Spacy指导动态规划失败: {e}")

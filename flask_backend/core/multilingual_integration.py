@@ -5,7 +5,7 @@
 
 import asyncio
 import logging
-from typing import List, Dict, Any, Optional, Tuple, Union
+from typing import List, Dict, Any, Optional, Tuple, Union, Callable
 from dataclasses import dataclass
 import json
 import os
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 class MultilingualProcessingConfig:
     """多语言处理配置"""
     primary_language: SupportedLanguage
-    secondary_languages: List[SupportedLanguage] = None
+    secondary_languages: Optional[List[SupportedLanguage]] = None
     auto_detect_language: bool = True
     cross_language_sync: bool = True
     sync_tolerance: float = 0.5
@@ -62,7 +62,7 @@ class MultilingualSubtitleIntegrator:
         self,
         texts: List[str],
         config: Dict[str, Any],
-        progress_callback: Optional[callable] = None
+        progress_callback: Optional[Callable] = None
     ) -> Dict[str, Any]:
         """增强字幕生成：多语言支持版本"""
         
@@ -190,7 +190,7 @@ class MultilingualSubtitleIntegrator:
         
         # 确定主要语言
         if language_counts:
-            analysis["primary_language"] = max(language_counts, key=language_counts.get)
+            analysis["primary_language"] = max(language_counts, key=lambda x: language_counts.get(x, 0))  # type: ignore
         
         # 计算语言分布百分比
         total_texts = len(texts)
@@ -244,7 +244,7 @@ class MultilingualSubtitleIntegrator:
         texts: List[str],
         language_analysis: Dict[str, Any],
         processing_config: MultilingualProcessingConfig,
-        progress_callback: Optional[callable] = None
+        progress_callback: Optional[Callable] = None
     ) -> List[Dict[str, Any]]:
         """处理多语言文本分割"""
         
@@ -297,7 +297,7 @@ class MultilingualSubtitleIntegrator:
         self,
         multilingual_segments: List[Dict[str, Any]],
         processing_config: MultilingualProcessingConfig,
-        progress_callback: Optional[callable] = None
+        progress_callback: Optional[Callable] = None
     ) -> Dict[SupportedLanguage, List[MultilingualSubtitle]]:
         """生成多语言字幕"""
         
@@ -326,10 +326,11 @@ class MultilingualSubtitleIntegrator:
             progress_callback(f"生成 {len(languages_to_process)} 种语言的字幕...")
         
         # 生成多语言字幕
+        secondary_langs = languages_to_process[1:] if len(languages_to_process) > 1 else []
         multilingual_subtitles = await self.subtitle_manager.create_multilingual_subtitles(
             texts=texts,
             primary_language=languages_to_process[0],
-            secondary_languages=languages_to_process[1:] if len(languages_to_process) > 1 else None
+            secondary_languages=secondary_langs
         )
         
         return multilingual_subtitles

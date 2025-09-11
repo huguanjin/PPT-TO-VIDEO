@@ -416,11 +416,11 @@ class IntegratedTTSManager:
                     
                     # 转换为WAV
                     if MOVIEPY_AVAILABLE:
-                        audio_clip = AudioFileClip(str(temp_mp3_path))
+                        audio_clip = AudioFileClip(str(temp_mp3_path))  # type: ignore
                         audio_clip.write_audiofile(str(output_path), verbose=False, logger=None)
                         audio_clip.close()
                     elif PYDUB_AVAILABLE:
-                        audio = AudioSegment.from_mp3(str(temp_mp3_path))
+                        audio = AudioSegment.from_mp3(str(temp_mp3_path))  # type: ignore
                         audio.export(str(output_path), format="wav")
                     else:
                         # 如果没有转换工具，直接重命名
@@ -512,7 +512,7 @@ class IntegratedTTSManager:
             
             result = synthesizer.speak_text_async(text).get()
             
-            if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+            if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:  # type: ignore
                 duration = self._get_audio_duration(output_path)
                 return {
                     "success": True,
@@ -522,7 +522,7 @@ class IntegratedTTSManager:
                     "voice": self.config.azure_voice
                 }
             else:
-                raise Exception(f"Azure TTS 合成失败: {result.reason}")
+                raise Exception(f"Azure TTS 合成失败: {result.reason}")  # type: ignore
                 
         except Exception as e:
             raise Exception(f"Azure TTS 失败: {str(e)}")
@@ -568,7 +568,7 @@ class IntegratedTTSManager:
         """获取音频时长"""
         try:
             if PYDUB_AVAILABLE:
-                audio = AudioSegment.from_file(str(audio_path))
+                audio = AudioSegment.from_file(str(audio_path))  # type: ignore
                 return len(audio) / 1000.0  # 转换为秒
             
             import wave
@@ -666,19 +666,19 @@ def load_tts_config_from_app_config() -> TTSConfig:
     # 如果app_config.json不存在或加载失败，回退到tts_config.json
     return load_tts_config_from_file()
 
-def load_tts_config_from_file(config_file_path: str = None) -> TTSConfig:
+def load_tts_config_from_file(config_file_path: Optional[str] = None) -> TTSConfig:
     """从配置文件加载TTS配置"""
     if config_file_path is None:
         # 使用相对于当前文件的配置路径
-        config_file_path = Path(__file__).parent.parent / "config_data" / "tts_config.json"
-    
-    # 确保使用正确的配置文件路径
-    if not os.path.isabs(config_file_path):
-        # 如果是相对路径，使用动态路径解析
-        from utils.path_resolver import get_backend_root
-        config_path = get_backend_root() / config_file_path
+        config_path = Path(__file__).parent.parent / "config_data" / "tts_config.json"
     else:
-        config_path = Path(config_file_path)
+        # 确保使用正确的配置文件路径
+        if not os.path.isabs(config_file_path):
+            # 如果是相对路径，使用动态路径解析
+            from utils.path_resolver import get_backend_root
+            config_path = get_backend_root() / config_file_path
+        else:
+            config_path = Path(config_file_path)
     
     if config_path.exists():
         with open(config_path, 'r', encoding='utf-8') as f:
@@ -705,19 +705,19 @@ def load_tts_config_from_file(config_file_path: str = None) -> TTSConfig:
     else:
         return TTSConfig()
 
-def save_tts_config_to_file(config: TTSConfig, config_file_path: str = None):
+def save_tts_config_to_file(config: TTSConfig, config_file_path: Optional[str] = None):
     """保存TTS配置到文件"""
     if config_file_path is None:
         # 使用相对于当前文件的配置路径
-        config_file_path = Path(__file__).parent.parent / "config_data" / "tts_config.json"
-    
-    # 确保使用正确的配置文件路径
-    if not os.path.isabs(config_file_path):
-        # 如果是相对路径，使用动态路径解析
-        from utils.path_resolver import get_backend_root
-        config_path = get_backend_root() / config_file_path
+        config_path = Path(__file__).parent.parent / "config_data" / "tts_config.json"
     else:
-        config_path = Path(config_file_path)
+        # 确保使用正确的配置文件路径
+        if not os.path.isabs(config_file_path):
+            # 如果是相对路径，使用动态路径解析
+            from utils.path_resolver import get_backend_root
+            config_path = get_backend_root() / config_file_path
+        else:
+            config_path = Path(config_file_path)
         
     config_path.parent.mkdir(parents=True, exist_ok=True)
     

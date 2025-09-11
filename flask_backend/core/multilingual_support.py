@@ -188,7 +188,7 @@ class AdvancedLanguageDetector:
             scores[lang] = score
         
         # 找到最高分
-        best_lang = max(scores, key=scores.get)
+        best_lang = max(scores, key=lambda x: scores.get(x, 0))  # type: ignore
         confidence = scores[best_lang]
         
         # 检查混合语言
@@ -265,7 +265,7 @@ class MultilingualSplittingEngine:
         configs = {}
         
         # 中文简体配置
-        configs[SupportedLanguage.CHINESE_SIMPLIFIED] = LanguageConfig(
+        configs[SupportedLanguage.CHINESE_SIMPLIFIED] = LanguageConfig(  # type: ignore
             language_code="zh-CN",
             language_name="简体中文",
             sentence_terminators=["。", "！", "？", "；"],
@@ -281,7 +281,7 @@ class MultilingualSplittingEngine:
         )
         
         # 中文繁体配置
-        configs[SupportedLanguage.CHINESE_TRADITIONAL] = LanguageConfig(
+        configs[SupportedLanguage.CHINESE_TRADITIONAL] = LanguageConfig(  # type: ignore
             language_code="zh-TW",
             language_name="繁體中文",
             sentence_terminators=["。", "！", "？", "；"],
@@ -297,7 +297,7 @@ class MultilingualSplittingEngine:
         )
         
         # 英文配置
-        configs[SupportedLanguage.ENGLISH] = LanguageConfig(
+        configs[SupportedLanguage.ENGLISH] = LanguageConfig(  # type: ignore
             language_code="en",
             language_name="English",
             sentence_terminators=[".", "!", "?"],
@@ -310,7 +310,7 @@ class MultilingualSplittingEngine:
         )
         
         # 日文配置
-        configs[SupportedLanguage.JAPANESE] = LanguageConfig(
+        configs[SupportedLanguage.JAPANESE] = LanguageConfig(  # type: ignore
             language_code="ja",
             language_name="日本語",
             sentence_terminators=["。", "！", "？"],
@@ -327,7 +327,7 @@ class MultilingualSplittingEngine:
         )
         
         # 韩文配置
-        configs[SupportedLanguage.KOREAN] = LanguageConfig(
+        configs[SupportedLanguage.KOREAN] = LanguageConfig(  # type: ignore
             language_code="ko",
             language_name="한국어",
             sentence_terminators=[".", "!", "?", "。"],
@@ -343,7 +343,7 @@ class MultilingualSplittingEngine:
         )
         
         # 阿拉伯文配置
-        configs[SupportedLanguage.ARABIC] = LanguageConfig(
+        configs[SupportedLanguage.ARABIC] = LanguageConfig(  # type: ignore
             language_code="ar",
             language_name="العربية",
             rtl=True,
@@ -461,7 +461,7 @@ class CrossLanguageSubtitleManager:
         self,
         texts: List[str],
         primary_language: SupportedLanguage,
-        secondary_languages: List[SupportedLanguage] = None,
+        secondary_languages: Optional[List[SupportedLanguage]] = None,
         sync_config: Optional[CrossLanguageSync] = None
     ) -> Dict[SupportedLanguage, List[MultilingualSubtitle]]:
         """创建多语言字幕"""

@@ -4,7 +4,7 @@
 """
 import json
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 def load_key(key: str) -> Dict[str, Any]:
     """
@@ -116,7 +116,7 @@ def load_key(key: str) -> Dict[str, Any]:
     # 返回默认配置
     return default_config.get(key, {})
 
-def save_config(config: Dict[str, Any], key: str = None):
+def save_config(config: Dict[str, Any], key: Optional[str] = None):
     """
     保存配置到文件
     

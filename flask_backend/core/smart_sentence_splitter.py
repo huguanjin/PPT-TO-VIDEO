@@ -85,14 +85,16 @@ class AdvancedSentenceSplitter:
             try:
                 # 加载中文模型
                 try:
-                    self.spacy_models['zh'] = spacy.load("zh_core_web_sm")
-                    self.logger.info("SpaCy中文模型加载成功")
+                    if spacy is not None:
+                        self.spacy_models['zh'] = spacy.load("zh_core_web_sm")  # type: ignore
+                        self.logger.info("SpaCy中文模型加载成功")
                 except OSError:
                     self.logger.warning("SpaCy中文模型未找到，将使用备用方案")
                 
                 # 加载英文模型
                 try:
-                    self.spacy_models['en'] = spacy.load("en_core_web_sm")
+                    if spacy is not None:
+                        self.spacy_models['en'] = spacy.load("en_core_web_sm")  # type: ignore
                     self.logger.info("SpaCy英文模型加载成功")
                 except OSError:
                     self.logger.warning("SpaCy英文模型未找到，将使用备用方案")
@@ -102,9 +104,10 @@ class AdvancedSentenceSplitter:
         
         if JIEBA_AVAILABLE:
             try:
-                jieba.initialize()
-                self.jieba_initialized = True
-                self.logger.info("Jieba分词器初始化成功")
+                if jieba is not None:
+                    jieba.initialize()  # type: ignore
+                    self.jieba_initialized = True
+                    self.logger.info("Jieba分词器初始化成功")
             except Exception as e:
                 self.logger.warning(f"Jieba初始化失败: {e}")
     
@@ -436,13 +439,14 @@ class AdvancedSentenceSplitter:
     def _tokenize_text(self, text: str, language: LanguageType) -> List[str]:
         """文本分词"""
         if language == LanguageType.CHINESE and self.jieba_initialized:
-            return list(jieba.cut(text))
+            if jieba is not None:
+                return list(jieba.cut(text))  # type: ignore
         elif language.value in self.spacy_models:
             doc = self.spacy_models[language.value](text)
             return [token.text for token in doc]
-        else:
-            # 简单分词
-            return re.findall(r'\S+', text)
+        
+        # 简单分词（所有其他情况的默认返回值）
+        return re.findall(r'\S+', text)
     
     def _split_by_boundaries(self, text: str, boundaries: List[str]) -> List[str]:
         """按边界符分割文本"""
@@ -575,6 +579,7 @@ class SmartSentenceSplitterManager:
     def __init__(self):
         self.splitter = AdvancedSentenceSplitter()
         self.cache = {}
+        self.logger = logging.getLogger(__name__)
         self.performance_stats = {
             "total_splits": 0,
             "total_processing_time": 0.0,

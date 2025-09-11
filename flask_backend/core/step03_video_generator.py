@@ -14,22 +14,22 @@ from PIL import Image, ImageDraw, ImageFont
 
 # 安全导入OpenCV和numpy
 try:
-    import cv2
+    import cv2  # type: ignore
     OPENCV_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: OpenCV导入失败: {e}")
     OPENCV_AVAILABLE = False
-    cv2 = None
+    cv2 = None  # type: ignore
 
 try:
-    import numpy as np
+    import numpy as np  # type: ignore
     NUMPY_AVAILABLE = True
     # 定义numpy数组类型
-    NDArray = np.ndarray
+    NDArray = np.ndarray  # type: ignore
 except ImportError as e:
     print(f"Warning: NumPy导入失败: {e}")
     NUMPY_AVAILABLE = False
-    np = None
+    np = None  # type: ignore
     # 定义替代类型
     NDArray = Any
 
@@ -209,8 +209,8 @@ class VideoGenerator:
             
             for codec in codecs_to_try:
                 try:
-                    fourcc = cv2.VideoWriter_fourcc(*codec)
-                    video_writer = cv2.VideoWriter(
+                    fourcc = cv2.VideoWriter_fourcc(*codec)  # type: ignore
+                    video_writer = cv2.VideoWriter(  # type: ignore
                         str(output_path), 
                         fourcc, 
                         self.fps, 
@@ -235,13 +235,13 @@ class VideoGenerator:
             # 加载或创建幻灯片图片
             if image_path.exists():
                 # 加载真实的幻灯片图片
-                image = cv2.imread(str(image_path))
+                image = cv2.imread(str(image_path))  # type: ignore
                 if image is None:
                     # 如果图片加载失败，创建占位符
                     image = self._create_placeholder_image(title, slide_number)
                 else:
                     # 调整图片尺寸
-                    image = cv2.resize(image, (self.width, self.height))
+                    image = cv2.resize(image, (self.width, self.height))  # type: ignore
             else:
                 # 创建占位符图片
                 image = self._create_placeholder_image(title, slide_number)
@@ -279,25 +279,25 @@ class VideoGenerator:
             OpenCV格式的图片数组
         """
         # 创建白色背景
-        image = np.ones((self.height, self.width, 3), dtype=np.uint8) * 255
+        image = np.ones((self.height, self.width, 3), dtype=np.uint8) * 255  # type: ignore
         
         # 添加边框
-        cv2.rectangle(image, (50, 50), (self.width-50, self.height-50), (200, 200, 200), 3)
+        cv2.rectangle(image, (50, 50), (self.width-50, self.height-50), (200, 200, 200), 3)  # type: ignore
         
         # 添加页面编号
         page_text = f"第 {slide_number} 页"
-        cv2.putText(image, page_text, (100, 150), cv2.FONT_HERSHEY_SIMPLEX, 2, (100, 100, 100), 3)
+        cv2.putText(image, page_text, (100, 150), cv2.FONT_HERSHEY_SIMPLEX, 2, (100, 100, 100), 3)  # type: ignore
         
         # 添加标题（处理中文显示问题）
         title_y = 250
         if title and len(title) < 50:  # 避免标题过长
             # 简单处理：对于中文标题，使用英文替代显示
             display_title = f"Title: {title}" if any('\u4e00' <= char <= '\u9fff' for char in title) else title
-            cv2.putText(image, display_title[:30], (100, title_y), cv2.FONT_HERSHEY_SIMPLEX, 1, (50, 50, 50), 2)
+            cv2.putText(image, display_title[:30], (100, title_y), cv2.FONT_HERSHEY_SIMPLEX, 1, (50, 50, 50), 2)  # type: ignore
         
         # 添加logo或水印
         logo_text = "PPT-to-Video"
-        cv2.putText(image, logo_text, (100, self.height - 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (150, 150, 150), 2)
+        cv2.putText(image, logo_text, (100, self.height - 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (150, 150, 150), 2)  # type: ignore
         
         return image
     
@@ -316,11 +316,11 @@ class VideoGenerator:
         bar_y = self.height - 50
         
         # 绘制进度条背景
-        cv2.rectangle(frame, (bar_x, bar_y), (bar_x + bar_width, bar_y + bar_height), (200, 200, 200), -1)
+        cv2.rectangle(frame, (bar_x, bar_y), (bar_x + bar_width, bar_y + bar_height), (200, 200, 200), -1)  # type: ignore
         
         # 绘制进度
         progress_width = int(bar_width * progress)
-        cv2.rectangle(frame, (bar_x, bar_y), (bar_x + progress_width, bar_y + bar_height), (100, 200, 100), -1)
+        cv2.rectangle(frame, (bar_x, bar_y), (bar_x + progress_width, bar_y + bar_height), (100, 200, 100), -1)  # type: ignore
     
     def get_supported_formats(self) -> List[str]:
         """

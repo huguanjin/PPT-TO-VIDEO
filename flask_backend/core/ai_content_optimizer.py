@@ -220,7 +220,7 @@ class AIContentOptimizer:
             # 使用 asyncio.wait_for 添加超时
             response = await asyncio.wait_for(
                 asyncio.to_thread(
-                    self.ai_client.chat.completions.create,
+                    self.ai_client.chat.completions.create,  # type: ignore
                     model=self.ai_config.get('model', 'gpt-3.5-turbo'),
                     messages=[
                         {"role": "system", "content": "你是一个专业的内容优化助手。"},
@@ -228,12 +228,12 @@ class AIContentOptimizer:
                     ],
                     temperature=0.3,
                     max_tokens=2000,
-                    response_format={"type": "json_object"} if self.ai_config.get('support_json', True) else None
+                    response_format={"type": "json_object"} if self.ai_config.get('support_json', True) else None  # type: ignore
                 ),
                 timeout=timeout
             )
             
-            return response.choices[0].message.content
+            return response.choices[0].message.content or ""
             
         except asyncio.TimeoutError:
             self.logger.error(f"AI API调用超时 ({timeout}秒)")

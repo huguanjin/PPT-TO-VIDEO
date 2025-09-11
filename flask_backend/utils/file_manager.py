@@ -84,17 +84,6 @@ class FileManager:
         file_path = self.slides_dir / "slides_metadata.json"
         return self.load_json(file_path)
     
-    def save_scripts_metadata(self, metadata: Dict[str, Any]):
-        """保存讲话稿元数据"""
-        file_path = self.scripts_dir / "scripts_metadata.json"
-        self.save_json(metadata, file_path)
-        
-        # 同时保存为Excel格式（可选）
-        try:
-            self._save_scripts_to_excel(metadata)
-        except Exception as e:
-            logger.warning(f"保存Excel格式失败，但不影响主要功能: {e}")
-        
     def load_scripts_metadata(self, filename: str = "scripts_metadata.json") -> Optional[Dict[str, Any]]:
         """
         加载讲话稿元数据

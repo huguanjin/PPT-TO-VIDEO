@@ -269,7 +269,7 @@ class TTSGenerator:
             return await self._generate_segment_silence(page_num, seg_idx, start_time, error=str(e))
     
     async def _generate_segment_silence(self, page_num: int, seg_idx: int, 
-                                      start_time: float, error: str = None) -> Dict[str, Any]:
+                                      start_time: float, error: Optional[str] = None) -> Dict[str, Any]:
         """
         生成分段静默音频
         
@@ -402,7 +402,7 @@ class TTSGenerator:
             # 如果TTS失败，生成静默音频作为备选
             return await self._generate_silence_audio(script, start_time, error=str(e))
     
-    async def _generate_silence_audio(self, script: Dict[str, Any], start_time: float, error: str = None) -> Dict[str, Any]:
+    async def _generate_silence_audio(self, script: Dict[str, Any], start_time: float, error: Optional[str] = None) -> Dict[str, Any]:
         """
         生成静默音频（当没有讲话稿内容或TTS失败时）
         
@@ -498,9 +498,9 @@ class TTSGenerator:
             # 如果无法获取真实时长，使用估算时长
             return 3.0
     
-    def get_available_voices(self) -> List[str]:
+    def get_default_chinese_voices(self) -> List[str]:
         """
-        获取可用的语音列表
+        获取默认的中文语音列表
         
         Returns:
             语音名称列表

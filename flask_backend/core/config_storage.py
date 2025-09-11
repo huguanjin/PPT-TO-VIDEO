@@ -106,7 +106,7 @@ class ConfigStorageManager:
             raise
     
     def save_config(self, name: str, preset_key: str, config_data: Dict[str, Any], 
-                   description: str = "", tags: List[str] = None) -> str:
+                   description: str = "", tags: Optional[List[str]] = None) -> str:
         """保存配置"""
         try:
             config_id = str(uuid.uuid4())
@@ -174,7 +174,7 @@ class ConfigStorageManager:
                     return None
                 
                 # 从文件加载配置数据
-                file_path = self.storage_path / row[12]  # file_path column
+                file_path = self.storage_path / (row[12] if row[12] else "")  # file_path column
                 if file_path.exists():
                     with open(file_path, 'r', encoding='utf-8') as f:
                         file_data = json.load(f)
@@ -362,7 +362,7 @@ class ConfigStorageManager:
             logger.error(f"删除配置失败: {e}")
             return False
     
-    def search_configs(self, query: str, search_fields: List[str] = None) -> List[ConfigRecord]:
+    def search_configs(self, query: str, search_fields: Optional[List[str]] = None) -> List[ConfigRecord]:
         """搜索配置"""
         search_fields = search_fields or ['name', 'description', 'tags']
         
@@ -545,7 +545,10 @@ if __name__ == "__main__":
     
     # 测试加载配置
     loaded_config = manager.load_config(config_id)
-    print(f"加载配置: {loaded_config.name}")
+    if loaded_config:
+        print(f"加载配置: {loaded_config.name}")
+    else:
+        print("配置加载失败")
     
     # 测试统计信息
     stats = manager.get_statistics()

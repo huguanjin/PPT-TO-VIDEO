@@ -33,27 +33,27 @@ import time
 
 # 音频处理相关库（可选依赖）
 AUDIO_LIBS_AVAILABLE = False
-librosa = None
-sf = None  # soundfile
-signal = None  # scipy.signal
-fft = None  # scipy.fft
 
+# 使用类型忽略来处理条件导入的库
 try:
     import librosa  # type: ignore
     AUDIO_LIBS_AVAILABLE = True
 except ImportError:
-    pass
+    librosa = None
 
 try:
     import soundfile as sf  # type: ignore
 except ImportError:
-    pass
+    sf = None
 
 try:
     import scipy.signal as signal  # type: ignore
     import scipy.fft as fft  # type: ignore
 except ImportError:
-    pass
+    signal = None
+    fft = None
+
+# 为了避免类型检查器错误，所有使用这些库的地方都需要添加 # type: ignore
 
 if not AUDIO_LIBS_AVAILABLE:
     print("⚠️  音频处理库未安装，将使用基础功能")
@@ -182,7 +182,7 @@ class AdvancedAudioProcessor:
         try:
             if AUDIO_LIBS_AVAILABLE:
                 # 使用librosa加载音频
-                audio_data, sr = librosa.load(file_path, sr=None, mono=False)
+                audio_data, sr = librosa.load(file_path, sr=None, mono=False)  # type: ignore
                 
                 # 确保是立体声
                 if audio_data.ndim == 1:
@@ -191,7 +191,7 @@ class AdvancedAudioProcessor:
                     audio_data = np.vstack([audio_data[0], audio_data[0]])
                 
                 # 获取文件信息
-                file_info = sf.info(file_path)
+                file_info = sf.info(file_path)  # type: ignore
                 
                 metadata = AudioMetadata(
                     sample_rate=sr,
@@ -276,17 +276,17 @@ class AdvancedAudioProcessor:
             
             if AUDIO_LIBS_AVAILABLE:
                 # 使用librosa进行高级分析
-                result.spectral_centroid = float(np.mean(librosa.feature.spectral_centroid(y=mono_audio, sr=sample_rate)))
-                result.spectral_bandwidth = float(np.mean(librosa.feature.spectral_bandwidth(y=mono_audio, sr=sample_rate)))
+                result.spectral_centroid = float(np.mean(librosa.feature.spectral_centroid(y=mono_audio, sr=sample_rate)))  # type: ignore
+                result.spectral_bandwidth = float(np.mean(librosa.feature.spectral_bandwidth(y=mono_audio, sr=sample_rate)))  # type: ignore
                 
                 # MFCC特征
-                mfccs = librosa.feature.mfcc(y=mono_audio, sr=sample_rate, n_mfcc=13)
+                mfccs = librosa.feature.mfcc(y=mono_audio, sr=sample_rate, n_mfcc=13)  # type: ignore
                 result.mfcc_features = np.mean(mfccs, axis=1).tolist()
                 
                 # 主导频率
-                stft = librosa.stft(mono_audio)
+                stft = librosa.stft(mono_audio)  # type: ignore
                 magnitude = np.abs(stft)
-                freqs = librosa.fft_frequencies(sr=sample_rate)
+                freqs = librosa.fft_frequencies(sr=sample_rate)  # type: ignore
                 result.dominant_frequency = float(freqs[np.argmax(np.mean(magnitude, axis=1))])
                 
             else:
@@ -355,7 +355,7 @@ class AdvancedAudioProcessor:
         """语速分析"""
         # 简单的语速估计：基于音频包络的变化
         # 计算音频包络
-        envelope = np.abs(signal.hilbert(audio)) if AUDIO_LIBS_AVAILABLE else np.abs(audio)
+        envelope = np.abs(signal.hilbert(audio)) if AUDIO_LIBS_AVAILABLE else np.abs(audio)  # type: ignore
         
         # 平滑包络
         window_size = sample_rate // 20  # 50ms窗口
@@ -390,8 +390,8 @@ class AdvancedAudioProcessor:
             zcr = np.mean(np.abs(np.diff(np.sign(audio))))
             
             if AUDIO_LIBS_AVAILABLE:
-                spectral_centroid = np.mean(librosa.feature.spectral_centroid(y=audio, sr=sample_rate))
-                spectral_rolloff = np.mean(librosa.feature.spectral_rolloff(y=audio, sr=sample_rate))
+                spectral_centroid = np.mean(librosa.feature.spectral_centroid(y=audio, sr=sample_rate))  # type: ignore
+                spectral_rolloff = np.mean(librosa.feature.spectral_rolloff(y=audio, sr=sample_rate))  # type: ignore
             else:
                 spectral_centroid = await self._calculate_spectral_centroid_basic(audio, sample_rate)
                 spectral_rolloff = spectral_centroid * 1.5  # 简单估计
@@ -427,8 +427,7 @@ class AdvancedAudioProcessor:
         except Exception as e:
             logger.warning(f"情感分析失败: {e}")
             # 返回中性情感
-            emotions = {emotion.value: 0.0 for emotion in EmotionType}
-            emotions['neutral'] = 1.0
+            emotions = {'neutral': 1.0}
         
         return emotions
     
@@ -510,7 +509,7 @@ class AdvancedAudioProcessor:
             
             if noise_type == NoiseType.BACKGROUND:
                 # 谱减法降噪
-                stft = librosa.stft(channel_data)
+                stft = librosa.stft(channel_data)  # type: ignore
                 magnitude = np.abs(stft)
                 phase = np.angle(stft)
                 
@@ -530,11 +529,11 @@ class AdvancedAudioProcessor:
                 
                 # 重构音频
                 cleaned_stft = cleaned_magnitude * np.exp(1j * phase)
-                processed_audio[channel] = librosa.istft(cleaned_stft)
+                processed_audio[channel] = librosa.istft(cleaned_stft)  # type: ignore
                 
             elif noise_type == NoiseType.CLICK:
                 # 点击声去除（中值滤波）
-                processed_audio[channel] = signal.medfilt(channel_data, kernel_size=3)
+                processed_audio[channel] = signal.medfilt(channel_data, kernel_size=3)  # type: ignore
                 
             elif noise_type == NoiseType.HUM:
                 # 嗡嗡声去除（陷波滤波器）
@@ -544,8 +543,8 @@ class AdvancedAudioProcessor:
                     high = (freq + 1) / nyquist
                     
                     if low > 0 and high < 1:
-                        b, a = signal.butter(4, [low, high], btype='bandstop')
-                        processed_audio[channel] = signal.filtfilt(b, a, processed_audio[channel])
+                        b, a = signal.butter(4, [low, high], btype='bandstop')  # type: ignore
+                        processed_audio[channel] = signal.filtfilt(b, a, processed_audio[channel])  # type: ignore
         
         return processed_audio
     
@@ -559,11 +558,11 @@ class AdvancedAudioProcessor:
         
         for channel in range(audio_data.shape[0]):
             # 设计低通滤波器
-            sos = signal.butter(order, cutoff, btype='low', output='sos')
-            filtered = signal.sosfilt(sos, audio_data[channel])
+            sos = signal.butter(order, cutoff, btype='low', output='sos')  # type: ignore
+            filtered = signal.sosfilt(sos, audio_data[channel])  # type: ignore
             
             # 混合原音频和滤波音频
-            processed_audio[channel] = (1 - strength) * audio_data[channel] + strength * filtered
+            processed_audio[channel] = (1 - strength) * audio_data[channel] + strength * filtered  # type: ignore
         
         return processed_audio
     
@@ -605,7 +604,7 @@ class AdvancedAudioProcessor:
                     channel_data = audio_data[channel]
                     
                     # 谐波增强
-                    stft = librosa.stft(channel_data)
+                    stft = librosa.stft(channel_data)  # type: ignore
                     magnitude = np.abs(stft)
                     phase = np.angle(stft)
                     
@@ -616,17 +615,17 @@ class AdvancedAudioProcessor:
                     
                     # 重构音频
                     enhanced_stft = enhanced_magnitude * np.exp(1j * phase)
-                    enhanced_audio[channel] = librosa.istft(enhanced_stft)
+                    enhanced_audio[channel] = librosa.istft(enhanced_stft)  # type: ignore
             
             else:
                 # 基础增强：轻微的高频提升
                 for channel in range(audio_data.shape[0]):
                     # 简单的高通滤波器增强高频
-                    sos = signal.butter(3, 0.3, btype='high', output='sos')
-                    high_freq = signal.sosfilt(sos, audio_data[channel])
+                    sos = signal.butter(3, 0.3, btype='high', output='sos')  # type: ignore
+                    high_freq = signal.sosfilt(sos, audio_data[channel])  # type: ignore
                     
                     # 混合原音频和高频增强
-                    enhanced_audio[channel] = audio_data[channel] + enhancement_level * 0.1 * high_freq
+                    enhanced_audio[channel] = audio_data[channel] + enhancement_level * 0.1 * high_freq  # type: ignore
             
             logger.info(f"音质增强完成: 增强级别={enhancement_level}")
             return enhanced_audio
@@ -807,7 +806,7 @@ class AdvancedAudioProcessor:
                 
                 subtype = subtype_map.get(quality, 'PCM_16')
                 
-                sf.write(output_path, audio_to_save, self.sample_rate, subtype=subtype)
+                sf.write(output_path, audio_to_save, self.sample_rate, subtype=subtype)  # type: ignore
                 
             else:
                 # 基础WAV保存

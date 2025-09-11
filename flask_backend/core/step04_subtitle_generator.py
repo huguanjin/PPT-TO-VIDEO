@@ -35,11 +35,11 @@ class SubtitleGenerator:
         
         # 加载智能字幕配置
         try:
-            from core.subtitle_config_loader import load_smart_subtitle_config
-            smart_config = load_smart_subtitle_config(
-                config_dir=self.project_dir / "config_data", 
-                enable_ai=True  # 启用AI智能分割功能
+            from core.subtitle_config_loader import create_config_loader
+            smart_config_loader = create_config_loader(
+                config_dir=self.project_dir / "config_data"
             )
+            smart_config = smart_config_loader.get_config()
             self.logger.info("成功加载智能字幕配置，AI分割功能已启用")
         except Exception as e:
             self.logger.warning(f"加载智能字幕配置失败，使用默认配置: {e}")

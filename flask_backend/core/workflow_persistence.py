@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from enum import Enum
 import asyncio
 
@@ -35,8 +35,8 @@ class WorkflowStepResult:
     start_time: Optional[str] = None
     end_time: Optional[str] = None
     progress: float = 0.0
-    output_files: List[str] = None
-    input_files: List[str] = None
+    output_files: Optional[List[str]] = None
+    input_files: Optional[List[str]] = None
     error_message: Optional[str] = None
     execution_time: float = 0.0
     can_skip: bool = False
@@ -47,7 +47,6 @@ class WorkflowStepResult:
         if self.input_files is None:
             self.input_files = []
 
-@dataclass 
 @dataclass
 class WorkflowExecution:
     """工作流执行记录"""
@@ -56,15 +55,11 @@ class WorkflowExecution:
     workflow_status: WorkflowStatus
     start_time: str
     end_time: Optional[str] = None
-    steps: Optional[Dict[str, WorkflowStepResult]] = None
+    steps: Dict[str, WorkflowStepResult] = field(default_factory=dict)
     current_step: Optional[str] = None
     total_progress: float = 0.0
     config: Optional[Dict[str, Any]] = None
     error_message: Optional[str] = None
-    
-    def __post_init__(self):
-        if self.steps is None:
-            self.steps = {}
 
 class WorkflowPersistenceManager:
     """工作流持久化管理器"""

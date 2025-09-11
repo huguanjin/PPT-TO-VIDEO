@@ -61,15 +61,25 @@ temp/
 PPTist/node_modules/
 PPTist/dist/
 PPTist/.cache/
+PPTist/.vscode/
+PPTist/.husky/_/
+
+# Frontend build files
+PPTist/tsconfig.*.tsbuildinfo
+PPTist/package-lock.json
 
 # Environment variables
 .env
 .env.local
 .env.*.local
+PPTist/.env.local
+PPTist/.env.*.local
 
 # API keys and sensitive data
 config_data/tts_config.json
 config_data/app_config.json
+config_data/storage/*.db
+!config_data/*.template
 !config_data/*.example
 
 # Test files and temporary data
@@ -109,3 +119,39 @@ coverage.xml
 # Cache
 .cache/
 *.cache
+
+# Flask backend specific
+flask_backend/__pycache__/
+flask_backend/logs/
+flask_backend/output/
+flask_backend/workflow_history/
+flask_backend/history/
+
+# Fixed audio processing scripts (temporary files)
+fix_audio_types.py
+check_try_except.py
+fix_remaining_errors.py
+
+# Backup and temporary files
+*.bak
+*.backup
+*~
+.#*
+#*#
+
+# Development and testing
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Documentation builds
+docs/_build/
+site/

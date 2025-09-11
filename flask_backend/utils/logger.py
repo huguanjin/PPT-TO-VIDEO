@@ -4,8 +4,9 @@
 import logging
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
 
-def get_logger(name: str, log_dir: Path = None) -> logging.Logger:
+def get_logger(name: str, log_dir: Optional[Path] = None) -> logging.Logger:
     """
     获取logger实例
     
