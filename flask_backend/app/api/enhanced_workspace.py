@@ -16,7 +16,7 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
 
 try:
-    from utils.logger import get_logger
+    from utils.logger import get_logger  # type: ignore
 except ImportError:
     import logging
     def get_logger(name):

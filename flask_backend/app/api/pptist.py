@@ -17,9 +17,9 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
 
 try:
-    from core.step01_pptist_importer import PPTistImporter
-    from utils.task_manager import TaskManager
-    from utils.logger import get_logger
+    from core.step01_pptist_importer import PPTistImporter  # type: ignore
+    from utils.task_manager import TaskManager  # type: ignore
+    from utils.logger import get_logger  # type: ignore
 except ImportError as e:
     print(f"Warning: Could not import core modules: {e}")
     # 在没有依赖时提供模拟类

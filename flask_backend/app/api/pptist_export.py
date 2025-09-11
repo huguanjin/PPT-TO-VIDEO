@@ -133,7 +133,11 @@ def upload_exported_image():
         slide_id = request.form.get('slide_id', '')
         
         # 安全的文件名
-        filename = secure_filename(file.filename)
+        if file.filename:
+            filename = secure_filename(file.filename)
+        else:
+            filename = ""
+        
         if not filename:
             filename = f"slide_{slide_index}.png"
         
