@@ -16,7 +16,7 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
 
 try:
-    from utils.logger import get_logger
+    from utils.logger import get_logger  # type: ignore
 except ImportError:
     import logging
     def get_logger(name):
@@ -123,7 +123,7 @@ def enhanced_tts_preview():
                     )
                 )
                 
-                if result["success"] and audio_path.exists():
+                if result and result.get("success") and audio_path.exists():
                     # 返回音频文件
                     return send_file(
                         str(audio_path),
@@ -132,9 +132,10 @@ def enhanced_tts_preview():
                         mimetype='audio/wav'
                     )
                 else:
+                    error_msg = result.get("error", "未知错误") if result else "TTS处理失败"
                     return jsonify({
                         'success': False,
-                        'message': f'音频生成失败: {result.get("error", "未知错误")}'
+                        'message': f'音频生成失败: {error_msg}'
                     }), 500
                     
             except ImportError:
@@ -205,7 +206,7 @@ def run_async_in_flask(coro):
                     asyncio.set_event_loop(new_loop)
                     result[0] = new_loop.run_until_complete(coro)
                 except Exception as e:
-                    exception[0] = e
+                    exception[0] = e  # type: ignore
                 finally:
                     new_loop.close()
             
@@ -282,12 +283,13 @@ def simple_azure_tts(text, output_path, api_key, region, voice="zh-CN-XiaoxiaoNe
         synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
         result = synthesizer.speak_text_async(text).get()
         
-        if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+        if result and hasattr(result, 'reason') and result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
             with open(output_path, "wb") as audio_file:
                 audio_file.write(result.audio_data)
             return True
         else:
-            logger.error(f"Azure TTS失败: {result.reason}")
+            error_reason = result.reason if result and hasattr(result, 'reason') else "未知错误"
+            logger.error(f"Azure TTS失败: {error_reason}")
             return False
         
     except Exception as e:
