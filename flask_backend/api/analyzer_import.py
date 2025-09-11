@@ -201,35 +201,45 @@ def get_content_types():
     global _analyzer_module
     if _analyzer_module is None:
         get_smart_content_analyzer()
-    return _analyzer_module.ContentType
+    if _analyzer_module is None:
+        return None
+    return getattr(_analyzer_module, 'ContentType', None)
 
 def get_importance_levels():
     """获取重要性级别枚举"""
     global _analyzer_module
     if _analyzer_module is None:
         get_smart_content_analyzer()
-    return _analyzer_module.ImportanceLevel
+    if _analyzer_module is None:
+        return None
+    return getattr(_analyzer_module, 'ImportanceLevel', None)
 
 def get_layout_types():
     """获取布局类型枚举"""
     global _analyzer_module
     if _analyzer_module is None:
         get_smart_content_analyzer()
-    return _analyzer_module.LayoutType
+    if _analyzer_module is None:
+        return None
+    return getattr(_analyzer_module, 'LayoutType', None)
 
 def get_color_themes():
     """获取配色主题枚举"""
     global _analyzer_module
     if _analyzer_module is None:
         get_smart_content_analyzer()
-    return _analyzer_module.ColorTheme
+    if _analyzer_module is None:
+        return None
+    return getattr(_analyzer_module, 'ColorTheme', None)
 
 def get_logical_relations():
     """获取逻辑关系枚举"""
     global _analyzer_module
     if _analyzer_module is None:
         get_smart_content_analyzer()
-    return _analyzer_module.LogicalRelation
+    if _analyzer_module is None:
+        return None
+    return getattr(_analyzer_module, 'LogicalRelation', None)
 
 def is_import_successful():
     """检查导入是否成功"""

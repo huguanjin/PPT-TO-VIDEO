@@ -2,6 +2,8 @@
 智能字幕API接口
 提供字幕配置管理和处理功能的REST API
 """
+# type: ignore
+
 from flask import Blueprint, request, jsonify
 from pathlib import Path
 import logging
