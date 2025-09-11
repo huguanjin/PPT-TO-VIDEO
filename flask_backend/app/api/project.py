@@ -20,8 +20,8 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
 
 try:
-    from utils.file_manager import FileManager
-    from utils.logger import get_logger
+    from utils.file_manager import FileManager  # type: ignore
+    from utils.logger import get_logger  # type: ignore
 except ImportError as e:
     print(f"Warning: Could not import utils modules: {e}")
     # 提供模拟类
@@ -515,7 +515,7 @@ def upload_project_image(project_name):
         
         # 验证文件类型
         allowed_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif'}
-        file_ext = Path(file.filename).suffix.lower()
+        file_ext = Path(file.filename or '').suffix.lower() if file.filename else ''
         if file_ext not in allowed_extensions:
             logger.error(f"不支持的文件类型: {file.filename}")
             return jsonify({

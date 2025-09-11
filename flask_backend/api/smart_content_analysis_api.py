@@ -204,6 +204,12 @@ def get_structure_analysis(task_id):
                 }
             })
         
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'未知的任务状态: {status}'
+            }), 500
+        
     except Exception as e:
         logger.error(f"获取结构分析失败: {e}")
         return jsonify({
@@ -403,28 +409,39 @@ def get_available_themes():
     """获取可用主题"""
     try:
         themes = []
-        for theme in ColorTheme:
-            themes.append({
-                'value': theme.value,
-                'name': theme.value,
-                'description': f'{theme.value}主题配色方案'
-            })
+        if ColorTheme is not None:
+            for theme in ColorTheme:
+                themes.append({
+                    'value': theme.value,
+                    'name': theme.value,
+                    'description': f'{theme.value}主题配色方案'
+                })
         
         layout_types = []
-        for layout in LayoutType:
-            layout_types.append({
-                'value': layout.value,
-                'name': layout.value,
-                'description': f'{layout.value}布局类型'
-            })
+        if LayoutType is not None:
+            for layout in LayoutType:
+                layout_types.append({
+                    'value': layout.value,
+                    'name': layout.value,
+                    'description': f'{layout.value}布局类型'
+                })
         
         content_types = []
-        for ctype in ContentType:
-            content_types.append({
-                'value': ctype.value,
-                'name': ctype.value,
-                'description': f'{ctype.value}内容类型'
-            })
+        if ContentType is not None:
+            for ctype in ContentType:
+                content_types.append({
+                    'value': ctype.value,
+                    'name': ctype.value,
+                    'description': f'{ctype.value}内容类型'
+                })
+        
+        importance_levels = []
+        if ImportanceLevel is not None:
+            importance_levels = [level.value for level in ImportanceLevel]
+        
+        logical_relations = []
+        if LogicalRelation is not None:
+            logical_relations = [rel.value for rel in LogicalRelation]
         
         return jsonify({
             'success': True,
@@ -432,8 +449,8 @@ def get_available_themes():
                 'color_themes': themes,
                 'layout_types': layout_types,
                 'content_types': content_types,
-                'importance_levels': [level.value for level in ImportanceLevel],
-                'logical_relations': [rel.value for rel in LogicalRelation]
+                'importance_levels': importance_levels,
+                'logical_relations': logical_relations
             }
         })
         
@@ -475,10 +492,14 @@ def custom_analysis():
                 
                 # 应用自定义配置
                 if 'keyword_weights' in analysis_config:
-                    analyzer.keyword_weights.update(analysis_config['keyword_weights'])
+                    keyword_weights = getattr(analyzer, 'keyword_weights', None)
+                    if keyword_weights is not None:
+                        keyword_weights.update(analysis_config['keyword_weights'])
                 
                 if 'color_psychology' in analysis_config:
-                    analyzer.color_psychology.update(analysis_config['color_psychology'])
+                    color_psychology = getattr(analyzer, 'color_psychology', None)
+                    if color_psychology is not None:
+                        color_psychology.update(analysis_config['color_psychology'])
                 
                 # 执行分析
                 structure = run_async_in_thread(analyzer.analyze_content_structure(ppt_data))

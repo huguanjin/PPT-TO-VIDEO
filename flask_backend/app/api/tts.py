@@ -16,11 +16,11 @@ sys.path.append(str(project_root))
 try:
     import edge_tts as edge_tts_lib
     import asyncio
-    from all_tts_functions.edge_tts import edge_tts
-    from all_tts_functions.openai_tts import openai_tts
-    from all_tts_functions.azure_tts import azure_tts
-    from all_tts_functions.fish_tts import fish_tts
-    from utils.logger import get_logger
+    from all_tts_functions.edge_tts import edge_tts  # type: ignore
+    from all_tts_functions.openai_tts import openai_tts  # type: ignore
+    from all_tts_functions.azure_tts import azure_tts  # type: ignore
+    from all_tts_functions.fish_tts import fish_tts  # type: ignore
+    from utils.logger import get_logger  # type: ignore
 except ImportError as e:
     print(f"Warning: Could not import TTS modules: {e}")
     # 提供模拟函数

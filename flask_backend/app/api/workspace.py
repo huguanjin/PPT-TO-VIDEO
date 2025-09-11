@@ -111,7 +111,7 @@ class WorkspaceManager:
             logger.error(f"保存工作空间失败: {e}")
             return False
     
-    def archive_workspace(self, archive_name: str) -> tuple[bool, str]:
+    def archive_workspace(self, archive_name: str) -> "tuple[bool, str]":
         """归档当前工作空间"""
         try:
             if not self.has_workspace_content():
@@ -237,7 +237,7 @@ class WorkspaceManager:
         archives.sort(key=lambda x: x['archived_at'], reverse=True)
         return archives
     
-    def restore_archive(self, folder_name: str) -> tuple[bool, str]:
+    def restore_archive(self, folder_name: str) -> "tuple[bool, str]":
         """恢复归档"""
         try:
             archive_dir = self.history_dir / folder_name
@@ -271,7 +271,7 @@ class WorkspaceManager:
             logger.error(f"恢复归档失败: {e}")
             return False, f"恢复失败: {str(e)}"
     
-    def delete_archive(self, folder_name: str) -> tuple[bool, str]:
+    def delete_archive(self, folder_name: str) -> "tuple[bool, str]":
         """删除归档"""
         try:
             archive_dir = self.history_dir / folder_name

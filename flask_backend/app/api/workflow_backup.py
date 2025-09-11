@@ -16,27 +16,45 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
 
 try:
-    from core.step02_tts_generator import TTSGenerator
-    from core.step03_video_generator import VideoGenerator
-    from core.step04_subtitle_generator import SubtitleGenerator
-    from core.step05_final_merger import FFmpegFinalMerger
-    from core.enhanced_workflow_executor import EnhancedWorkflowExecutor, WorkflowExecution
-    from utils.task_manager import TaskManager
-    from utils.logger import get_logger
+    from core.step02_tts_generator import TTSGenerator  # type: ignore
+    from core.step03_video_generator import VideoGenerator  # type: ignore
+    from core.step04_subtitle_generator import SubtitleGenerator  # type: ignore
+    from core.step05_final_merger import FFmpegFinalMerger  # type: ignore
+    from core.enhanced_workflow_executor import EnhancedWorkflowExecutor, WorkflowExecution  # type: ignore
+    from utils.task_manager import TaskManager  # type: ignore
+    from utils.logger import get_logger  # type: ignore
 except ImportError as e:
     print(f"Warning: Could not import core modules: {e}")
     # 提供模拟类
     class TTSGenerator:
         def __init__(self, project_name):
             self.project_name = project_name
+        
+        def generate_audio_sync(self, *args, **kwargs):
+            return {"success": False, "error": "TTS模块未可用"}
+        
+        def generate_audio(self, *args, **kwargs):
+            return {"success": False, "error": "TTS模块未可用"}
     
     class VideoGenerator:
         def __init__(self, project_name):
             self.project_name = project_name
+        
+        def generate_video_clips_sync(self, *args, **kwargs):
+            return {"success": False, "error": "Video模块未可用"}
+        
+        def generate_video_clips(self, *args, **kwargs):
+            return {"success": False, "error": "Video模块未可用"}
     
     class SubtitleGenerator:
         def __init__(self, project_name):
             self.project_name = project_name
+        
+        def generate_subtitles_sync(self, *args, **kwargs):
+            return {"success": False, "error": "Subtitle模块未可用"}
+        
+        def generate_subtitles(self, *args, **kwargs):
+            return {"success": False, "error": "Subtitle模块未可用"}
     
     class EnhancedWorkflowExecutor:
         def __init__(self, project_dir):
@@ -49,6 +67,9 @@ except ImportError as e:
     class FFmpegFinalMerger:
         def __init__(self, project_name):
             self.project_name = project_name
+        
+        def merge_final_video(self, *args, **kwargs):
+            return {"success": False, "error": "FFmpeg模块未可用"}
     
     class TaskManager:
         def __init__(self, base_dir):
@@ -527,13 +548,19 @@ def execute_workflow_task(project_name: str, task_id: str, project_dir: Path):
                     asyncio.set_event_loop(loop)
                 
                 tts_result = loop.run_until_complete(
-                    tts_generator.generate_audio(
+                    tts_generator.generate_audio(  # type: ignore
                         scripts_data=scripts_data,
                         progress_callback=tts_progress_callback
                     )
                 )
             
-            if not tts_result or not tts_result.get("generation_completed"):
+            # 安全地获取结果
+            if hasattr(tts_result, 'get'):
+                tts_completed = tts_result.get("generation_completed", False)
+            else:
+                tts_completed = False
+                
+            if not tts_result or not tts_completed:
                 raise Exception("TTS音频生成失败")
             
             logger.info("TTS音频生成完成")
@@ -626,18 +653,25 @@ def execute_workflow_task(project_name: str, task_id: str, project_dir: Path):
                     asyncio.set_event_loop(loop)
                 
                 subtitle_result = loop.run_until_complete(
-                    subtitle_generator.generate_subtitles(
+                    subtitle_generator.generate_subtitles(  # type: ignore
                         scripts_data=scripts_data,
                         audio_data=audio_data,
                         progress_callback=subtitle_progress_callback
                     )
                 )
             
-            if not subtitle_result or not subtitle_result.get("subtitle_generation_completed"):
+            # 安全地获取字幕结果
+            if hasattr(subtitle_result, 'get'):
+                subtitle_completed = subtitle_result.get("subtitle_generation_completed", False)
+                current_time = subtitle_result.get("total_duration", 0)
+            else:
+                subtitle_completed = False
+                current_time = 0
+                
+            if not subtitle_result or not subtitle_completed:
                 raise Exception("字幕生成失败")
             
             logger.info("字幕生成完成")
-            current_time = subtitle_result.get("total_duration", 0)
             
         except Exception as e:
             logger.error(f"字幕生成失败: {e}")
@@ -691,14 +725,20 @@ def execute_workflow_task(project_name: str, task_id: str, project_dir: Path):
                     asyncio.set_event_loop(loop)
                 
                 video_result = loop.run_until_complete(
-                    video_generator.generate_video_clips(
+                    video_generator.generate_video_clips(  # type: ignore
                         slides_data=video_slides_data,
                         audio_data=audio_data,
                         progress_callback=video_progress_callback
                     )
                 )
             
-            if not video_result or not video_result.get("generation_completed"):
+            # 安全地获取视频结果
+            if hasattr(video_result, 'get'):
+                video_completed = video_result.get("generation_completed", False)
+            else:
+                video_completed = False
+                
+            if not video_result or not video_completed:
                 raise Exception("视频生成失败")
             
             logger.info("视频生成完成")
@@ -996,8 +1036,8 @@ def save_task_statuses():
     except Exception as e:
         logger.error(f"保存任务状态失败: {e}")
 
-def update_task_status(task_id: str, status: str, message: str = '', progress: int = 0, result: dict = None, 
-                      project_name: str = '', current_step: int = 1, total_steps: int = 5, steps: list = None):
+def update_task_status(task_id: str, status: str, message: str = '', progress: int = 0, result = None, 
+                      project_name: str = '', current_step: int = 1, total_steps: int = 5, steps = None):
     """更新任务状态"""
     task_statuses[task_id] = {
         'task_id': task_id,

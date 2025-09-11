@@ -17,14 +17,14 @@ flask_backend_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(flask_backend_root))
 
 try:
-    from core.step02_tts_generator import TTSGenerator
-    from core.step03_video_generator import VideoGenerator
-    from core.step04_subtitle_generator import SubtitleGenerator
-    from core.step05_final_merger import FFmpegFinalMerger
-    from core.enhanced_workflow_executor import EnhancedWorkflowExecutor, WorkflowExecution
-    from core.workflow_persistence import StepStatus  # 添加StepStatus导入
-    from utils.task_manager import TaskManager
-    from utils.logger import get_logger
+    from core.step02_tts_generator import TTSGenerator  # type: ignore
+    from core.step03_video_generator import VideoGenerator  # type: ignore
+    from core.step04_subtitle_generator import SubtitleGenerator  # type: ignore
+    from core.step05_final_merger import FFmpegFinalMerger  # type: ignore
+    from core.enhanced_workflow_executor import EnhancedWorkflowExecutor, WorkflowExecution  # type: ignore
+    from core.workflow_persistence import StepStatus  # type: ignore
+    from utils.task_manager import TaskManager  # type: ignore
+    from utils.logger import get_logger  # type: ignore
 except ImportError as e:
     print(f"Warning: Could not import core modules: {e}")
     # 提供模拟类

@@ -297,7 +297,7 @@ def update_tts_config():
                 tts_config['fish_character_id'] = fish_config['character_id']
         
         # 保存配置
-        app_config['_updated_at'] = request.json.get('_updated_at', '')
+        app_config['_updated_at'] = (request.json or {}).get('_updated_at', '')
         
         config_path = Path(__file__).parent.parent.parent / "config_data" / "app_config.json"
         with open(config_path, 'w', encoding='utf-8') as f:
