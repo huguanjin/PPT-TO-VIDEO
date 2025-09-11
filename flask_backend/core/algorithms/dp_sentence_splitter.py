@@ -194,7 +194,7 @@ class DynamicProgrammingSplitter:
     
     def split_extremely_long_sentence(self, 
                                     tokens: List[str], 
-                                    target_parts: int = None,
+                                    target_parts = None,
                                     language: str = 'auto') -> List[str]:
         """
         对极长句子进行强制均分
@@ -343,14 +343,14 @@ class DynamicProgrammingSplitter:
                 return tokens, token_info
             else:
                 logger.warning("Spacy模型不可用，使用简单分词")
-                return self._simple_tokenize(text, language), None
+                return self._simple_tokenize(text, language), []
                 
         except ImportError:
             logger.warning("Spacy处理器不可用，使用简单分词")
-            return self._simple_tokenize(text, language), None
+            return self._simple_tokenize(text, language), []
         except Exception as e:
             logger.warning(f"Spacy分词失败: {e}，使用简单分词")
-            return self._simple_tokenize(text, language), None
+            return self._simple_tokenize(text, language), []
     
     def _fallback_split(self, text: str, language: str) -> List[str]:
         """
