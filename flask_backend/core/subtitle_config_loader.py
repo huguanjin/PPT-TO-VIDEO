@@ -2,6 +2,7 @@
 智能字幕配置加载器
 集成Netflix级字幕配置和智能处理参数
 支持简化配置预设系统
+已集成多行显示修复功能
 """
 import json
 import os
@@ -10,6 +11,7 @@ from typing import Dict, Any, Optional
 import logging
 from .enhanced_config_loader import EnhancedSubtitleConfigLoader
 from .config_presets import ConfigPresets, SimpleConfigManager
+from .subtitle_multiline_fixer import SubtitleMultilineFixer
 
 
 class SmartSubtitleConfigLoader:
@@ -36,9 +38,13 @@ class SmartSubtitleConfigLoader:
             self.preset
         )
         
+        # 初始化多行修复器
+        self.multiline_fixer = SubtitleMultilineFixer()
+        
         # 加载配置
         self.config = self.enhanced_loader.get_config()
         self._ensure_backward_compatibility()
+        self._apply_multiline_fix_config()
         
         # 记录配置信息
         config_summary = self.enhanced_loader.get_config_summary()
@@ -46,6 +52,7 @@ class SmartSubtitleConfigLoader:
             f"字幕配置加载完成 - 预设: {config_summary['preset_display_name']}, "
             f"复杂度: {config_summary['complexity_level']}"
         )
+        self.logger.info("多行显示修复功能已集成到配置系统")
     
     def _ensure_backward_compatibility(self):
         """确保向后兼容性"""
@@ -68,6 +75,34 @@ class SmartSubtitleConfigLoader:
                 "use_spacy": self.config.get("use_spacy", True),
                 "use_enhanced_weight": self.config.get("use_enhanced_weight", False)
             })
+    
+    def _apply_multiline_fix_config(self):
+        """应用多行显示修复配置"""
+        try:
+            # 获取修复配置
+            fix_config = self.multiline_fixer.config
+            
+            # 更新字符权重配置
+            if "character_weight_adjustments" in fix_config:
+                if "smart_subtitle_processing" not in self.config:
+                    self.config["smart_subtitle_processing"] = {}
+                
+                self.config["smart_subtitle_processing"]["character_weights"] = fix_config["character_weight_adjustments"]
+                
+            # 更新行控制规则
+            if "line_control_rules" in fix_config:
+                line_rules = fix_config["line_control_rules"]
+                self.config.update({
+                    "max_chars_per_line": line_rules.get("max_chars_per_line_chinese", 30),
+                    "max_lines": line_rules.get("max_lines_strict", 2),
+                    "enforce_line_limit": line_rules.get("enforce_line_limit", True),
+                    "multiline_fix_enabled": True
+                })
+            
+            self.logger.info("多行修复配置已应用到字幕配置系统")
+            
+        except Exception as e:
+            self.logger.warning(f"应用多行修复配置失败: {e}")
     
     def get_config(self) -> Dict[str, Any]:
         """获取完整配置"""

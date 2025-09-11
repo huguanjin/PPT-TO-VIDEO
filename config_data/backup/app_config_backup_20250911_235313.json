@@ -247,18 +247,5 @@
       "max_workers": 4
     }
   },
-  "_updated_at": "2025-09-04T21:17:17.809936",
-  "subtitle_generation": {
-    "enable_multiline_fix": true,
-    "character_weight_mode": "enhanced",
-    "strict_line_limit": true,
-    "max_lines": 2,
-    "resolution_adaptive_font": true,
-    "videolingo_integration": {
-      "enabled": true,
-      "use_smart_splitting": true,
-      "use_character_weights": true,
-      "use_netflix_timing": true
-    }
-  }
+  "_updated_at": "2025-09-04T21:17:17.809936"
 }

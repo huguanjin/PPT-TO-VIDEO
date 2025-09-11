@@ -1,6 +1,7 @@
 """
 增强版字幕生成器 - Netflix级字幕处理机制
 基于精确时间对齐和智能间隙填充算法
+集成多行显示修复功能
 """
 import os
 import re
@@ -14,6 +15,7 @@ import dataclasses
 
 from utils.logger import get_logger
 from utils.file_manager import FileManager
+from .subtitle_multiline_fixer import SubtitleMultilineFixer
 
 
 class EnhancedSubtitleGenerator:
@@ -24,9 +26,12 @@ class EnhancedSubtitleGenerator:
         self.file_manager = FileManager(project_dir)
         self.logger = get_logger(__name__, self.project_dir / "logs")
         
+        # 初始化多行修复器
+        self.multiline_fixer = SubtitleMultilineFixer()
+        
         # 增强的字幕配置
         self.subtitle_config = {
-            "max_chars_per_line": 40,           # 每行最大字符数
+            "max_chars_per_line": 30,           # 每行最大字符数 (优化后)
             "max_lines": 2,                     # 最大行数
             "min_display_time": 1.0,            # 最小显示时间(秒)
             "max_display_time": 8.0,            # 最大显示时间(秒)
@@ -36,9 +41,11 @@ class EnhancedSubtitleGenerator:
             "enable_gap_filling": True,         # 启用间隙填充
             "enable_precise_alignment": True,   # 启用精确对齐
             "auto_punctuation_removal": True,   # 自动移除显示用标点
+            "enable_multiline_fix": True,       # 启用多行修复
         }
         
         self.logger.info(f"增强版字幕生成器初始化完成: {self.subtitle_config}")
+        self.logger.info("多行显示修复功能已启用")
     
     def remove_punctuation(self, text: str) -> str:
         """移除标点符号，用于精确匹配"""
@@ -309,7 +316,14 @@ class EnhancedSubtitleGenerator:
         return segments
     
     def _split_long_sentence(self, sentence: str) -> List[str]:
-        """分割过长句子"""
+        """分割过长句子 - 使用增强的字符权重计算"""
+        # 使用多行修复器的智能分割
+        if self.subtitle_config.get("enable_multiline_fix", True):
+            max_weight = self.subtitle_config["max_chars_per_line"]
+            split_lines = self.multiline_fixer._smart_split_line(sentence, max_weight)
+            return split_lines
+        
+        # 原始基于字符长度的分割逻辑（备用）
         max_length = self.subtitle_config["max_chars_per_line"]
         segments = []
         
@@ -344,12 +358,21 @@ class EnhancedSubtitleGenerator:
     def _clean_subtitle_text(self, text: str) -> str:
         """清理字幕文本以优化显示效果"""
         if not self.subtitle_config["auto_punctuation_removal"]:
+            # 即使不移除标点，也应用多行修复
+            if self.subtitle_config.get("enable_multiline_fix", True):
+                return self.multiline_fixer.optimize_subtitle_text(text)
             return text
         
         # 替换某些标点符号为空格或移除
         cleaned = re.sub(r'[，。]', ' ', text)
         cleaned = re.sub(r'\s+', ' ', cleaned)
-        return cleaned.strip()
+        cleaned = cleaned.strip()
+        
+        # 应用多行显示修复
+        if self.subtitle_config.get("enable_multiline_fix", True):
+            cleaned = self.multiline_fixer.optimize_subtitle_text(cleaned)
+        
+        return cleaned
     
     async def generate_enhanced_subtitles(
         self, 

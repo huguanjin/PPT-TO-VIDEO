@@ -1,0 +1,41 @@
+{
+  "subtitle_multiline_fix_config": {
+    "version": "1.0.0",
+    "last_updated": "2025-09-11T23:53:13.754789",
+    "description": "字幕多行显示问题修复配置 - 基于VideoLingo集成分析优化",
+    "character_weight_adjustments": {
+      "chinese": 2.0,
+      "japanese": 2.0,
+      "korean": 1.8,
+      "english": 1.0,
+      "punctuation": 0.6,
+      "space": 0.3,
+      "number": 0.8
+    },
+    "line_control_rules": {
+      "max_lines_strict": 2,
+      "max_chars_per_line_chinese": 30,
+      "enforce_line_limit": true,
+      "prefer_length_over_semantic": true
+    },
+    "resolution_adaptive_font": {
+      "enabled": true,
+      "base_resolution": [
+        1920,
+        1080
+      ],
+      "min_font_size": 16,
+      "max_font_size": 60,
+      "scale_factor_limit": [
+        0.5,
+        2.0
+      ]
+    },
+    "videolingo_integration_options": {
+      "preserve_smart_features": true,
+      "override_semantic_splitting": true,
+      "use_enhanced_character_weights": true,
+      "apply_netflix_timing_standards": true
+    }
+  }
+}
