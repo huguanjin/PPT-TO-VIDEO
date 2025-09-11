@@ -1,0 +1,453 @@
+/* 任务4.1: 高级视频效果系统 - CSS样式 */
+
+.advanced-transition-system {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.system-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.system-title {
+  color: #2c3e50;
+  margin-bottom: 10px;
+}
+
+.system-title i {
+  color: #e74c3c;
+  margin-right: 10px;
+}
+
+.system-description {
+  color: #7f8c8d;
+  font-size: 16px;
+}
+
+.system-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+
+.effect-config-panel,
+.preview-panel {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.panel-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.panel-header i {
+  margin-right: 8px;
+}
+
+.config-section {
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.config-section:last-child {
+  border-bottom: none;
+}
+
+.config-label {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 15px;
+  display: block;
+}
+
+.transition-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.transition-card {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  border: 2px solid #ecf0f1;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.transition-card:hover {
+  border-color: #3498db;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.2);
+}
+
+.transition-card.active {
+  border-color: #e74c3c;
+  background: #fef8f8;
+}
+
+.transition-icon {
+  font-size: 24px;
+  color: #3498db;
+  margin-right: 15px;
+  min-width: 40px;
+}
+
+.transition-info h4 {
+  margin: 0 0 5px 0;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.transition-info p {
+  margin: 0 0 8px 0;
+  color: #7f8c8d;
+  font-size: 12px;
+}
+
+.transition-category {
+  background: #ecf0f1;
+  color: #34495e;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+}
+
+.config-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.config-row label {
+  font-weight: 500;
+  color: #34495e;
+}
+
+.input-with-unit {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.input-with-unit input {
+  width: 80px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.unit {
+  color: #7f8c8d;
+  font-size: 12px;
+}
+
+select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+}
+
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+input[type="range"] {
+  flex: 1;
+  max-width: 120px;
+}
+
+.slider-value {
+  font-weight: 600;
+  color: #e74c3c;
+  min-width: 30px;
+  text-align: right;
+  font-size: 12px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.preset-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.preset-btn {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 12px;
+}
+
+.preset-btn:hover {
+  background: #f8f9fa;
+  border-color: #3498db;
+}
+
+.action-buttons {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-preview {
+  background: #3498db;
+  color: white;
+}
+
+.btn-preview:hover:not(:disabled) {
+  background: #2980b9;
+}
+
+.btn-apply {
+  background: #27ae60;
+  color: white;
+}
+
+.btn-apply:hover:not(:disabled) {
+  background: #229954;
+}
+
+.btn-download {
+  background: #27ae60;
+  color: white;
+}
+
+.btn-download:hover {
+  background: #229954;
+}
+
+.preview-area {
+  padding: 20px;
+}
+
+.preview-placeholder {
+  text-align: center;
+  padding: 60px 20px;
+  color: #95a5a6;
+}
+
+.preview-placeholder i {
+  margin-bottom: 20px;
+}
+
+.effect-info h4 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+}
+
+.effect-info p {
+  color: #7f8c8d;
+  margin-bottom: 20px;
+}
+
+.info-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.stat {
+  display: flex;
+  justify-content: space-between;
+}
+
+.stat-label {
+  color: #7f8c8d;
+}
+
+.stat-value {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.config-preview {
+  margin-bottom: 20px;
+}
+
+.config-preview h5 {
+  color: #34495e;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.config-display {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 6px;
+}
+
+.config-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.config-item span:first-child {
+  color: #7f8c8d;
+}
+
+.config-item span:last-child {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.processing-status {
+  padding: 20px;
+  border-top: 1px solid #eee;
+}
+
+.status-header h4 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+}
+
+.progress-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background: #ecf0f1;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3498db, #2ecc71);
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-weight: 600;
+  color: #2c3e50;
+  min-width: 50px;
+  text-align: right;
+}
+
+.status-message {
+  color: #7f8c8d;
+  margin-bottom: 15px;
+}
+
+.result-info {
+  background: #d5f4e6;
+  padding: 15px;
+  border-radius: 6px;
+}
+
+.result-info h5 {
+  margin: 0 0 10px 0;
+  color: #27ae60;
+}
+
+.result-stats {
+  margin-bottom: 15px;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.loading-spinner {
+  text-align: center;
+  color: #3498db;
+}
+
+.loading-spinner i {
+  margin-bottom: 20px;
+}
+
+.text-success {
+  color: #27ae60;
+}
+
+.text-error {
+  color: #e74c3c;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .system-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .transition-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .preset-buttons {
+    grid-template-columns: 1fr;
+  }
+  
+  .config-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
