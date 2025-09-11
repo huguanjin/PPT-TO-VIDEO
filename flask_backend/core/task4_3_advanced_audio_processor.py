@@ -19,6 +19,7 @@ import asyncio
 import json
 import math
 import numpy as np
+from numpy.typing import NDArray
 import wave
 import struct
 import threading
@@ -219,7 +220,7 @@ class AdvancedAudioProcessor:
             logger.error(f"音频加载失败: {e}")
             raise
     
-    async def _load_wav_basic(self, file_path: str) -> Tuple[np.ndarray, AudioMetadata]:
+    async def _load_wav_basic(self, file_path: str) -> Tuple[NDArray[np.float32], AudioMetadata]:
         """基础WAV文件加载（不依赖第三方库）"""
         with wave.open(file_path, 'rb') as wav_file:
             frames = wav_file.readframes(-1)
@@ -227,27 +228,30 @@ class AdvancedAudioProcessor:
             channels = wav_file.getnchannels()
             sample_width = wav_file.getsampwidth()
             
-            # 转换为numpy数组
+            # 转换为numpy数组并归一化
+            audio_data: np.ndarray
             if sample_width == 1:
-                dtype = np.uint8
+                # 8位无符号整数
+                audio_data = np.frombuffer(frames, dtype="uint8")  # type: ignore
+                audio_data = audio_data.astype(np.float32) / 255.0  # 归一化到 [0, 1]
+                audio_data = audio_data * 2.0 - 1.0  # 转换到 [-1, 1]
             elif sample_width == 2:
-                dtype = np.int16
+                # 16位有符号整数
+                audio_data = np.frombuffer(frames, dtype="int16")  # type: ignore
+                audio_data = audio_data.astype(np.float32) / 32767.0  # 归一化到 [-1, 1]
             elif sample_width == 4:
-                dtype = np.int32
+                # 32位有符号整数
+                audio_data = np.frombuffer(frames, dtype="int32")  # type: ignore
+                audio_data = audio_data.astype(np.float32) / 2147483647.0  # 归一化到 [-1, 1]
             else:
-                dtype = np.float32
-            
-            audio_data = np.frombuffer(frames, dtype=dtype)
+                # 默认为32位浮点数
+                audio_data = np.frombuffer(frames, dtype="float32")  # type: ignore
             
             # 重塑为多声道格式
             if channels > 1:
                 audio_data = audio_data.reshape(-1, channels).T
             else:
                 audio_data = audio_data.reshape(1, -1)
-            
-            # 归一化到[-1, 1]
-            if dtype != np.float32:
-                audio_data = audio_data.astype(np.float32) / np.iinfo(dtype).max
             
             metadata = AudioMetadata(
                 sample_rate=sample_rate,
