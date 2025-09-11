@@ -73,13 +73,13 @@ class SpacyProcessor:
             return
             
         try:
-            self.nlp = spacy.load(self.model_name)
+            self.nlp = spacy.load(self.model_name)  # type: ignore
             logger.info(f"成功加载Spacy模型: {self.model_name}")
         except OSError:
             logger.warning(f"Spacy模型 {self.model_name} 未安装，尝试自动下载...")
             try:
-                spacy.cli.download(self.model_name)
-                self.nlp = spacy.load(self.model_name)
+                spacy.cli.download(self.model_name)  # type: ignore
+                self.nlp = spacy.load(self.model_name)  # type: ignore
                 logger.info(f"成功下载并加载Spacy模型: {self.model_name}")
             except Exception as e:
                 logger.error(f"无法下载Spacy模型 {self.model_name}: {e}")
@@ -104,7 +104,7 @@ class SpacyProcessor:
             return None
             
         try:
-            doc = self.nlp(text)
+            doc = self.nlp(text)  # type: ignore
             return doc
         except Exception as e:
             logger.warning(f"Spacy文本分析失败: {e}")
