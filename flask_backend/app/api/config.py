@@ -13,7 +13,7 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
 
 try:
-    from utils.logger import get_logger
+    from utils.logger import get_logger  # type: ignore
 except ImportError:
     import logging
     def get_logger(name):
@@ -60,6 +60,30 @@ except ImportError:
                 "background_color": subtitle_config.get("background_color", "rgba(0,0,0,0.8)"),
                 "position": subtitle_config.get("position", "bottom")
             }
+        
+        def _create_default_config(self):
+            """创建默认配置"""
+            default_config = {
+                "subtitle": {
+                    "font_family": "Microsoft YaHei",
+                    "font_size": 40,
+                    "font_color": "#FFFFFF",
+                    "background_color": "rgba(0,0,0,0.8)",
+                    "position": "bottom"
+                },
+                "output": {
+                    "format": "mp4",
+                    "quality": "high",
+                    "resolution": "1920x1080"
+                },
+                "tts": {
+                    "provider": "edge",
+                    "voice": "zh-CN-XiaoxiaoNeural",
+                    "rate": "0%",
+                    "volume": "0%"
+                }
+            }
+            return self.save_config(default_config)
     
     config_manager = SimpleConfigManager()
 
