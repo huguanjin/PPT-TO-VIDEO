@@ -28,8 +28,8 @@ def get_subtitle_config():
         
         # 加载配置
         loader = SmartSubtitleConfigLoader(config_dir)
-        config = loader.get_integrated_config(enable_ai=False)
-        status = loader.get_config_status()
+        config = loader.get_config()
+        status = loader.get_config_summary()
         
         return jsonify({
             "success": True,
@@ -64,23 +64,25 @@ def update_subtitle_config():
         # 验证和保存配置
         loader = SmartSubtitleConfigLoader(config_dir)
         
-        # 验证配置
-        is_valid, errors = loader.validate_config(data)
-        if not is_valid:
+        # 更新配置并验证
+        loader.update_config(data, save=False)
+        validation_result = loader.validate_config()
+        
+        if not validation_result.get('is_valid', True):
             return jsonify({
                 "success": False,
                 "error": "配置验证失败",
-                "details": errors
+                "details": validation_result.get('errors', [])
             }), 400
         
         # 保存配置
-        success = loader.save_smart_config(data)
-        if success:
+        try:
+            loader.save_config()
             return jsonify({
                 "success": True,
                 "message": "配置更新成功"
             })
-        else:
+        except Exception as save_error:
             return jsonify({
                 "success": False,
                 "error": "配置保存失败"
@@ -220,13 +222,14 @@ def calculate_text_weight():
 def get_subtitle_status():
     """获取智能字幕功能状态"""
     try:
-        from core.subtitle_config_loader import get_subtitle_config_status
+        from core.subtitle_config_loader import SmartSubtitleConfigLoader
         
         # 获取配置目录
         config_dir = Path(__file__).parent.parent / "config_data"
         
         # 获取状态
-        status = get_subtitle_config_status(config_dir)
+        loader = SmartSubtitleConfigLoader(config_dir)
+        status = loader.get_config_summary()
         
         # 检查模块可用性
         modules_status = {
@@ -265,9 +268,10 @@ def get_ai_config():
         config_dir = Path(__file__).parent.parent / "config_data"
         loader = SmartSubtitleConfigLoader(config_dir)
         
-        # 获取AI配置
-        ai_config = loader.load_tts_config()
-        smart_config = loader.load_smart_config()
+        # 获取配置
+        config = loader.get_config()
+        ai_config = config.get('ai', {})
+        smart_config = config.get('smart_subtitle', {})
         
         return jsonify({
             "success": True,
@@ -301,7 +305,8 @@ def update_ai_config():
         loader = SmartSubtitleConfigLoader(config_dir)
         
         # 加载当前配置
-        smart_config = loader.load_smart_config()
+        config = loader.get_config()
+        smart_config = config.get('smart_subtitle', {})
         
         # 更新AI相关配置
         smart_config["use_ai_splitting"] = data.get("enabled", False)
@@ -309,7 +314,11 @@ def update_ai_config():
             smart_config["ai_config"] = data["ai_config"]
         
         # 保存配置
-        success = loader.save_smart_config(smart_config)
+        try:
+            loader.update_config({"smart_subtitle": smart_config}, save=True)
+            success = True
+        except Exception:
+            success = False
         
         if success:
             return jsonify({
