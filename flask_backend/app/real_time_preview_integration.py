@@ -8,7 +8,7 @@
 from flask import Flask
 from flask_socketio import SocketIO
 
-def register_real_time_preview_apis(app: Flask, socketio: SocketIO = None):
+def register_real_time_preview_apis(app: Flask, socketio = None):
     """
     注册实时预览相关的API路由
     
@@ -115,12 +115,11 @@ def create_app_with_real_time_preview(config_class):
     register_real_time_preview_apis(app, socketio)
     
     # 注册其他必要的API
-    from .api import enhanced_workflow, tts, enhanced_tts, multilingual_api
+    from .api import enhanced_workflow, tts, enhanced_tts
     
     app.register_blueprint(enhanced_workflow.bp)
     app.register_blueprint(tts.bp)
     app.register_blueprint(enhanced_tts.bp)
-    app.register_blueprint(multilingual_api.bp)
     
     app.logger.info("🎬 实时预览功能已完全集成到Flask应用")
     
