@@ -1,155 +1,94 @@
-# PPT转视频工具 Flask后端
+# PPT转视频工作流 - 文档中心
 
-这是PPT转视频工具的Flask后端重构版本，提供统一的API接口服务。
+## 📋 文档导航
 
-## 项目结构
+本项目包含完整的PPT转视频教程生成工具文档，按功能分类组织。
 
-```
-flask_backend/
-├── app/                    # Flask应用目录
-│   ├── __init__.py        # 应用工厂
-│   ├── api/               # API蓝图
-│   │   ├── common.py      # 通用接口
-│   │   ├── pptist.py      # PPTist导入接口
-│   │   ├── workflow.py    # 工作流接口
-│   │   └── project.py     # 项目管理接口
-│   ├── models/            # 数据模型
-│   └── services/          # 业务逻辑服务
-├── config/                # 配置文件
-│   └── settings.py       # 应用配置
-├── app.py                # 应用入口
-├── requirements.txt      # 依赖包
-├── start_flask.bat      # Windows启动脚本
-└── start_flask.sh       # Linux启动脚本
-```
+## 📁 文档结构
 
-## 主要功能
+### 用户指南 (`user-guides/`)
+为用户提供的使用指南和部署说明：
 
-### 1. PPTist导入 (`/api/pptist/`)
-- `POST /api/pptist/import` - 导入PPTist导出数据
-- `GET /api/pptist/status/<task_id>` - 获取导入状态
-- `GET /api/pptist/projects` - 获取项目列表
-- `GET /api/pptist/project/<project_name>` - 获取项目详情
-- `DELETE /api/pptist/project/<project_name>` - 删除项目
+- **[智能字幕功能使用指南](user-guides/智能字幕功能使用指南.md)** - Netflix级别字幕生成功能
+- **[Netflix级别字幕配置指南](user-guides/Netflix级别字幕配置指南.md)** - 专业字幕配置说明
+- **[AI前置断句内容优化功能使用指南](user-guides/AI前置断句内容优化功能使用指南.md)** - AI辅助断句功能
+- **[Ubuntu宝塔面板部署指南](user-guides/Ubuntu宝塔面板部署指南.md)** - 生产环境部署
+- **[部署检查清单](user-guides/部署检查清单.md)** - 部署验证清单
 
-### 2. 工作流处理 (`/api/workflow/`)
-- `POST /api/workflow/start` - 启动视频生成工作流
-- `GET /api/workflow/status/<task_id>` - 获取处理状态
-- `GET /api/workflow/result/<task_id>` - 获取处理结果
-- `GET /api/workflow/download/<task_id>` - 下载生成文件
-- `GET /api/workflow/config` - 获取工作流配置
-- `POST /api/workflow/cancel/<task_id>` - 取消任务
+### 技术文档 (`technical/`)
+技术架构和实现细节：
 
-### 3. 项目管理 (`/api/project/`)
-- `GET /api/project/list` - 获取所有项目列表
-- `GET /api/project/<project_name>` - 获取项目详情
-- `DELETE /api/project/<project_name>` - 删除项目
-- `GET /api/project/<project_name>/download` - 下载项目视频
-- `POST /api/project/create` - 创建新项目
+- **[项目结构分析报告](technical/项目结构分析报告.md)** - 完整项目架构分析
+- **[PPTist持久化功能优化完成报告](technical/文档-PPTist持久化功能优化完成报告.md)** - 持久化功能实现
 
-### 4. 通用接口
-- `GET /health` - 健康检查
-- `GET /info` - 系统信息
-- `GET /docs` - API文档
+### 完成报告 (`reports/`)
+项目里程碑和重要功能完成报告：
 
-## 安装和运行
+- **[VideoLingo技术融合项目最终完成报告](reports/VideoLingo技术融合项目_最终完成报告.md)** - 核心技术融合
+- **[PPTist真正原生导出功能实现报告](reports/PPTist真正原生导出功能实现报告.md)** - 原生导出功能
+- **[VideoLingo技术融合第三阶段系统集成完成报告](reports/VideoLingo技术融合_第三阶段系统集成完成报告.md)** - 系统集成报告
 
-### 1. 安装依赖
-```bash
-pip install -r requirements.txt
-```
+### 归档文档 (`archived/`)
+历史配置和实现报告，供参考：
 
-### 2. 启动服务
+- AI配置相关文档
+- TTS配置实现报告
+- 历史功能优化报告
 
-#### Windows
-```bash
-start_flask.bat
-```
+## 🚀 快速开始
 
-#### Linux/Mac
-```bash
-chmod +x start_flask.sh
-./start_flask.sh
-```
+### 开发环境
+1. 查看 **开发环境启动指南.md** (即将整理)
+2. 参考 **快速测试指南.md** (即将整理)
 
-#### 直接运行
-```bash
-python app.py
-```
+### 生产部署
+1. 使用 **[部署检查清单](user-guides/部署检查清单.md)**
+2. 参考 **[Ubuntu宝塔面板部署指南](user-guides/Ubuntu宝塔面板部署指南.md)**
 
-### 3. 访问服务
-- API服务: http://localhost:5000
-- 健康检查: http://localhost:5000/health
-- API文档: http://localhost:5000/docs
+### 功能使用
+1. **智能字幕**: 查看 **[智能字幕功能使用指南](user-guides/智能字幕功能使用指南.md)**
+2. **Netflix级字幕**: 参考 **[Netflix级别字幕配置指南](user-guides/Netflix级别字幕配置指南.md)**
+3. **AI优化**: 使用 **[AI前置断句内容优化功能使用指南](user-guides/AI前置断句内容优化功能使用指南.md)**
 
-## 配置说明
+## 🔧 技术架构
 
-### 环境变量
-- `FLASK_ENV` - Flask环境 (development/production)
-- `FLASK_DEBUG` - 调试模式 (1/0)
-- `SECRET_KEY` - 应用密钥
+本项目采用前后端分离架构：
 
-### 配置文件
-配置文件位于 `config/settings.py`，包含：
-- 文件上传限制
-- 目录路径配置
-- 任务超时设置
-- 日志配置
+- **前端**: Vue3 + TypeScript + Vite + Element Plus
+- **后端**: Flask + Python + Blueprint架构
+- **AI集成**: VideoLingo + OpenAI + Edge TTS + Fish TTS
+- **视频处理**: MoviePy + FFmpeg
+- **字幕处理**: Netflix级别字幕引擎
 
-## API使用示例
+详细架构说明请参考 **[项目结构分析报告](technical/项目结构分析报告.md)**
 
-### 导入PPTist数据
-```bash
-curl -X POST http://localhost:5000/api/pptist/import \
-  -F "project_name=test_project" \
-  -F "json_data={\"slides\":[...]}" \
-  -F "images=@slide1.jpg" \
-  -F "images=@slide2.jpg"
-```
+## 📊 项目状态
 
-### 启动工作流
-```bash
-curl -X POST http://localhost:5000/api/workflow/start \
-  -H "Content-Type: application/json" \
-  -d '{"project_name": "test_project", "config": {...}}'
-```
+项目当前处于**企业级完成状态**，包含：
 
-### 获取项目列表
-```bash
-curl http://localhost:5000/api/project/list
-```
+✅ 完整的前后端架构  
+✅ 智能字幕生成系统  
+✅ Netflix级别字幕配置  
+✅ 多TTS引擎支持  
+✅ AI内容优化功能  
+✅ 实时预览功能  
+✅ 原生PPT导出  
+✅ 完整的配置管理  
 
-## 与原有FastAPI的区别
+## 📝 文档更新
 
-1. **统一入口**: 所有API都通过一个Flask应用提供服务
-2. **蓝图架构**: 使用Flask蓝图组织不同模块的API
-3. **简化配置**: 统一的配置管理
-4. **更好的错误处理**: 统一的错误处理机制
-5. **易于扩展**: 清晰的项目结构便于添加新功能
+- **最后更新**: 2025年9月11日
+- **文档版本**: v2.0 (重构后)
+- **维护状态**: 积极维护
 
-## 开发指南
+## 🤝 贡献指南
 
-### 添加新API
-1. 在对应的蓝图文件中添加新路由
-2. 或创建新的蓝图文件
-3. 在`app/__init__.py`中注册新蓝图
+如需更新文档：
+1. 用户指南类 → `user-guides/`
+2. 技术文档类 → `technical/`
+3. 完成报告类 → `reports/`
+4. 历史文档类 → `archived/`
 
-### 添加新配置
-在`config/settings.py`中添加配置项
+---
 
-### 错误处理
-所有API都返回统一格式的JSON响应：
-```json
-{
-  "success": true/false,
-  "message": "消息内容",
-  "data": {...}  // 成功时的数据
-}
-```
-
-## 注意事项
-
-1. 当前版本为初始重构版本，部分功能可能需要进一步完善
-2. 后台任务处理建议使用Celery等专业任务队列
-3. 生产环境建议使用Gunicorn等WSGI服务器
-4. 需要确保原有的核心模块（core/、utils/）可以正常导入
+**注**: 此文档结构经过2025年9月11日清理优化，提供更清晰的导航和分类。
