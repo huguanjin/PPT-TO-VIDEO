@@ -22,20 +22,20 @@ def process_video(file, dubbing=False, is_retry=False):
     
     text_steps = [
         ("🎥 Processing input file", partial(process_input_file, file)),
-        ("🎙️ Transcribing with Whisper", partial(_2_asr.transcribe)),
+        ("🎙️ Transcribing with Whisper", partial(_2_asr.transcribe)),  # type: ignore
         ("✂️ Splitting sentences", split_sentences),
         ("📝 Summarizing and translating", summarize_and_translate),
         ("⚡ Processing and aligning subtitles", process_and_align_subtitles),
-        ("🎬 Merging subtitles to video", _7_sub_into_vid.merge_subtitles_to_video),
+        ("🎬 Merging subtitles to video", _7_sub_into_vid.merge_subtitles_to_video),  # type: ignore
     ]
     
     if dubbing:
         dubbing_steps = [
             ("🔊 Generating audio tasks", gen_audio_tasks),
-            ("🎵 Extracting reference audio", _9_refer_audio.extract_refer_audio_main),
-            ("🗣️ Generating audio", _10_gen_audio.gen_audio),
-            ("🔄 Merging full audio", _11_merge_audio.merge_full_audio),
-            ("🎞️ Merging dubbing to video", _12_dub_to_vid.merge_video_audio),
+            ("🎵 Extracting reference audio", _9_refer_audio.extract_refer_audio_main),  # type: ignore
+            ("🗣️ Generating audio", _10_gen_audio.gen_audio),  # type: ignore
+            ("🔄 Merging full audio", _11_merge_audio.merge_full_audio),  # type: ignore
+            ("🎞️ Merging dubbing to video", _12_dub_to_vid.merge_video_audio),  # type: ignore
         ]
         text_steps.extend(dubbing_steps)
     
@@ -78,8 +78,8 @@ def prepare_output_folder(output_folder):
 
 def process_input_file(file):
     if file.startswith('http'):
-        _1_ytdlp.download_video_ytdlp(file, resolution=load_key(YTB_RESOLUTION_KEY))
-        video_file = _1_ytdlp.find_video_files()
+        _1_ytdlp.download_video_ytdlp(file, resolution=load_key(YTB_RESOLUTION_KEY))  # type: ignore
+        video_file = _1_ytdlp.find_video_files()  # type: ignore
     else:
         input_file = os.path.join('batch', 'input', file)
         output_file = os.path.join(OUTPUT_DIR, file)
@@ -88,17 +88,17 @@ def process_input_file(file):
     return {'video_file': video_file}
 
 def split_sentences():
-    _3_1_split_nlp.split_by_spacy()
-    _3_2_split_meaning.split_sentences_by_meaning()
+    _3_1_split_nlp.split_by_spacy()  # type: ignore
+    _3_2_split_meaning.split_sentences_by_meaning()  # type: ignore
 
 def summarize_and_translate():
-    _4_1_summarize.get_summary()
-    _4_2_translate.translate_all()
+    _4_1_summarize.get_summary()  # type: ignore
+    _4_2_translate.translate_all()  # type: ignore
 
 def process_and_align_subtitles():
-    _5_split_sub.split_for_sub_main()
-    _6_gen_sub.align_timestamp_main()
+    _5_split_sub.split_for_sub_main()  # type: ignore
+    _6_gen_sub.align_timestamp_main()  # type: ignore
 
 def gen_audio_tasks():
-    _8_1_audio_task.gen_audio_task_main()
-    _8_2_dub_chunks.gen_dub_chunks()
+    _8_1_audio_task.gen_audio_task_main()  # type: ignore
+    _8_2_dub_chunks.gen_dub_chunks()  # type: ignore

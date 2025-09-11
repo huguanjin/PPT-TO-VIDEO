@@ -28,16 +28,16 @@ def process_batch():
 
     df = pd.read_excel('batch/tasks_setting.xlsx')
     for index, row in df.iterrows():
-        if pd.isna(row['Status']) or 'Error' in str(row['Status']):
+        if pd.isna(row['Status']).any() if hasattr(pd.isna(row['Status']), 'any') else pd.isna(row['Status']) or 'Error' in str(row['Status']):  # type: ignore
             total_tasks = len(df)
             video_file = row['Video File']
             
-            if not pd.isna(row['Status']) and 'Error' in str(row['Status']):
-                console.print(Panel(f"Retrying failed task: {video_file}\nTask {index + 1}/{total_tasks}", 
+            if not (pd.isna(row['Status']).any() if hasattr(pd.isna(row['Status']), 'any') else pd.isna(row['Status'])) and 'Error' in str(row['Status']):  # type: ignore
+                console.print(Panel(f"Retrying failed task: {video_file}\nTask {index + 1}/{total_tasks}",  # type: ignore 
                                  title="[bold yellow]Retry Task", expand=False))
                 
                 # Restore files from batch/output/ERROR to output
-                error_folder = os.path.join('batch', 'output', 'ERROR', os.path.splitext(video_file)[0])
+                error_folder = os.path.join('batch', 'output', 'ERROR', os.path.splitext(str(video_file))[0])  # type: ignore
                 
                 if os.path.exists(error_folder):
                     # Ensure the output folder exists
@@ -61,7 +61,7 @@ def process_batch():
                 else:
                     console.print(f"[yellow]Warning: Error folder not found: {error_folder}")
             else:
-                console.print(Panel(f"Now processing task: {video_file}\nTask {index + 1}/{total_tasks}", 
+                console.print(Panel(f"Now processing task: {video_file}\nTask {index + 1}/{total_tasks}",  # type: ignore 
                                  title="[bold blue]Current Task", expand=False))
             
             source_language = row['Source Language']
@@ -70,9 +70,9 @@ def process_batch():
             original_source_lang, original_target_lang = record_and_update_config(source_language, target_language)
             
             try:
-                dubbing = 0 if pd.isna(row['Dubbing']) else int(row['Dubbing'])
-                is_retry = not pd.isna(row['Status']) and 'Error' in str(row['Status'])
-                status, error_step, error_message = process_video(video_file, dubbing, is_retry)
+                dubbing = 0 if (pd.isna(row['Dubbing']).any() if hasattr(pd.isna(row['Dubbing']), 'any') else pd.isna(row['Dubbing'])) else int(row['Dubbing'])  # type: ignore
+                is_retry = not (pd.isna(row['Status']).any() if hasattr(pd.isna(row['Status']), 'any') else pd.isna(row['Status'])) and 'Error' in str(row['Status'])  # type: ignore
+                status, error_step, error_message = process_video(str(video_file), bool(dubbing), is_retry)  # type: ignore
                 status_msg = "Done" if status else f"Error: {error_step} - {error_message}"
             except Exception as e:
                 status_msg = f"Error: Unhandled exception - {str(e)}"

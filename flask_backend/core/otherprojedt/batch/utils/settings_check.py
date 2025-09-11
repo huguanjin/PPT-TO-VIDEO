@@ -36,15 +36,15 @@ def check_settings():
 
         if video_file.startswith('http'):
             url_tasks += 1
-        elif os.path.isfile(os.path.join(INPUT_FOLDER, video_file)):
+        elif os.path.isfile(os.path.join(INPUT_FOLDER, str(video_file))):  # type: ignore
             local_video_tasks += 1
         else:
-            console.print(Panel(f"Invalid video file or URL 「{video_file}」", title=f"[bold red]Error in row {index + 2}", expand=False))
+            console.print(Panel(f"Invalid video file or URL 「{video_file}」", title=f"[bold red]Error in row {index + 2}", expand=False))  # type: ignore
             all_passed = False
 
-        if not pd.isna(dubbing):
-            if int(dubbing) not in VALID_DUBBING_VALUES:
-                console.print(Panel(f"Invalid dubbing value 「{dubbing}」", title=f"[bold red]Error in row {index + 2}", expand=False))
+        if not (pd.isna(dubbing).any() if hasattr(pd.isna(dubbing), 'any') else pd.isna(dubbing)):  # type: ignore
+            if int(dubbing) not in VALID_DUBBING_VALUES:  # type: ignore
+                console.print(Panel(f"Invalid dubbing value 「{dubbing}」", title=f"[bold red]Error in row {index + 2}", expand=False))  # type: ignore
                 all_passed = False
 
     if all_passed:
