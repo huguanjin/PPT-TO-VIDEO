@@ -2,7 +2,7 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "运行PPT转视频工具",
+			"label": "运行PPT转视频工具 (Streamlit UI)",
 			"type": "shell",
 			"command": "D:/My-LocalGitFile/makemoneyproject/01.edu-course-aotu/PPTist/ppt_to_video/venv/Scripts/python.exe",
 			"args": [
@@ -16,7 +16,29 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "启动PPTist导入API服务器",
+			"label": "启动统一Flask后端服务器 (推荐)",
+			"type": "shell",
+			"command": "D:/My-LocalGitFile/makemoneyproject/01.edu-course-aotu/PPTist/ppt_to_video/venv/Scripts/python.exe",
+			"args": [
+				"flask_backend/unified_app.py"
+			],
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": [],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "new",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"options": {
+				"cwd": "${workspaceFolder}"
+			}
+		},
+		{
+			"label": "启动PPTist导入API服务器 (旧版本)",
 			"type": "shell",
 			"command": "D:/My-LocalGitFile/makemoneyproject/01.edu-course-aotu/PPTist/ppt_to_video/venv/Scripts/python.exe",
 			"args": [
@@ -31,6 +53,19 @@
 			],
 			"isBackground": true,
 			"group": "build"
+		},
+		{
+			"label": "启动原有Flask服务器",
+			"type": "shell",
+			"command": "D:/My-LocalGitFile/makemoneyproject/01.edu-course-aotu/PPTist/ppt_to_video/venv/Scripts/python.exe",
+			"args": [
+				"flask_backend/app.py"
+			],
+			"group": "build",
+			"isBackground": true,
+			"options": {
+				"cwd": "${workspaceFolder}"
+			}
 		}
 	]
 }

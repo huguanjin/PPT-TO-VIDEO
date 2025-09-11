@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>前后端连接测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .result { margin-top: 10px; padding: 10px; background: #f5f5f5; }
+        .error { background: #ffebee; color: #d32f2f; }
+        .success { background: #e8f5e9; color: #2e7d32; }
+    </style>
+</head>
+<body>
+    <h1>前后端连接测试</h1>
+    
+    <div class="test-section">
+        <h3>1. 健康检查测试</h3>
+        <button onclick="testHealth()">测试健康检查</button>
+        <div id="healthResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. VideoLingo集成测试</h3>
+        <button onclick="testVideoLingo()">测试VideoLingo</button>
+        <div id="videoLingoResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. API端点列表测试</h3>
+        <button onclick="testMultipleEndpoints()">测试多个端点</button>
+        <div id="multipleResult" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000';
+
+        function displayResult(elementId, content, isError = false) {
+            const element = document.getElementById(elementId);
+            element.className = 'result ' + (isError ? 'error' : 'success');
+            element.innerHTML = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+        }
+
+        async function testHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                displayResult('healthResult', `状态: ${response.status}\n响应: ${JSON.stringify(data, null, 2)}`);
+            } catch (error) {
+                displayResult('healthResult', `错误: ${error.message}`, true);
+            }
+        }
+
+        async function testVideoLingo() {
+            try {
+                const healthResponse = await fetch(`${API_BASE}/api/videolingo/health`);
+                const healthData = await healthResponse.json();
+                
+                const versionResponse = await fetch(`${API_BASE}/api/videolingo/version`);
+                const versionData = await versionResponse.json();
+
+                const result = {
+                    health: { status: healthResponse.status, data: healthData },
+                    version: { status: versionResponse.status, data: versionData }
+                };
+
+                displayResult('videoLingoResult', result);
+            } catch (error) {
+                displayResult('videoLingoResult', `错误: ${error.message}`, true);
+            }
+        }
+
+        async function testMultipleEndpoints() {
+            const endpoints = [
+                '/health',
+                '/api/videolingo/health',
+                '/api/videolingo/version',
+                '/api/videolingo/status',
+                '/api/config',
+                '/api/workspace/status'
+            ];
+
+            const results = {};
+
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(`${API_BASE}${endpoint}`);
+                    const data = await response.json();
+                    results[endpoint] = {
+                        status: response.status,
+                        ok: response.ok,
+                        data: data
+                    };
+                } catch (error) {
+                    results[endpoint] = {
+                        error: error.message
+                    };
+                }
+            }
+
+            displayResult('multipleResult', results);
+        }
+
+        // 页面加载时自动测试连接
+        window.onload = function() {
+            console.log('页面加载完成，开始测试后端连接...');
+            testHealth();
+        };
+    </script>
+</body>
+</html>

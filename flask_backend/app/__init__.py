@@ -74,6 +74,16 @@ def register_blueprints(app):
     from app.api.pptist_export import pptist_export_bp
     from app.api.workspace import workspace_bp
     
+    # 导入VideoLingo集成蓝图
+    videolingo_bp = None
+    try:
+        from app.api.videolingo import bp as videolingo_bp
+        print("✅ videolingo集成模块导入成功")
+    except ImportError as e:
+        print(f"❌ videolingo集成模块导入失败: {e}")
+    except Exception as e:
+        print(f"❌ videolingo集成模块加载错误: {e}")
+
     # 导入增强的API蓝图（带详细错误处理）
     enhanced_apis_available = True
     enhanced_workflow_bp = None
@@ -160,6 +170,19 @@ def register_blueprints(app):
     app.register_blueprint(download_bp, url_prefix='/api/download')
     app.register_blueprint(pptist_export_bp, url_prefix='/api/pptist_export')
     app.register_blueprint(workspace_bp, url_prefix='/api/workspace')
+    
+    # 注册VideoLingo集成蓝图
+    if videolingo_bp is not None:
+        try:
+            app.register_blueprint(videolingo_bp, url_prefix='/api/videolingo')
+            print("✅ videolingo蓝图注册成功: /api/videolingo/*")
+            
+            # 尝试注册VideoLingo的具体API
+            from app.api.videolingo import register_videolingo_apis
+            register_videolingo_apis(app)
+            
+        except Exception as e:
+            print(f"❌ videolingo蓝图注册失败: {e}")
     
     # 注册智能字幕API
     if smart_subtitle_bp is not None:
