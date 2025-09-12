@@ -519,9 +519,14 @@ class AudioIntelligentSyncOptimizer:
         else:
             stats.update({"audio_sync_rate": 0.0, "beat_alignment_rate": 0.0, "emotion_enhancement_rate": 0.0})
         
+        # 复制sync_rules并转换枚举为字符串值
+        serializable_sync_rules = self.sync_rules.copy()
+        if 'precision_level' in serializable_sync_rules:
+            serializable_sync_rules['precision_level'] = serializable_sync_rules['precision_level'].value
+        
         return {
             "audio_sync_statistics": stats,
-            "sync_rules": self.sync_rules,
+            "sync_rules": serializable_sync_rules,
             "configuration": self.config,
             "performance_metrics": {
                 "precision_level": self.sync_rules['precision_level'].value,

@@ -160,6 +160,16 @@ def register_blueprints(app):
     except Exception as e:
         print(f"❌ prompt_api模块加载错误: {e}")
     
+    # 导入自定义AI模型管理API
+    custom_ai_api = None
+    try:
+        from api.custom_ai_api import custom_ai_api
+        print("✅ custom_ai_api模块导入成功")
+    except ImportError as e:
+        print(f"❌ custom_ai_api模块导入失败: {e}")
+    except Exception as e:
+        print(f"❌ custom_ai_api模块加载错误: {e}")
+    
     # 注册原有蓝图
     app.register_blueprint(common_bp)
     app.register_blueprint(pptist_bp, url_prefix='/api/pptist')
@@ -215,6 +225,14 @@ def register_blueprints(app):
             print("✅ prompt_api蓝图注册成功: /api/prompts/*")
         except Exception as e:
             print(f"❌ prompt_api蓝图注册失败: {e}")
+    
+    # 注册自定义AI模型管理API
+    if custom_ai_api is not None:
+        try:
+            app.register_blueprint(custom_ai_api)
+            print("✅ custom_ai_api蓝图注册成功: /api/custom-ai/*")
+        except Exception as e:
+            print(f"❌ custom_ai_api蓝图注册失败: {e}")
     
     # 注册增强的API蓝图（只注册成功导入的）
     enhanced_count = 0

@@ -336,8 +336,12 @@ class SubtitleGenerator:
                     # 收集所有文本内容用于语义分析
                     all_text_content = self._collect_content_for_semantic_analysis(scripts_data, all_subtitles)
                     
-                    # 构建音频时间段信息
-                    audio_segments = [(sub.start.total_seconds(), sub.end.total_seconds()) for sub in all_subtitles]
+                    # 构建音频时间段信息 - 修复SubRipTime转换
+                    def get_seconds_from_subrip_time(srt_time):
+                        """将SubRipTime转换为秒数"""
+                        return srt_time.hours * 3600 + srt_time.minutes * 60 + srt_time.seconds + srt_time.milliseconds / 1000.0
+                    
+                    audio_segments = [(get_seconds_from_subrip_time(sub.start), get_seconds_from_subrip_time(sub.end)) for sub in all_subtitles]
                     
                     # 执行内容语义分析
                     semantic_profile = await self.semantic_alignment_optimizer.analyze_content_semantics(

@@ -577,9 +577,14 @@ class VideoFrameSyncOptimizer:
         stats = self.sync_stats.copy()
         stats["frame_alignment_rate"] = (stats["frame_aligned_segments"] / max(stats["total_segments"], 1)) * 100
         
+        # 复制sync_rules并转换枚举为字符串值
+        serializable_sync_rules = self.sync_rules.copy()
+        if 'target_precision' in serializable_sync_rules:
+            serializable_sync_rules['target_precision'] = serializable_sync_rules['target_precision'].value
+        
         return {
             "sync_statistics": stats,
-            "sync_rules": self.sync_rules,
+            "sync_rules": serializable_sync_rules,
             "configuration": self.config,
             "quality_metrics": {
                 "precision_level": self.sync_rules['target_precision'].value,

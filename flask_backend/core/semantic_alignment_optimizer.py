@@ -656,9 +656,14 @@ class SemanticAlignmentOptimizer:
                 "emotional_enhancement_rate": 0.0
             })
         
+        # 复制alignment_rules并转换枚举为字符串值
+        serializable_alignment_rules = self.alignment_rules.copy()
+        if 'precision_level' in serializable_alignment_rules:
+            serializable_alignment_rules['precision_level'] = serializable_alignment_rules['precision_level'].value
+        
         return {
             "semantic_sync_statistics": stats,
-            "alignment_rules": self.alignment_rules,
+            "alignment_rules": serializable_alignment_rules,
             "configuration": self.config,
             "ai_capabilities": {
                 "transformer_models_available": TRANSFORMER_LIBS_AVAILABLE,
