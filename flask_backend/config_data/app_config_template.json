@@ -9,7 +9,7 @@
   "video_bitrate": 2000,
   "video_codec": "libx264",
   "include_subtitles": true,
-  "subtitle_fontsize": 50,
+  "subtitle_fontsize": 18,
   "subtitle_color": "white",
   "subtitle_position": "bottom",
   "last_updated": null,

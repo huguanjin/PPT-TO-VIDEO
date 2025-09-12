@@ -340,6 +340,32 @@ def get_workflow_config():
                     {'id': 'default', 'name': '默认样式'},
                     {'id': 'netflix', 'name': 'Netflix样式'},
                     {'id': 'youtube', 'name': 'YouTube样式'}
+                ],
+                'advanced_features': [
+                    {
+                        'id': 'enhanced_subtitles',
+                        'name': '增强字幕生成',
+                        'description': 'Netflix级字幕处理算法',
+                        'default': False
+                    },
+                    {
+                        'id': 'frame_sync_optimization',
+                        'name': '🎨 视频帧同步优化',
+                        'description': '毫秒级精确帧同步，提升字幕与视频的同步精度',
+                        'default': True
+                    },
+                    {
+                        'id': 'intelligent_timing',
+                        'name': '智能时长优化',
+                        'description': '基于语速和内容的智能字幕时长调整',
+                        'default': True
+                    }
+                ],
+                'sync_precision_levels': [
+                    {'id': 'basic', 'name': '基础同步 (±100ms)', 'description': '适合一般场景'},
+                    {'id': 'standard', 'name': '标准同步 (±33ms)', 'description': '适合大多数专业场景'},
+                    {'id': 'high', 'name': '高精度同步 (±16ms)', 'description': '推荐，适合高质量制作'},
+                    {'id': 'perfect', 'name': '帧完美同步 (±1帧)', 'description': '最高精度，适合电影级制作'}
                 ]
             }
         })

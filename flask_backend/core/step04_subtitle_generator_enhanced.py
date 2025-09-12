@@ -29,6 +29,9 @@ class EnhancedSubtitleGenerator:
         # 初始化多行修复器
         self.multiline_fixer = SubtitleMultilineFixer()
         
+        # 🎯 加载多行修复强化配置
+        self._load_multiline_enhancement_config()
+        
         # 增强的字幕配置
         self.subtitle_config = {
             "max_chars_per_line": 30,           # 每行最大字符数 (优化后)
@@ -44,8 +47,167 @@ class EnhancedSubtitleGenerator:
             "enable_multiline_fix": True,       # 启用多行修复
         }
         
+        # 视频分辨率缓存 (用于字体大小自适应)
+        self.video_resolution = None
+        self.adaptive_font_size = 18  # 默认字体大小
+        
+    def _load_multiline_enhancement_config(self):
+        """🎯 加载多行修复强化配置"""
+        try:
+            config_path = self.project_dir / "flask_backend" / "config_data" / "multiline_enhancement_config.json"
+            if config_path.exists():
+                import json
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    self.enhancement_config = config.get("multiline_fix_enhancement", {})
+                    self.logger.info("多行修复强化配置已加载")
+            else:
+                # 默认强化配置
+                self.enhancement_config = {
+                    "enforcement_levels": {
+                        "step04_subtitle_generator": {
+                            "enabled": True,
+                            "strict_mode": True,
+                            "max_lines": 2,
+                            "force_optimization": True
+                        }
+                    }
+                }
+                self.logger.info("使用默认多行修复强化配置")
+        except Exception as e:
+            self.logger.warning(f"多行修复强化配置加载失败: {e}")
+            self.enhancement_config = {}
+    
+    def _enforce_multiline_fix(self, text: str, context: str = "general") -> str:
+        """
+        🎯 强制执行多行修复 - 确保严格的Netflix标准
+        
+        Args:
+            text: 待处理的字幕文本
+            context: 处理上下文 ("generation", "cleaning", "validation")
+        """
+        try:
+            # 检查是否启用强化模式
+            step04_config = self.enhancement_config.get("enforcement_levels", {}).get("step04_subtitle_generator", {})
+            
+            if not step04_config.get("enabled", True):
+                return text
+                
+            # 强制模式下进行多轮优化
+            if step04_config.get("strict_mode", True):
+                optimized_text = text
+                max_passes = step04_config.get("optimization_passes", 2)
+                
+                for i in range(max_passes):
+                    prev_text = optimized_text
+                    optimized_text = self.multiline_fixer.optimize_subtitle_text(optimized_text)
+                    
+                    # 如果文本不再变化，停止优化
+                    if optimized_text == prev_text:
+                        break
+                
+                # 验证结果
+                validation_result = self._validate_multiline_compliance(optimized_text)
+                
+                if not validation_result["compliant"]:
+                    self.logger.warning(f"多行修复验证失败 [{context}]: {validation_result}")
+                    
+                    # 强制修复模式
+                    if step04_config.get("force_optimization", True):
+                        optimized_text = self._force_compliance_fix(optimized_text)
+                        self.logger.info(f"应用强制合规修复 [{context}]")
+                
+                return optimized_text
+            else:
+                # 标准模式
+                return self.multiline_fixer.optimize_subtitle_text(text)
+                
+        except Exception as e:
+            self.logger.error(f"强制多行修复失败 [{context}]: {e}")
+            return text
+    
+    def _validate_multiline_compliance(self, text: str) -> Dict[str, Any]:
+        """验证多行合规性"""
+        try:
+            lines = [line.strip() for line in text.split('\n') if line.strip()]
+            line_count = len(lines)
+            
+            # Netflix标准验证
+            max_lines = self.enhancement_config.get("quality_standards", {}).get("netflix_compliance", {}).get("max_lines_per_subtitle", 2)
+            max_chars = self.enhancement_config.get("quality_standards", {}).get("netflix_compliance", {}).get("max_chars_per_line", 30)
+            
+            compliance_issues = []
+            
+            # 检查行数
+            if line_count > max_lines:
+                compliance_issues.append(f"行数超限: {line_count} > {max_lines}")
+            
+            # 检查每行字符数
+            for i, line in enumerate(lines):
+                char_weight = self.multiline_fixer._calculate_text_weight(line)
+                if char_weight > max_chars:
+                    compliance_issues.append(f"第{i+1}行字符超限: {char_weight:.1f} > {max_chars}")
+            
+            return {
+                "compliant": len(compliance_issues) == 0,
+                "line_count": line_count,
+                "issues": compliance_issues,
+                "lines": lines
+            }
+            
+        except Exception as e:
+            return {
+                "compliant": False,
+                "error": str(e)
+            }
+    
+    def _force_compliance_fix(self, text: str) -> str:
+        """强制合规修复 - 最后手段"""
+        try:
+            lines = [line.strip() for line in text.split('\n') if line.strip()]
+            
+            if len(lines) <= 2:
+                return text  # 已经合规
+            
+            # 强制合并为2行
+            if len(lines) > 2:
+                # 策略1: 合并相邻短行
+                combined_lines = []
+                i = 0
+                while i < len(lines) and len(combined_lines) < 2:
+                    current_line = lines[i]
+                    
+                    # 如果还有下一行且当前行较短，尝试合并
+                    if i + 1 < len(lines) and len(combined_lines) < 1:
+                        next_line = lines[i + 1]
+                        combined_weight = self.multiline_fixer._calculate_text_weight(current_line + next_line)
+                        if combined_weight <= 30:
+                            combined_lines.append(current_line + next_line)
+                            i += 2
+                            continue
+                    
+                    combined_lines.append(current_line)
+                    i += 1
+                
+                # 如果还有剩余行，强制合并到第二行
+                if i < len(lines) and len(combined_lines) == 1:
+                    remaining_text = ''.join(lines[i:])
+                    combined_lines.append(remaining_text)
+                elif i < len(lines) and len(combined_lines) == 2:
+                    # 将剩余文本合并到第二行
+                    combined_lines[1] += ''.join(lines[i:])
+                
+                return '\n'.join(combined_lines[:2])  # 确保最多2行
+            
+            return text
+            
+        except Exception as e:
+            self.logger.error(f"强制合规修复失败: {e}")
+            return text
+        
         self.logger.info(f"增强版字幕生成器初始化完成: {self.subtitle_config}")
         self.logger.info("多行显示修复功能已启用")
+        self.logger.info("分辨率自适应字体功能已集成")
     
     def remove_punctuation(self, text: str) -> str:
         """移除标点符号，用于精确匹配"""
@@ -66,6 +228,66 @@ class EnhancedSubtitleGenerator:
         end_srt = seconds_to_hmsm(end_time)
         return f"{start_srt} --> {end_srt}"
     
+    def detect_video_resolution(self, video_path: Optional[Path] = None) -> Optional[Tuple[int, int]]:
+        """
+        检测视频分辨率用于字体自适应
+        """
+        if video_path is None:
+            # 尝试从项目目录找到视频文件
+            output_dir = self.project_dir / "output"
+            video_files = list(output_dir.glob("*.mp4")) + list(output_dir.glob("*.avi"))
+            if video_files:
+                video_path = video_files[0]  # 使用第一个找到的视频文件
+            else:
+                self.logger.warning("未找到视频文件，无法检测分辨率")
+                return None
+        
+        try:
+            import subprocess
+            import json
+            
+            # 使用ffprobe检测分辨率
+            cmd = ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_streams', str(video_path)]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            
+            if result.returncode == 0:
+                data = json.loads(result.stdout)
+                for stream in data.get('streams', []):
+                    if stream.get('codec_type') == 'video':
+                        width = stream.get('width')
+                        height = stream.get('height')
+                        if width and height:
+                            self.video_resolution = (int(width), int(height))
+                            self.logger.info(f"检测到视频分辨率: {width}x{height}")
+                            return self.video_resolution
+        except Exception as e:
+            self.logger.warning(f"视频分辨率检测失败: {e}")
+        
+        return None
+    
+    def calculate_adaptive_font_size(self, base_size: int = 18) -> int:
+        """
+        计算分辨率自适应字体大小
+        """
+        if not self.video_resolution:
+            # 如果没有检测到分辨率，尝试检测
+            self.detect_video_resolution()
+        
+        if self.video_resolution:
+            try:
+                adaptive_size = self.multiline_fixer.get_resolution_adaptive_font_size(
+                    self.video_resolution, base_size
+                )
+                self.adaptive_font_size = adaptive_size
+                self.logger.info(f"字体大小自适应: {base_size}px → {adaptive_size}px")
+                return adaptive_size
+            except Exception as e:
+                self.logger.warning(f"字体大小自适应计算失败: {e}")
+        
+        # 回退到基础字体大小
+        self.adaptive_font_size = base_size
+        return base_size
+
     def show_alignment_difference(self, expected: str, actual: str) -> None:
         """显示对齐差异，用于调试"""
         min_len = min(len(expected), len(actual))
@@ -356,11 +578,11 @@ class EnhancedSubtitleGenerator:
         return segments
     
     def _clean_subtitle_text(self, text: str) -> str:
-        """清理字幕文本以优化显示效果"""
+        """🎯 强化: 清理字幕文本以优化显示效果"""
         if not self.subtitle_config["auto_punctuation_removal"]:
-            # 即使不移除标点，也应用多行修复
+            # 即使不移除标点，也应用强化多行修复
             if self.subtitle_config.get("enable_multiline_fix", True):
-                return self.multiline_fixer.optimize_subtitle_text(text)
+                return self._enforce_multiline_fix(text, context="cleaning")
             return text
         
         # 替换某些标点符号为空格或移除
@@ -368,9 +590,9 @@ class EnhancedSubtitleGenerator:
         cleaned = re.sub(r'\s+', ' ', cleaned)
         cleaned = cleaned.strip()
         
-        # 应用多行显示修复
+        # 🎯 强化: 应用强化多行显示修复
         if self.subtitle_config.get("enable_multiline_fix", True):
-            cleaned = self.multiline_fixer.optimize_subtitle_text(cleaned)
+            cleaned = self._enforce_multiline_fix(cleaned, context="cleaning")
         
         return cleaned
     
@@ -392,6 +614,11 @@ class EnhancedSubtitleGenerator:
         """
         try:
             self.logger.info("开始生成增强版字幕")
+            
+            # 🎯 初始化分辨率自适应功能
+            self.logger.info("初始化分辨率自适应字体计算...")
+            self.detect_video_resolution()
+            adaptive_font_size = self.calculate_adaptive_font_size()
             
             # 确保字幕目录存在
             self.file_manager.subtitles_dir.mkdir(parents=True, exist_ok=True)

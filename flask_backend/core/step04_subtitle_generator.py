@@ -24,14 +24,39 @@ try:
 except ImportError:
     ENHANCED_SUBTITLE_AVAILABLE = False
 
+# 导入视频帧同步优化器
+try:
+    from core.video_frame_sync_optimizer import VideoFrameSyncOptimizer, VideoMetadata, TimecodeFormat
+    VIDEO_FRAME_SYNC_AVAILABLE = True
+except ImportError:
+    VIDEO_FRAME_SYNC_AVAILABLE = False
+
+# 导入音频智能同步优化器
+try:
+    from core.audio_intelligent_sync_optimizer import AudioIntelligentSyncOptimizer, AudioSyncPrecision
+    AUDIO_INTELLIGENT_SYNC_AVAILABLE = True
+except ImportError:
+    AUDIO_INTELLIGENT_SYNC_AVAILABLE = False
+
+# 导入AI内容理解增强系统
+try:
+    from core.semantic_alignment_optimizer import SemanticAlignmentOptimizer, SemanticAlignmentPrecision
+    AI_CONTENT_UNDERSTANDING_AVAILABLE = True
+except ImportError:
+    AI_CONTENT_UNDERSTANDING_AVAILABLE = False
+
 class SubtitleGenerator:
     """字幕生成器 - 支持传统和增强模式"""
     
-    def __init__(self, project_dir: Path, use_enhanced: bool = False):
+    def __init__(self, project_dir: Path, use_enhanced: bool = False, enable_frame_sync: bool = True, 
+                 enable_audio_sync: bool = True, enable_ai_content_understanding: bool = True):
         self.project_dir = Path(project_dir)
         self.file_manager = FileManager(project_dir)
         self.logger = get_logger(__name__, self.project_dir / "logs")
         self.use_enhanced = use_enhanced and ENHANCED_SUBTITLE_AVAILABLE
+        self.enable_frame_sync = enable_frame_sync and VIDEO_FRAME_SYNC_AVAILABLE
+        self.enable_audio_sync = enable_audio_sync and AUDIO_INTELLIGENT_SYNC_AVAILABLE
+        self.enable_ai_content_understanding = enable_ai_content_understanding and AI_CONTENT_UNDERSTANDING_AVAILABLE
         
         # 加载智能字幕配置
         try:
@@ -85,6 +110,52 @@ class SubtitleGenerator:
         else:
             self.enhanced_generator = None
             if not ENHANCED_SUBTITLE_AVAILABLE:
+                self.logger.info("增强版字幕生成器不可用")
+        
+        # 初始化视频帧同步优化器
+        if self.enable_frame_sync:
+            try:
+                config_path = self.project_dir / "config_data" / "video_frame_sync_config.json"
+                self.frame_sync_optimizer = VideoFrameSyncOptimizer(str(config_path) if config_path.exists() else None)
+                self.logger.info("🎨 视频帧级同步优化器已启用")
+            except Exception as e:
+                self.logger.warning(f"视频帧同步优化器初始化失败，将跳过帧同步: {e}")
+                self.frame_sync_optimizer = None
+                self.enable_frame_sync = False
+        else:
+            self.frame_sync_optimizer = None
+            if not VIDEO_FRAME_SYNC_AVAILABLE:
+                self.logger.info("视频帧同步优化器不可用")
+
+        # 初始化音频智能同步优化器
+        if self.enable_audio_sync:
+            try:
+                config_path = self.project_dir / "config_data" / "audio_intelligent_sync_config.json"
+                self.audio_sync_optimizer = AudioIntelligentSyncOptimizer(str(config_path) if config_path.exists() else None)
+                self.logger.info("🎵 音频智能同步优化器已启用")
+            except Exception as e:
+                self.logger.warning(f"音频智能同步优化器初始化失败，将跳过音频同步: {e}")
+                self.audio_sync_optimizer = None
+                self.enable_audio_sync = False
+        else:
+            self.audio_sync_optimizer = None
+            if not AUDIO_INTELLIGENT_SYNC_AVAILABLE:
+                self.logger.info("音频智能同步优化器不可用")
+
+        # 初始化AI内容理解增强系统
+        if self.enable_ai_content_understanding:
+            try:
+                config_path = self.project_dir / "config_data" / "ai_content_understanding_config.json"
+                self.semantic_alignment_optimizer = SemanticAlignmentOptimizer(str(config_path) if config_path.exists() else None)
+                self.logger.info("🤖 AI内容理解增强系统已启用")
+            except Exception as e:
+                self.logger.warning(f"AI内容理解系统初始化失败，将跳过语义对齐: {e}")
+                self.semantic_alignment_optimizer = None
+                self.enable_ai_content_understanding = False
+        else:
+            self.semantic_alignment_optimizer = None
+            if not AI_CONTENT_UNDERSTANDING_AVAILABLE:
+                self.logger.info("AI内容理解增强系统不可用")
                 self.logger.warning("增强字幕生成器不可用，使用传统模式")
             else:
                 self.logger.info("使用传统字幕生成模式")
@@ -183,6 +254,135 @@ class SubtitleGenerator:
             # 生成合并的字幕文件
             if progress_callback:
                 progress_callback(85)
+            
+            # 应用视频帧同步优化
+            if self.enable_frame_sync and self.frame_sync_optimizer:
+                self.logger.info("🎨 开始视频帧级同步优化...")
+                
+                # 获取视频元数据（如果可用）
+                video_metadata = await self._get_video_metadata_for_sync()
+                
+                if video_metadata:
+                    # 转换字幕为同步格式
+                    subtitle_segments = self._convert_subtitles_for_sync(all_subtitles)
+                    
+                    # 执行帧同步优化
+                    synchronized_segments = self.frame_sync_optimizer.optimize_frame_sync(
+                        subtitle_segments, video_metadata
+                    )
+                    
+                    # 转换回字幕格式
+                    all_subtitles = self._convert_sync_segments_to_subtitles(synchronized_segments)
+                    
+                    # 获取同步报告
+                    sync_report = self.frame_sync_optimizer.get_sync_report()
+                    self.logger.info(f"🎨 视频帧同步完成: 同步率{sync_report['sync_statistics']['sync_accuracy']:.1f}%, "
+                                   f"帧对齐率{sync_report['sync_statistics']['frame_aligned_segments']}/{sync_report['sync_statistics']['total_segments']}")
+                    
+                    # 保存同步报告
+                    subtitle_data["frame_sync_report"] = sync_report
+                    subtitle_data["frame_sync_applied"] = True
+                else:
+                    self.logger.warning("未找到视频元数据，跳过帧同步优化")
+                    subtitle_data["frame_sync_applied"] = False
+            
+            # 应用音频智能同步优化
+            if self.enable_audio_sync and self.audio_sync_optimizer:
+                self.logger.info("🎵 开始音频智能同步优化...")
+                
+                if progress_callback:
+                    progress_callback(90)
+                
+                # 获取音频文件路径用于分析
+                audio_analysis_path = await self._get_audio_file_for_analysis(audio_data)
+                
+                if audio_analysis_path:
+                    # 执行音频内容分析
+                    audio_analysis = await self.audio_sync_optimizer.analyze_audio_content(audio_analysis_path)
+                    
+                    # 转换字幕为音频同步格式
+                    subtitle_for_audio_sync = self._convert_subtitles_for_audio_sync(all_subtitles)
+                    
+                    # 执行音频智能同步优化
+                    audio_sync_results = await self.audio_sync_optimizer.optimize_audio_sync(
+                        subtitle_for_audio_sync, audio_analysis
+                    )
+                    
+                    # 转换回字幕格式并应用同步结果
+                    all_subtitles = self._apply_audio_sync_results_to_subtitles(all_subtitles, audio_sync_results)
+                    
+                    # 获取音频同步报告
+                    audio_sync_report = self.audio_sync_optimizer.get_audio_sync_report()
+                    self.logger.info(f"🎵 音频智能同步完成: "
+                                   f"节拍对齐率{audio_sync_report['audio_sync_statistics']['beat_alignment_rate']:.1f}%, "
+                                   f"情感增强率{audio_sync_report['audio_sync_statistics']['emotion_enhancement_rate']:.1f}%, "
+                                   f"平均置信度{audio_sync_report['audio_sync_statistics']['average_confidence']:.2f}")
+                    
+                    # 保存音频同步报告
+                    subtitle_data["audio_sync_report"] = audio_sync_report
+                    subtitle_data["audio_sync_applied"] = True
+                else:
+                    self.logger.warning("未找到音频文件，跳过音频智能同步优化")
+                    subtitle_data["audio_sync_applied"] = False
+
+            # 应用AI内容理解增强系统
+            if self.enable_ai_content_understanding and self.semantic_alignment_optimizer:
+                self.logger.info("🤖 开始AI内容理解增强处理...")
+                
+                if progress_callback:
+                    progress_callback(95)
+                
+                try:
+                    # 收集所有文本内容用于语义分析
+                    all_text_content = self._collect_content_for_semantic_analysis(scripts_data, all_subtitles)
+                    
+                    # 构建音频时间段信息
+                    audio_segments = [(sub.start.total_seconds(), sub.end.total_seconds()) for sub in all_subtitles]
+                    
+                    # 执行内容语义分析
+                    semantic_profile = await self.semantic_alignment_optimizer.analyze_content_semantics(
+                        all_text_content, audio_segments
+                    )
+                    
+                    # 转换字幕为语义对齐格式
+                    subtitle_for_semantic_sync = self._convert_subtitles_for_semantic_sync(all_subtitles)
+                    
+                    # 获取之前的音频分析结果 (如果可用)
+                    previous_audio_analysis = subtitle_data.get("audio_sync_report", {}).get("audio_analysis")
+                    
+                    # 执行语义对齐优化
+                    semantic_sync_results = await self.semantic_alignment_optimizer.optimize_semantic_alignment(
+                        subtitle_for_semantic_sync, semantic_profile, previous_audio_analysis
+                    )
+                    
+                    # 应用语义对齐结果
+                    all_subtitles = self._apply_semantic_sync_results_to_subtitles(all_subtitles, semantic_sync_results)
+                    
+                    # 获取语义同步报告
+                    semantic_sync_report = self.semantic_alignment_optimizer.get_semantic_sync_report()
+                    self.logger.info(f"🤖 AI内容理解完成: "
+                                   f"语义对齐率{semantic_sync_report['semantic_sync_statistics']['semantic_alignment_rate']:.1f}%, "
+                                   f"概念映射率{semantic_sync_report['semantic_sync_statistics']['concept_mapping_rate']:.1f}%, "
+                                   f"平均置信度{semantic_sync_report['semantic_sync_statistics']['average_semantic_confidence']:.3f}")
+                    
+                    # 保存AI内容理解报告
+                    subtitle_data["ai_content_understanding_report"] = semantic_sync_report
+                    subtitle_data["ai_content_understanding_applied"] = True
+                    subtitle_data["semantic_profile"] = {
+                        "key_topics": semantic_profile.key_topics,
+                        "complexity_score": semantic_profile.complexity_score,
+                        "readability_score": semantic_profile.readability_score,
+                        "emotional_profile": semantic_profile.emotional_profile
+                    }
+                    
+                except Exception as e:
+                    self.logger.error(f"AI内容理解处理失败: {e}")
+                    subtitle_data["ai_content_understanding_applied"] = False
+                    subtitle_data["ai_content_understanding_error"] = str(e)
+            else:
+                if not self.enable_ai_content_understanding:
+                    self.logger.info("AI内容理解增强系统未启用")
+                subtitle_data["ai_content_understanding_applied"] = False
             
             combined_info = await self._generate_combined_subtitle(all_subtitles)
             subtitle_data["combined_subtitle_info"] = combined_info
@@ -577,6 +777,86 @@ class SubtitleGenerator:
             self.logger.warning(f"字幕文件验证失败 {subtitle_path}: {e}")
             return False
     
+    async def _get_video_metadata_for_sync(self) -> Optional['VideoMetadata']:
+        """获取视频元数据用于帧同步"""
+        try:
+            # 查找项目中的视频文件
+            video_extensions = ['.mp4', '.avi', '.mov', '.mkv', '.wmv']
+            
+            # 检查输出目录中的视频文件
+            output_dir = self.project_dir / "output"
+            if output_dir.exists():
+                for ext in video_extensions:
+                    video_files = list(output_dir.glob(f"*{ext}"))
+                    if video_files:
+                        video_path = str(video_files[0])
+                        self.logger.info(f"🎬 找到视频文件进行帧同步: {video_path}")
+                        return await self.frame_sync_optimizer.analyze_video_metadata(video_path)
+            
+            # 如果没找到实际视频文件，使用默认元数据
+            self.logger.info("未找到视频文件，使用默认视频元数据 (1920x1080, 24fps)")
+            return VideoMetadata(
+                width=1920, height=1080, fps=24.0, duration=300.0,  # 默认5分钟
+                total_frames=0, codec='h264', bitrate=5000000
+            )
+            
+        except Exception as e:
+            self.logger.error(f"获取视频元数据失败: {e}")
+            return None
+    
+    def _convert_subtitles_for_sync(self, subtitles: List[pysrt.SubRipItem]) -> List[Dict[str, Any]]:
+        """转换字幕为同步格式"""
+        subtitle_segments = []
+        
+        for subtitle in subtitles:
+            # 将pysrt时间转换为秒
+            start_seconds = (subtitle.start.hours * 3600 + 
+                           subtitle.start.minutes * 60 + 
+                           subtitle.start.seconds + 
+                           subtitle.start.milliseconds / 1000.0)
+            
+            end_seconds = (subtitle.end.hours * 3600 + 
+                         subtitle.end.minutes * 60 + 
+                         subtitle.end.seconds + 
+                         subtitle.end.milliseconds / 1000.0)
+            
+            subtitle_segments.append({
+                "text": subtitle.text,
+                "start_time": start_seconds,
+                "end_time": end_seconds
+            })
+        
+        return subtitle_segments
+    
+    def _convert_sync_segments_to_subtitles(self, sync_segments: List['SynchronizedSubtitleSegment']) -> List[pysrt.SubRipItem]:
+        """转换同步片段回字幕格式"""
+        subtitles = []
+        
+        for i, segment in enumerate(sync_segments, 1):
+            # 转换同步时间回pysrt格式
+            start_time = self._seconds_to_srt_time(segment.sync_start.seconds)
+            end_time = self._seconds_to_srt_time(segment.sync_end.seconds)
+            
+            subtitle = pysrt.SubRipItem(
+                index=i,
+                start=start_time,
+                end=end_time,
+                text=segment.text
+            )
+            
+            subtitles.append(subtitle)
+        
+        return subtitles
+    
+    def _seconds_to_srt_time(self, seconds: float) -> pysrt.SubRipTime:
+        """将秒转换为SRT时间格式"""
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        secs = int(seconds % 60)
+        milliseconds = int((seconds % 1) * 1000)
+        
+        return pysrt.SubRipTime(hours, minutes, secs, milliseconds)
+    
     def get_subtitle_stats(self, subtitle_path: Path) -> Dict[str, Any]:
         """
         获取字幕文件统计信息
@@ -607,3 +887,209 @@ class SubtitleGenerator:
         except Exception as e:
             self.logger.error(f"获取字幕统计信息失败: {e}")
             return {"error": str(e)}
+
+    # 音频智能同步辅助方法
+    async def _get_audio_file_for_analysis(self, audio_data: Dict[str, Any]) -> Optional[str]:
+        """获取用于音频分析的音频文件路径"""
+        try:
+            # 尝试找到合并的音频文件
+            audio_files = audio_data.get("audio_files", [])
+            if not audio_files:
+                return None
+            
+            # 查找第一个有效的音频文件路径
+            for audio_info in audio_files:
+                audio_path = audio_info.get("audio_path")
+                if audio_path and Path(audio_path).exists():
+                    return audio_path
+            
+            # 如果没有找到单独文件，尝试查找合并音频
+            combined_audio = audio_data.get("combined_audio_info", {})
+            combined_path = combined_audio.get("combined_audio_path")
+            if combined_path and Path(combined_path).exists():
+                return combined_path
+            
+            return None
+            
+        except Exception as e:
+            self.logger.warning(f"获取音频文件路径失败: {e}")
+            return None
+    
+    def _convert_subtitles_for_audio_sync(self, subtitles: List[pysrt.SubRipItem]) -> List[Dict[str, Any]]:
+        """转换字幕为音频同步格式"""
+        subtitle_segments = []
+        
+        for subtitle in subtitles:
+            # 转换时间为秒
+            start_seconds = self._srt_time_to_seconds(subtitle.start)
+            end_seconds = self._srt_time_to_seconds(subtitle.end)
+            
+            subtitle_segments.append({
+                "text": subtitle.text,
+                "start_time": start_seconds,
+                "end_time": end_seconds,
+                "index": subtitle.index
+            })
+        
+        return subtitle_segments
+    
+    def _apply_audio_sync_results_to_subtitles(self, subtitles: List[pysrt.SubRipItem], 
+                                             sync_results: List['AudioSyncResult']) -> List[pysrt.SubRipItem]:
+        """将音频同步结果应用到字幕"""
+        if len(subtitles) != len(sync_results):
+            self.logger.warning(f"字幕数量({len(subtitles)})与同步结果数量({len(sync_results)})不匹配")
+            return subtitles
+        
+        updated_subtitles = []
+        
+        for i, (subtitle, sync_result) in enumerate(zip(subtitles, sync_results)):
+            try:
+                # 应用同步时间
+                new_start = self._seconds_to_srt_time(sync_result.synced_start)
+                new_end = self._seconds_to_srt_time(sync_result.synced_end)
+                
+                updated_subtitle = pysrt.SubRipItem(
+                    index=subtitle.index,
+                    start=new_start,
+                    end=new_end,
+                    text=subtitle.text
+                )
+                
+                updated_subtitles.append(updated_subtitle)
+                
+                # 记录显著的时间调整
+                if abs(sync_result.sync_offset) > 50:  # 偏移超过50ms
+                    self.logger.debug(f"字幕{i+1}音频同步调整: {sync_result.sync_offset:+.1f}ms "
+                                    f"(置信度: {sync_result.confidence:.2f}, 原因: {sync_result.sync_reason})")
+                
+            except Exception as e:
+                self.logger.warning(f"应用音频同步结果到字幕{i+1}失败: {e}")
+                updated_subtitles.append(subtitle)  # 保持原始字幕
+        
+        return updated_subtitles
+
+    # AI内容理解增强辅助方法
+    def _collect_content_for_semantic_analysis(self, scripts_data: Dict[str, Any], 
+                                             subtitles: List[pysrt.SubRipItem]) -> str:
+        """收集用于语义分析的内容"""
+        try:
+            # 收集原始脚本内容
+            scripts = scripts_data.get("scripts", [])
+            script_texts = []
+            
+            for script in scripts:
+                script_content = script.get("script_content", "")
+                # 清理HTML标签
+                clean_content = self._clean_html_tags(script_content)
+                if clean_content.strip():
+                    script_texts.append(clean_content.strip())
+            
+            # 如果没有脚本内容，使用字幕文本
+            if not script_texts:
+                subtitle_texts = [sub.text for sub in subtitles if sub.text.strip()]
+                return " ".join(subtitle_texts)
+            
+            return " ".join(script_texts)
+            
+        except Exception as e:
+            self.logger.warning(f"收集语义分析内容失败: {e}")
+            # 降级到字幕文本
+            subtitle_texts = [sub.text for sub in subtitles if sub.text.strip()]
+            return " ".join(subtitle_texts)
+    
+    def _convert_subtitles_for_semantic_sync(self, subtitles: List[pysrt.SubRipItem]) -> List[Dict[str, Any]]:
+        """转换字幕为语义同步格式"""
+        subtitle_segments = []
+        
+        for subtitle in subtitles:
+            # 转换时间为秒
+            start_seconds = self._srt_time_to_seconds(subtitle.start)
+            end_seconds = self._srt_time_to_seconds(subtitle.end)
+            
+            subtitle_segments.append({
+                "text": subtitle.text,
+                "start_time": start_seconds,
+                "end_time": end_seconds,
+                "index": subtitle.index,
+                "duration": end_seconds - start_seconds
+            })
+        
+        return subtitle_segments
+    
+    def _apply_semantic_sync_results_to_subtitles(self, subtitles: List[pysrt.SubRipItem], 
+                                                sync_results: List['SemanticSyncResult']) -> List[pysrt.SubRipItem]:
+        """将语义同步结果应用到字幕"""
+        if len(subtitles) != len(sync_results):
+            self.logger.warning(f"字幕数量({len(subtitles)})与语义同步结果数量({len(sync_results)})不匹配")
+            return subtitles
+        
+        updated_subtitles = []
+        
+        for i, (subtitle, sync_result) in enumerate(zip(subtitles, sync_results)):
+            try:
+                # 应用语义对齐时间
+                new_start = self._seconds_to_srt_time(sync_result.semantic_start)
+                new_end = self._seconds_to_srt_time(sync_result.semantic_end)
+                
+                # 应用内容增强 (如果有)
+                enhanced_text = subtitle.text
+                if sync_result.content_enhancement:
+                    enhanced_text = self._apply_content_enhancement(
+                        subtitle.text, sync_result.content_enhancement
+                    )
+                
+                updated_subtitle = pysrt.SubRipItem(
+                    index=subtitle.index,
+                    start=new_start,
+                    end=new_end,
+                    text=enhanced_text
+                )
+                
+                updated_subtitles.append(updated_subtitle)
+                
+                # 记录显著的语义调整
+                original_start = self._srt_time_to_seconds(subtitle.start)
+                time_adjustment = (sync_result.semantic_start - original_start) * 1000  # 转换为毫秒
+                
+                if abs(time_adjustment) > 10 or sync_result.semantic_confidence > 0.9:  # 显著调整或高置信度
+                    self.logger.debug(f"字幕{i+1}语义同步: {time_adjustment:+.1f}ms, "
+                                    f"精度{sync_result.sync_precision:.1f}ms, "
+                                    f"置信度{sync_result.semantic_confidence:.3f}, "
+                                    f"质量{sync_result.alignment_quality}")
+                
+            except Exception as e:
+                self.logger.warning(f"应用语义同步结果到字幕{i+1}失败: {e}")
+                updated_subtitles.append(subtitle)  # 保持原始字幕
+        
+        return updated_subtitles
+    
+    def _apply_content_enhancement(self, original_text: str, 
+                                 enhancement_info: Dict[str, Any]) -> str:
+        """应用内容增强"""
+        enhanced_text = original_text
+        
+        try:
+            # 关键概念高亮
+            if 'key_concepts' in enhancement_info:
+                key_concepts = enhancement_info['key_concepts']
+                for concept in key_concepts:
+                    if concept.lower() in enhanced_text.lower():
+                        # 简单的概念标记 (可以在UI层面进一步处理)
+                        enhanced_text = enhanced_text.replace(concept, f"**{concept}**")
+            
+            # 情感色调标记
+            if 'emotional_tone' in enhancement_info:
+                emotion = enhancement_info['emotional_tone']
+                if emotion in ['excitement', 'emphasis']:
+                    # 为兴奋和强调内容添加标记
+                    enhanced_text = f"{enhanced_text}!"
+                elif emotion == 'question':
+                    # 确保问句有问号
+                    if not enhanced_text.endswith('?') and not enhanced_text.endswith('？'):
+                        enhanced_text = f"{enhanced_text}?"
+            
+        except Exception as e:
+            self.logger.warning(f"应用内容增强失败: {e}")
+            return original_text
+        
+        return enhanced_text

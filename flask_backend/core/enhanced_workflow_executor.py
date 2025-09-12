@@ -422,8 +422,21 @@ class EnhancedWorkflowExecutor:
         if not scripts_data or not audio_data:
             raise Exception("缺少必要的输入数据")
         
-        # 创建字幕生成器
-        subtitle_generator = SubtitleGenerator(self.project_dir)
+        # 从配置中获取高级功能设置
+        config = execution.config or {}
+        advanced_features = config.get("advanced_features", {})
+        
+        # 创建字幕生成器，支持增强模式和帧同步
+        use_enhanced = advanced_features.get("enhanced_subtitles", False)
+        enable_frame_sync = advanced_features.get("frame_sync_optimization", True)
+        
+        subtitle_generator = SubtitleGenerator(
+            self.project_dir, 
+            use_enhanced=use_enhanced,
+            enable_frame_sync=enable_frame_sync
+        )
+        
+        self.logger.info(f"字幕生成配置: 增强模式={use_enhanced}, 帧同步={enable_frame_sync}")
         
         # 执行字幕生成
         result = await subtitle_generator.generate_subtitles(
@@ -434,6 +447,13 @@ class EnhancedWorkflowExecutor:
         
         if not result.get("subtitle_generation_completed"):
             raise Exception("字幕生成失败")
+        
+        # 记录帧同步报告
+        if result.get("frame_sync_applied"):
+            sync_report = result.get("frame_sync_report", {})
+            sync_stats = sync_report.get("sync_statistics", {})
+            self.logger.info(f"🎨 视频帧同步已应用: 同步率{sync_stats.get('sync_accuracy', 0):.1f}%, "
+                           f"帧对齐{sync_stats.get('frame_aligned_segments', 0)}/{sync_stats.get('total_segments', 0)}")
         
         # 返回输出文件列表
         output_files = []

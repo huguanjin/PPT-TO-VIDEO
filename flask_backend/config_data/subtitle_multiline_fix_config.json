@@ -5,24 +5,26 @@
     "created": "2025-09-11",
     
     "character_weight_adjustments": {
-      "chinese": 2.0,
-      "japanese": 2.0,
-      "korean": 1.8,
-      "english": 1.0,
-      "punctuation": 0.6,
-      "space": 0.3,
-      "number": 0.8,
-      "emoji": 1.5
+      "chinese": 1.8,
+      "japanese": 1.8,
+      "korean": 1.6,
+      "english": 0.8,
+      "punctuation": 0.5,
+      "space": 0.25,
+      "number": 0.7,
+      "emoji": 1.3
     },
     
     "line_control_rules": {
       "max_lines_strict": 2,
-      "max_chars_per_line_chinese": 30,
-      "max_chars_per_line_english": 45,
-      "preferred_chars_per_line_chinese": 25,
+      "max_chars_per_line_chinese": 26,
+      "max_chars_per_line_english": 40,
+      "preferred_chars_per_line_chinese": 22,
       "enforce_line_limit": true,
       "auto_truncate_overflow": true,
-      "priority_line_limit_over_semantic": true
+      "priority_line_limit_over_semantic": true,
+      "target_weight_ratio": 0.8,
+      "balance_tolerance": 0.3
     },
     
     "smart_splitting_config": {

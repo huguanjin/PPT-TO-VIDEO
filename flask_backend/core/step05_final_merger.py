@@ -5,13 +5,17 @@
 import os
 import subprocess
 import logging
+import re
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Callable
+from typing import Dict, List, Any, Optional, Callable, Union, TYPE_CHECKING
 from datetime import datetime
 import json
 import shutil
 import time
 import platform
+
+if TYPE_CHECKING:
+    from .subtitle_multiline_fixer import SubtitleMultilineFixer
 
 try:
     import cv2
@@ -208,8 +212,10 @@ class FFmpegFinalMerger:
             if subtitle_filename:
                 subtitle_path = self.file_manager.subtitles_dir / subtitle_filename
                 if subtitle_path.exists():
-                    subtitle_file = str(subtitle_path)
-                    self.logger.info(f"找到字幕文件: {subtitle_file}")
+                    # 🎯 强化: 在最终合并前对字幕文件应用多行修复
+                    enhanced_subtitle_path = self._apply_multiline_fix_to_subtitle_file(subtitle_path)
+                    subtitle_file = str(enhanced_subtitle_path)
+                    self.logger.info(f"找到字幕文件并应用多行修复: {subtitle_file}")
                 else:
                     self.logger.warning(f"字幕文件不存在: {subtitle_path}")
             else:
@@ -571,19 +577,37 @@ class FFmpegFinalMerger:
             # 应用用户配置的字幕样式
             if subtitle_config:
                 user_font_family = subtitle_config.get("font_family", "微软雅黑")
-                user_font_size = subtitle_config.get("font_size", 24)
+                base_font_size = subtitle_config.get("font_size", 18)  # 使用新的默认值
                 user_font_color = subtitle_config.get("font_color", "#FFFFFF")
                 
                 # 使用用户配置的字体（如果可用）
                 if user_font_family and user_font_family != "微软雅黑":
                     font_name = user_font_family
                 
+                # 🎯 集成分辨率自适应字体大小计算
+                try:
+                    from .subtitle_multiline_fixer import get_fixed_font_size
+                    adaptive_font_size = get_fixed_font_size((target_width, target_height), base_font_size)
+                    user_font_size = adaptive_font_size
+                    self.logger.info(f"分辨率自适应字体: {base_font_size}px → {adaptive_font_size}px (分辨率: {target_width}x{target_height})")
+                except Exception as e:
+                    # 如果自适应计算失败，使用基础字体大小
+                    user_font_size = base_font_size
+                    self.logger.warning(f"分辨率自适应计算失败，使用基础字体大小 {base_font_size}px: {e}")
+                
                 # 转换CSS颜色为FFmpeg格式
                 ffmpeg_color = self._css_color_to_ffmpeg(user_font_color)
                 
-                self.logger.info(f"应用用户字幕样式: 字体={font_name}, 大小={user_font_size}, 颜色={user_font_color}")
+                self.logger.info(f"应用用户字幕样式: 字体={font_name}, 大小={user_font_size}px, 颜色={user_font_color}")
             else:
-                user_font_size = 20
+                # 默认配置也应用分辨率自适应
+                base_font_size = 18
+                try:
+                    from .subtitle_multiline_fixer import get_fixed_font_size
+                    user_font_size = get_fixed_font_size((target_width, target_height), base_font_size)
+                    self.logger.info(f"使用默认分辨率自适应字体: {base_font_size}px → {user_font_size}px")
+                except Exception:
+                    user_font_size = base_font_size
                 ffmpeg_color = "&HFFFFFF"  # 默认白色
             
             # 构造字幕滤镜 - 使用简单可靠的方式
@@ -828,6 +852,178 @@ class FFmpegFinalMerger:
         except Exception as e:
             self.logger.warning(f"颜色转换失败: {e}，使用默认白色")
             return "&HFFFFFF"
+    
+    def _apply_multiline_fix_to_subtitle_file(self, subtitle_path: Path) -> Path:
+        """
+        🎯 强化多行修复: 对字幕文件应用多行修复机制
+        在最终合并前确保所有字幕条目都严格控制在2行以内
+        
+        Args:
+            subtitle_path: 原始字幕文件路径
+            
+        Returns:
+            处理后的字幕文件路径
+        """
+        try:
+            from .subtitle_multiline_fixer import SubtitleMultilineFixer
+            
+            # 创建多行修复器实例
+            fixer = SubtitleMultilineFixer()
+            
+            # 读取原始字幕文件
+            if not subtitle_path.exists():
+                self.logger.warning(f"字幕文件不存在: {subtitle_path}")
+                return subtitle_path
+            
+            # 生成增强版字幕文件路径
+            enhanced_filename = f"{subtitle_path.stem}_multiline_enhanced{subtitle_path.suffix}"
+            enhanced_path = subtitle_path.parent / enhanced_filename
+            
+            self.logger.info(f"开始对字幕文件应用多行修复: {subtitle_path.name} -> {enhanced_filename}")
+            
+            # 根据文件格式处理
+            if subtitle_path.suffix.lower() == '.srt':
+                self._fix_srt_subtitle_file(subtitle_path, enhanced_path, fixer)
+            elif subtitle_path.suffix.lower() == '.ass':
+                self._fix_ass_subtitle_file(subtitle_path, enhanced_path, fixer)
+            else:
+                self.logger.warning(f"不支持的字幕格式: {subtitle_path.suffix}，跳过多行修复")
+                return subtitle_path
+            
+            # 验证处理结果
+            if enhanced_path.exists():
+                stats = self._validate_subtitle_multiline_fix(enhanced_path)
+                self.logger.info(f"多行修复完成 - 统计: {stats}")
+                return enhanced_path
+            else:
+                self.logger.warning("多行修复失败，使用原始字幕文件")
+                return subtitle_path
+                
+        except Exception as e:
+            self.logger.error(f"字幕多行修复失败: {e}", exc_info=True)
+            return subtitle_path
+    
+    def _fix_srt_subtitle_file(self, input_path: Path, output_path: Path, fixer: 'SubtitleMultilineFixer'):
+        """处理SRT格式字幕文件的多行修复"""
+        try:
+            import re
+            
+            with open(input_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # 分割SRT条目
+            entries = re.split(r'\n\s*\n', content.strip())
+            enhanced_entries = []
+            
+            for entry in entries:
+                if not entry.strip():
+                    continue
+                
+                lines = entry.strip().split('\n')
+                if len(lines) >= 3:
+                    # SRT格式: 序号, 时间轴, 字幕文本
+                    subtitle_text = '\n'.join(lines[2:])
+                    
+                    # 应用多行修复
+                    fixed_text = fixer.optimize_subtitle_text(subtitle_text)
+                    
+                    # 重建条目
+                    enhanced_entry = '\n'.join(lines[:2] + [fixed_text])
+                    enhanced_entries.append(enhanced_entry)
+            
+            # 保存增强版字幕
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write('\n\n'.join(enhanced_entries) + '\n')
+            
+            self.logger.info(f"SRT字幕多行修复完成: {len(enhanced_entries)} 条目")
+            
+        except Exception as e:
+            self.logger.error(f"SRT字幕处理失败: {e}")
+            raise
+    
+    def _fix_ass_subtitle_file(self, input_path: Path, output_path: Path, fixer: 'SubtitleMultilineFixer'):
+        """处理ASS格式字幕文件的多行修复"""
+        try:
+            with open(input_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            
+            enhanced_lines = []
+            in_events_section = False
+            dialogue_count = 0
+            
+            for line in lines:
+                if line.strip() == '[Events]':
+                    in_events_section = True
+                    enhanced_lines.append(line)
+                elif line.startswith('[') and line.strip().endswith(']'):
+                    in_events_section = False
+                    enhanced_lines.append(line)
+                elif in_events_section and line.startswith('Dialogue:'):
+                    # 处理对话行
+                    parts = line.split(',', 9)  # ASS格式有10个字段
+                    if len(parts) >= 10:
+                        subtitle_text = parts[9].strip()
+                        
+                        # 移除ASS格式标记并应用多行修复
+                        clean_text = re.sub(r'\{[^}]*\}', '', subtitle_text)
+                        fixed_text = fixer.optimize_subtitle_text(clean_text)
+                        
+                        # 重建对话行
+                        parts[9] = fixed_text + '\n'
+                        enhanced_line = ','.join(parts)
+                        enhanced_lines.append(enhanced_line)
+                        dialogue_count += 1
+                    else:
+                        enhanced_lines.append(line)
+                else:
+                    enhanced_lines.append(line)
+            
+            # 保存增强版字幕
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.writelines(enhanced_lines)
+            
+            self.logger.info(f"ASS字幕多行修复完成: {dialogue_count} 条对话")
+            
+        except Exception as e:
+            self.logger.error(f"ASS字幕处理失败: {e}")
+            raise
+    
+    def _validate_subtitle_multiline_fix(self, subtitle_path: Path) -> Dict[str, Union[int, str]]:
+        """验证字幕多行修复的效果"""
+        try:
+            stats = {
+                "total_lines": 0,
+                "single_line": 0,
+                "double_line": 0,
+                "over_limit": 0,
+                "avg_chars_per_line": 0
+            }
+            
+            with open(subtitle_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # 简单统计 - 基于换行符
+            if subtitle_path.suffix.lower() == '.srt':
+                entries = re.split(r'\n\s*\n', content.strip())
+                for entry in entries:
+                    lines = entry.strip().split('\n')
+                    if len(lines) >= 3:
+                        text_lines = lines[2:]
+                        line_count = len([line for line in text_lines if line.strip()])
+                        stats["total_lines"] += 1
+                        
+                        if line_count == 1:
+                            stats["single_line"] += 1
+                        elif line_count == 2:
+                            stats["double_line"] += 1
+                        else:
+                            stats["over_limit"] += 1
+            
+            return stats
+            
+        except Exception as e:
+            self.logger.error(f"字幕验证失败: {e}")
+            return {"error": str(e)}
 
 # 为了向后兼容，创建一个别名
 FinalMerger = FFmpegFinalMerger

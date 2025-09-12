@@ -7,7 +7,7 @@
       "netflix_standard": {
         "name": "Netflix标准样式",
         "font_family": "Arial",
-        "font_size": 24,
+        "font_size": 18,
         "font_color": "#FFFFFF",
         "font_weight": "bold",
         "background_color": "rgba(0,0,0,0.75)",
@@ -21,7 +21,7 @@
       "netflix_minimal": {
         "name": "Netflix简约样式",
         "font_family": "Arial",
-        "font_size": 22,
+        "font_size": 16,
         "font_color": "#FFFFFF",
         "font_weight": "normal",
         "background_color": "transparent",
@@ -35,7 +35,7 @@
       "netflix_accessibility": {
         "name": "Netflix无障碍样式",
         "font_family": "Arial",
-        "font_size": 28,
+        "font_size": 20,
         "font_color": "#FFFF00",
         "font_weight": "bold",
         "background_color": "rgba(0,0,0,0.9)",
@@ -55,16 +55,18 @@
       "subtitle_overlap_tolerance": 0.1
     },
     "layout_rules": {
-      "max_chars_per_line": 40,
+      "max_chars_per_line": 30,
       "max_lines": 2,
-      "preferred_chars_per_line": 35,
+      "preferred_chars_per_line": 28,
       "line_spacing": 1.2,
       "paragraph_spacing": 1.5,
       "margin_bottom": 60,
       "margin_left": 80,
       "margin_right": 80,
       "safe_area_margin": 5,
-      "alignment": "center"
+      "alignment": "center",
+      "enforce_strict_line_limit": true,
+      "prefer_semantic_over_length": false
     },
     "text_processing": {
       "smart_line_breaks": true,
@@ -83,12 +85,12 @@
       "smart_split": true,
       "use_ai_splitting": true,
       "character_weights": {
-        "chinese": 1.75,
-        "japanese": 1.75,
-        "korean": 1.5,
+        "chinese": 2.0,
+        "japanese": 2.0,
+        "korean": 1.8,
         "english": 1.0,
-        "punctuation": 0.8,
-        "space": 0.5,
+        "punctuation": 0.6,
+        "space": 0.3,
         "number": 0.8
       },
       "punctuation_priority": {
