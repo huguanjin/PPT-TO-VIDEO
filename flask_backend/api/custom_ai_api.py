@@ -208,19 +208,22 @@ def analyze_with_custom_ai():
         context = data.get('context')
         language = data.get('language', 'zh')
         
-        # 运行异步分析
+        # 运行异步分析 - 直接使用API的ai_manager实例
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         
         try:
+            # 创建分析请求
+            analysis_request = AIAnalysisRequest(
+                text=text,
+                task_type=task_type,
+                context=context,
+                language=language
+            )
+            
+            # 使用API的ai_manager进行分析
             result = loop.run_until_complete(
-                analyze_sentence_with_ai(
-                    text=text,
-                    model_name=model_name,
-                    task_type=task_type,
-                    context=context,
-                    language=language
-                )
+                ai_manager.analyze_content(analysis_request, model_name)
             )
         finally:
             loop.close()
@@ -301,7 +304,7 @@ def batch_analyze_with_custom_ai():
             for i, text in enumerate(texts):
                 try:
                     result = loop.run_until_complete(
-                        analyze_sentence_with_ai(
+                        ai_manager.analyze_content(
                             text=text,
                             model_name=model_name,
                             task_type=task_type,

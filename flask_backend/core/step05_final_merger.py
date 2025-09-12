@@ -34,7 +34,7 @@ class FFmpegFinalMerger:
         self.logger = get_logger(__name__, self.project_dir / "logs")
         
         # FFmpeg配置
-        self.ffmpeg_config = {
+        self.ffmpeg_config: Dict[str, str] = {
             "video_codec": "libx264",
             "audio_codec": "aac",
             "audio_bitrate": "128k",
@@ -783,13 +783,19 @@ class FFmpegFinalMerger:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             if result.returncode == 0:
                 import json
-                data = json.loads(result.stdout)
+                data: Dict[str, Any] = json.loads(result.stdout)
                 for stream in data.get('streams', []):
                     if stream.get('codec_type') == 'video':
                         width = stream.get('width')
                         height = stream.get('height')
-                        if width and height:
-                            return {'width': int(width), 'height': int(height)}
+                        if width is not None and height is not None:
+                            try:
+                                width_int: int = int(width)
+                                height_int: int = int(height)
+                                # 确保返回的字典包含整数类型的值
+                                return {'width': width_int, 'height': height_int}
+                            except (ValueError, TypeError):
+                                continue
         except Exception as e:
             self.logger.debug(f"ffprobe方式获取分辨率失败: {e}")
         
@@ -798,11 +804,17 @@ class FFmpegFinalMerger:
             import cv2
             video = cv2.VideoCapture(str(video_path))
             if video.isOpened():
-                width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-                height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                width_val = video.get(cv2.CAP_PROP_FRAME_WIDTH)
+                height_val = video.get(cv2.CAP_PROP_FRAME_HEIGHT)
                 video.release()
-                if width > 0 and height > 0:
-                    return {'width': width, 'height': height}
+                
+                # 确保类型转换
+                width_int = int(width_val)
+                height_int = int(height_val)
+                
+                if width_int > 0 and height_int > 0:
+                    # 确保返回的字典包含整数类型的值
+                    return {'width': width_int, 'height': height_int}
         except Exception as e:
             self.logger.debug(f"opencv方式获取分辨率失败: {e}")
         
@@ -991,13 +1003,12 @@ class FFmpegFinalMerger:
     def _validate_subtitle_multiline_fix(self, subtitle_path: Path) -> Dict[str, Union[int, str]]:
         """验证字幕多行修复的效果"""
         try:
-            stats = {
-                "total_lines": 0,
-                "single_line": 0,
-                "double_line": 0,
-                "over_limit": 0,
-                "avg_chars_per_line": 0
-            }
+            # 明确使用整数类型的计数器
+            total_lines: int = 0
+            single_line: int = 0
+            double_line: int = 0
+            over_limit: int = 0
+            avg_chars_per_line: int = 0
             
             with open(subtitle_path, 'r', encoding='utf-8') as f:
                 content = f.read()
@@ -1010,20 +1021,37 @@ class FFmpegFinalMerger:
                     if len(lines) >= 3:
                         text_lines = lines[2:]
                         line_count = len([line for line in text_lines if line.strip()])
-                        stats["total_lines"] += 1
+                        total_lines += 1
                         
                         if line_count == 1:
-                            stats["single_line"] += 1
+                            single_line += 1
                         elif line_count == 2:
-                            stats["double_line"] += 1
+                            double_line += 1
                         else:
-                            stats["over_limit"] += 1
+                            over_limit += 1
             
-            return stats
+            # 构造返回结果 
+            result: Dict[str, Union[int, str]] = {
+                "total_lines": total_lines,
+                "single_line": single_line,
+                "double_line": double_line,
+                "over_limit": over_limit,
+                "avg_chars_per_line": avg_chars_per_line
+            }
+            return result
             
         except Exception as e:
             self.logger.error(f"字幕验证失败: {e}")
-            return {"error": str(e)}
+            # 返回错误信息
+            error_stats: Dict[str, Union[int, str]] = {
+                "total_lines": 0,
+                "single_line": 0,
+                "double_line": 0,
+                "over_limit": 0,
+                "avg_chars_per_line": 0,
+                "error": str(e)
+            }
+            return error_stats
 
 # 为了向后兼容，创建一个别名
 FinalMerger = FFmpegFinalMerger
