@@ -17,6 +17,14 @@ moviepy==1.0.3
 pydub==0.25.1
 opencv-python>=4.8.0
 
+# 音频分析
+librosa>=0.10.0
+
+# 机器学习和NLP
+torch>=1.11.0
+transformers>=4.20.0
+sentence-transformers>=2.2.0
+
 # 字幕处理
 pysrt==1.1.2
 webvtt-py==0.4.6

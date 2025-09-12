@@ -183,7 +183,8 @@ class AdvancedAudioProcessor:
         try:
             if AUDIO_LIBS_AVAILABLE:
                 # 使用librosa加载音频
-                audio_data, sr = librosa.load(file_path, sr=None, mono=False)  # type: ignore
+                audio_data, sr_raw = librosa.load(file_path, sr=None, mono=False)  # type: ignore
+                sr: int = int(sr_raw)  # 确保sr是整数类型
                 
                 # 确保是立体声
                 if audio_data.ndim == 1:
@@ -196,12 +197,12 @@ class AdvancedAudioProcessor:
                 
                 metadata = AudioMetadata(
                     sample_rate=sr,
-                    channels=audio_data.shape[0],
-                    duration=audio_data.shape[1] / sr,
+                    channels=int(audio_data.shape[0]),
+                    duration=float(audio_data.shape[1]) / float(sr),
                     format=AudioFormat(Path(file_path).suffix[1:].lower()),
                     quality=AudioQuality.HIGH,
-                    bit_depth=file_info.subtype_info.bits_per_sample if hasattr(file_info, 'subtype_info') else 16,
-                    file_size=os.path.getsize(file_path)
+                    bit_depth=int(file_info.subtype_info.bits_per_sample if hasattr(file_info, 'subtype_info') else 16),
+                    file_size=int(os.path.getsize(file_path))
                 )
                 
             else:

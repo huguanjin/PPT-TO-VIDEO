@@ -22,9 +22,27 @@ try:
     import scipy.signal as signal
     import scipy.fft
     AUDIO_LIBS_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     AUDIO_LIBS_AVAILABLE = False
-    print("Warning: Audio processing libraries not available. Using basic implementations.")
+    # 创建占位模块以避免NameError
+    class MockLibrosa:
+        @staticmethod
+        def load(audio_path, sr=22050):
+            raise ImportError("librosa not installed")
+    
+    class MockSignal:
+        pass
+        
+    class MockFFT:
+        pass
+    
+    librosa = MockLibrosa()
+    signal = MockSignal()
+    scipy = type('MockScipy', (), {'fft': MockFFT()})()
+    
+    logger = logging.getLogger(__name__)
+    logger.warning(f"Audio processing libraries not available: {e}. Using mock implementations.")
+    print("Warning: Audio processing libraries not available. Install with: pip install librosa scipy")
 
 # 设置日志
 logger = logging.getLogger(__name__)
@@ -190,7 +208,9 @@ class AudioIntelligentSyncOptimizer:
         try:
             if AUDIO_LIBS_AVAILABLE:
                 audio_data, sample_rate = librosa.load(audio_path, sr=self.config["audio_analysis"]["sample_rate"])
-                return audio_data, sample_rate
+                # 确保 sample_rate 是整数类型
+                sample_rate_int = int(sample_rate)
+                return audio_data, sample_rate_int
             else:
                 return None
         except Exception as e:

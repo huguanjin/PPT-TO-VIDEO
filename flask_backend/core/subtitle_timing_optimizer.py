@@ -8,7 +8,7 @@ import asyncio
 import time
 import logging
 from typing import Dict, List, Tuple, Optional, Any, Union
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import json
 import numpy as np
@@ -116,17 +116,13 @@ class SubtitleTimingRule:
     english_reading_speed: float = 12.0  # 英文阅读速度 (字符/秒)
     
     # 内容类型调整
-    content_speed_multipliers: Dict[ContentType, float] = None
-    
-    def __post_init__(self):
-        if self.content_speed_multipliers is None:
-            self.content_speed_multipliers = {
-                ContentType.TECHNICAL: 0.7,
-                ContentType.LECTURE: 0.8,
-                ContentType.PRESENTATION: 1.0,
-                ContentType.CONVERSATION: 1.2,
-                ContentType.NARRATION: 1.0
-            }
+    content_speed_multipliers: Dict[ContentType, float] = field(default_factory=lambda: {
+        ContentType.TECHNICAL: 0.7,
+        ContentType.LECTURE: 0.8,
+        ContentType.PRESENTATION: 1.0,
+        ContentType.CONVERSATION: 1.2,
+        ContentType.NARRATION: 1.0
+    })
 
 
 @dataclass

@@ -6,7 +6,7 @@
 import os
 import asyncio
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Callable, Tuple
+from typing import Dict, Any, List, Optional, Callable, Tuple, TYPE_CHECKING
 from datetime import datetime, timedelta
 import logging
 import re
@@ -795,7 +795,10 @@ class SubtitleGenerator:
                     if video_files:
                         video_path = str(video_files[0])
                         self.logger.info(f"🎬 找到视频文件进行帧同步: {video_path}")
-                        return await self.frame_sync_optimizer.analyze_video_metadata(video_path)
+                        if self.frame_sync_optimizer is not None:
+                            return await self.frame_sync_optimizer.analyze_video_metadata(video_path)
+                        else:
+                            self.logger.warning("帧同步优化器未初始化，无法分析视频元数据")
             
             # 如果没找到实际视频文件，使用默认元数据
             self.logger.info("未找到视频文件，使用默认视频元数据 (1920x1080, 24fps)")
@@ -832,7 +835,7 @@ class SubtitleGenerator:
         
         return subtitle_segments
     
-    def _convert_sync_segments_to_subtitles(self, sync_segments: List['SynchronizedSubtitleSegment']) -> List[pysrt.SubRipItem]:
+    def _convert_sync_segments_to_subtitles(self, sync_segments: List[Any]) -> List[pysrt.SubRipItem]:
         """转换同步片段回字幕格式"""
         subtitles = []
         
@@ -851,15 +854,6 @@ class SubtitleGenerator:
             subtitles.append(subtitle)
         
         return subtitles
-    
-    def _seconds_to_srt_time(self, seconds: float) -> pysrt.SubRipTime:
-        """将秒转换为SRT时间格式"""
-        hours = int(seconds // 3600)
-        minutes = int((seconds % 3600) // 60)
-        secs = int(seconds % 60)
-        milliseconds = int((seconds % 1) * 1000)
-        
-        return pysrt.SubRipTime(hours, minutes, secs, milliseconds)
     
     def get_subtitle_stats(self, subtitle_path: Path) -> Dict[str, Any]:
         """
@@ -938,7 +932,7 @@ class SubtitleGenerator:
         return subtitle_segments
     
     def _apply_audio_sync_results_to_subtitles(self, subtitles: List[pysrt.SubRipItem], 
-                                             sync_results: List['AudioSyncResult']) -> List[pysrt.SubRipItem]:
+                                             sync_results: List[Any]) -> List[pysrt.SubRipItem]:
         """将音频同步结果应用到字幕"""
         if len(subtitles) != len(sync_results):
             self.logger.warning(f"字幕数量({len(subtitles)})与同步结果数量({len(sync_results)})不匹配")
@@ -1021,7 +1015,7 @@ class SubtitleGenerator:
         return subtitle_segments
     
     def _apply_semantic_sync_results_to_subtitles(self, subtitles: List[pysrt.SubRipItem], 
-                                                sync_results: List['SemanticSyncResult']) -> List[pysrt.SubRipItem]:
+                                                sync_results: List[Any]) -> List[pysrt.SubRipItem]:
         """将语义同步结果应用到字幕"""
         if len(subtitles) != len(sync_results):
             self.logger.warning(f"字幕数量({len(subtitles)})与语义同步结果数量({len(sync_results)})不匹配")

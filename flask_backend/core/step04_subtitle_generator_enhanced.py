@@ -144,7 +144,7 @@ class EnhancedSubtitleGenerator:
             
             # 检查每行字符数
             for i, line in enumerate(lines):
-                char_weight = self.multiline_fixer._calculate_text_weight(line)
+                char_weight = self.multiline_fixer.calculate_enhanced_char_weight(line)
                 if char_weight > max_chars:
                     compliance_issues.append(f"第{i+1}行字符超限: {char_weight:.1f} > {max_chars}")
             
@@ -180,7 +180,7 @@ class EnhancedSubtitleGenerator:
                     # 如果还有下一行且当前行较短，尝试合并
                     if i + 1 < len(lines) and len(combined_lines) < 1:
                         next_line = lines[i + 1]
-                        combined_weight = self.multiline_fixer._calculate_text_weight(current_line + next_line)
+                        combined_weight = self.multiline_fixer.calculate_enhanced_char_weight(current_line + next_line)
                         if combined_weight <= 30:
                             combined_lines.append(current_line + next_line)
                             i += 2

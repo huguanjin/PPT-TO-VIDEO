@@ -43,7 +43,7 @@ if CUSTOM_AI_AVAILABLE:
 def get_custom_ai_status():
     """获取自定义AI系统状态"""
     try:
-        if not CUSTOM_AI_AVAILABLE:
+        if not CUSTOM_AI_AVAILABLE or ai_manager is None:
             return jsonify({
                 'success': False,
                 'available': False,
@@ -76,7 +76,7 @@ def get_custom_ai_status():
 def get_model_templates():
     """获取模型配置模板"""
     try:
-        if not CUSTOM_AI_AVAILABLE:
+        if not CUSTOM_AI_AVAILABLE or ai_manager is None:
             return jsonify({
                 'success': False,
                 'message': '自定义AI模块不可用'
@@ -104,7 +104,7 @@ def get_model_templates():
 def register_custom_model():
     """注册自定义AI模型"""
     try:
-        if not CUSTOM_AI_AVAILABLE:
+        if not CUSTOM_AI_AVAILABLE or ai_manager is None:
             return jsonify({
                 'success': False,
                 'message': '自定义AI模块不可用'
@@ -181,7 +181,7 @@ def register_custom_model():
 def analyze_with_custom_ai():
     """使用自定义AI模型进行文本分析"""
     try:
-        if not CUSTOM_AI_AVAILABLE:
+        if not CUSTOM_AI_AVAILABLE or ai_manager is None:
             return jsonify({
                 'success': False,
                 'message': '自定义AI模块不可用'
@@ -262,7 +262,7 @@ def analyze_with_custom_ai():
 def batch_analyze_with_custom_ai():
     """批量文本分析"""
     try:
-        if not CUSTOM_AI_AVAILABLE:
+        if not CUSTOM_AI_AVAILABLE or ai_manager is None:
             return jsonify({
                 'success': False,
                 'message': '自定义AI模块不可用'
@@ -303,13 +303,15 @@ def batch_analyze_with_custom_ai():
         try:
             for i, text in enumerate(texts):
                 try:
+                    # 创建分析请求对象
+                    analysis_request = AIAnalysisRequest(
+                        text=text,
+                        task_type=task_type,
+                        language=language
+                    )
+                    
                     result = loop.run_until_complete(
-                        ai_manager.analyze_content(
-                            text=text,
-                            model_name=model_name,
-                            task_type=task_type,
-                            language=language
-                        )
+                        ai_manager.analyze_content(analysis_request, model_name)
                     )
                     
                     total_processing_time += result.processing_time
@@ -426,7 +428,7 @@ def test_custom_model(model_name: str):
 def list_custom_models():
     """获取已注册的自定义模型列表"""
     try:
-        if not CUSTOM_AI_AVAILABLE:
+        if not CUSTOM_AI_AVAILABLE or ai_manager is None:
             return jsonify({
                 'success': False,
                 'message': '自定义AI模块不可用'
@@ -457,7 +459,7 @@ def list_custom_models():
 def unregister_custom_model(model_name: str):
     """注销自定义模型"""
     try:
-        if not CUSTOM_AI_AVAILABLE:
+        if not CUSTOM_AI_AVAILABLE or ai_manager is None:
             return jsonify({
                 'success': False,
                 'message': '自定义AI模块不可用'
