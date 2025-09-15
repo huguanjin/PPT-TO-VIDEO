@@ -35,22 +35,36 @@
   "precision_levels": {
     "basic": {
       "target_accuracy": "±50ms",
-      "features": ["basic_audio_sync"],
+      "features": [
+        "basic_audio_sync"
+      ],
       "performance": "high_speed"
     },
     "enhanced": {
       "target_accuracy": "±25ms",
-      "features": ["beat_alignment", "basic_emotion_sync"],
+      "features": [
+        "beat_alignment",
+        "basic_emotion_sync"
+      ],
       "performance": "balanced"
     },
     "intelligent": {
       "target_accuracy": "±10ms",
-      "features": ["beat_alignment", "emotion_sync", "speech_rate_adapt", "pause_detection"],
+      "features": [
+        "beat_alignment",
+        "emotion_sync",
+        "speech_rate_adapt",
+        "pause_detection"
+      ],
       "performance": "high_quality"
     },
     "perfect": {
       "target_accuracy": "±5ms",
-      "features": ["all_features", "advanced_ai_analysis", "machine_learning"],
+      "features": [
+        "all_features",
+        "advanced_ai_analysis",
+        "machine_learning"
+      ],
       "performance": "maximum_quality"
     }
   },
@@ -114,7 +128,7 @@
     "enable_quality_scoring": true,
     "quality_metrics": [
       "sync_accuracy",
-      "beat_alignment_rate", 
+      "beat_alignment_rate",
       "emotion_enhancement_rate",
       "speech_match_rate"
     ]
@@ -126,5 +140,16 @@
     "measure_accuracy_metrics": true,
     "export_performance_reports": true,
     "max_log_file_size_mb": 10
+  },
+  "intelligent_alignment_system": {
+    "enabled": true,
+    "use_phase3_features": true,
+    "enable_dtw_algorithm": true,
+    "enable_audio_feature_extraction": true
+  },
+  "audio_processing": {
+    "enabled": true,
+    "use_librosa": true,
+    "enable_advanced_analysis": true
   }
 }

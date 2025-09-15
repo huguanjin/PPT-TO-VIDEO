@@ -23,6 +23,25 @@
     "max_lines": 2,
     "netflix_style": true
   },
+  "phase3_intelligent_alignment": {
+    "enabled": false,
+    "precision_level": "enhanced",
+    "audio_analysis": {
+      "sample_rate": 16000,
+      "frame_length": 1024,
+      "hop_length": 512
+    },
+    "alignment_settings": {
+      "dtw_step_pattern": "symmetric2",
+      "boundary_detection_threshold": 0.3,
+      "min_segment_duration": 0.5
+    },
+    "quality_control": {
+      "min_confidence_threshold": 0.7,
+      "max_time_deviation": 200,
+      "enable_validation": true
+    }
+  },
   "tts": {
     "preferred_engine": "edge_tts",
     "edge_tts": {

@@ -84,6 +84,16 @@ def register_blueprints(app):
     except Exception as e:
         print(f"❌ videolingo集成模块加载错误: {e}")
 
+    # 导入Phase 3智能对齐API蓝图
+    phase3_bp = None
+    try:
+        from app.api.phase3_alignment import bp as phase3_bp
+        print("✅ Phase 3智能对齐API模块导入成功")
+    except ImportError as e:
+        print(f"❌ Phase 3智能对齐API模块导入失败: {e}")
+    except Exception as e:
+        print(f"❌ Phase 3智能对齐API模块加载错误: {e}")
+
     # 导入增强的API蓝图（带详细错误处理）
     enhanced_apis_available = True
     enhanced_workflow_bp = None
@@ -193,6 +203,14 @@ def register_blueprints(app):
             
         except Exception as e:
             print(f"❌ videolingo蓝图注册失败: {e}")
+    
+    # 注册Phase 3智能对齐API蓝图
+    if phase3_bp is not None:
+        try:
+            app.register_blueprint(phase3_bp)
+            print("✅ Phase 3智能对齐API蓝图注册成功: /api/phase3/*")
+        except Exception as e:
+            print(f"❌ Phase 3智能对齐API蓝图注册失败: {e}")
     
     # 注册智能字幕API
     if smart_subtitle_bp is not None:

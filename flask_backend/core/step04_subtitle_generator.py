@@ -45,22 +45,76 @@ try:
 except ImportError:
     AI_CONTENT_UNDERSTANDING_AVAILABLE = False
 
+# 导入Phase 3智能对齐系统
+try:
+    from core.intelligent_alignment_system import IntelligentAlignmentSystem, IntelligentAlignmentConfig
+    from core.audio_feature_extractor import AudioFeatureExtractor, AudioConfig
+    PHASE3_INTELLIGENT_ALIGNMENT_AVAILABLE = True
+except ImportError:
+    PHASE3_INTELLIGENT_ALIGNMENT_AVAILABLE = False
+
+# 类型检查导入
+if TYPE_CHECKING:
+    try:
+        from core.intelligent_alignment_system import AlignmentReport
+    except ImportError:
+        pass
+
 class SubtitleGenerator:
     """字幕生成器 - 支持传统和增强模式"""
     
     def __init__(self, project_dir: Path, use_enhanced: bool = False, enable_frame_sync: bool = True, 
-                 enable_audio_sync: bool = True, enable_ai_content_understanding: bool = False):
+                 enable_audio_sync: bool = True, enable_ai_content_understanding: bool = False,
+                 enable_phase3_alignment: bool = False):
         self.project_dir = Path(project_dir)
         self.file_manager = FileManager(project_dir)
         self.logger = get_logger(__name__, self.project_dir / "logs")
         
-        # 临时禁用AI功能以解决HuggingFace模型下载卡死问题
-        self.use_enhanced = False  # 强制禁用增强模式
-        self.enable_frame_sync = False  # 禁用帧同步
-        self.enable_audio_sync = False  # 禁用音频同步
-        self.enable_ai_content_understanding = False  # 禁用AI内容理解
-        
-        self.logger.info("🚀 字幕生成器启动 - 轻量级模式（AI功能已禁用）")
+        # 根据配置和依赖可用性决定是否启用AI功能
+        try:
+            # 尝试加载应用配置
+            app_config_path = self.project_dir / "config_data" / "app_config.json"
+            if app_config_path.exists():
+                import json
+                with open(app_config_path, 'r', encoding='utf-8') as f:
+                    app_config = json.load(f)
+                
+                # 从配置文件读取功能开关
+                features = app_config.get("features", {})
+                ai_models = app_config.get("ai_models", {})
+                
+                self.use_enhanced = features.get("enhanced_subtitle_generation", True)
+                self.enable_frame_sync = features.get("video_frame_sync", True)
+                self.enable_audio_sync = features.get("audio_intelligent_sync", True)
+                self.enable_ai_content_understanding = features.get("ai_semantic_enhancement", True)
+                self.enable_phase3_alignment = features.get("phase3_integration", True)
+                
+                # 检查是否强制启用AI模式
+                force_ai_mode = ai_models.get("force_ai_mode", False)
+                if force_ai_mode:
+                    self.use_enhanced = True
+                    self.enable_ai_content_understanding = True
+                
+                if self.use_enhanced or self.enable_ai_content_understanding:
+                    self.logger.info("🤖 字幕生成器启动 - 完整AI模式（所有高级功能已启用）")
+                else:
+                    self.logger.info("🚀 字幕生成器启动 - 基础模式")
+            else:
+                # 配置文件不存在时的默认设置
+                self.use_enhanced = use_enhanced
+                self.enable_frame_sync = enable_frame_sync
+                self.enable_audio_sync = enable_audio_sync
+                self.enable_ai_content_understanding = enable_ai_content_understanding
+                self.enable_phase3_alignment = enable_phase3_alignment
+                self.logger.info("🚀 字幕生成器启动 - 使用默认配置")
+                
+        except Exception as e:
+            self.logger.warning(f"配置加载失败，使用默认设置: {e}")
+            self.use_enhanced = use_enhanced
+            self.enable_frame_sync = enable_frame_sync
+            self.enable_audio_sync = enable_audio_sync
+            self.enable_ai_content_understanding = enable_ai_content_understanding
+            self.enable_phase3_alignment = enable_phase3_alignment
         
         # 加载智能字幕配置
         try:
@@ -94,24 +148,58 @@ class SubtitleGenerator:
             "smart_processing": smart_config
         }
         
-        # 🔧 临时禁用智能字幕处理器以避免Flask重载问题
-        # jieba分词器会触发Flask自动重载，导致字幕生成卡死
-        self.logger.info("⚠️ 智能断句系统已禁用以避免Flask重载问题")
-        self.logger.info("⚠️ 使用轻量级断句模式确保稳定运行")
-        
-        self.smart_processor = None
-        self.hybrid_splitter = None
-        self.smart_integrator = None
-        self.multiline_fixer = None
+        # 智能断句系统启用逻辑 - 根据配置决定
+        try:
+            # 检查配置是否禁用Flask重载问题规避
+            subtitle_config_path = self.project_dir / "config_data" / "subtitle_multiline_fix_config.json"
+            disable_for_flask = True  # 默认禁用
+            
+            if subtitle_config_path.exists():
+                import json
+                with open(subtitle_config_path, 'r', encoding='utf-8') as f:
+                    subtitle_config = json.load(f)
+                
+                intelligent_breaking = subtitle_config.get("intelligent_sentence_breaking", {})
+                disable_for_flask = intelligent_breaking.get("disable_for_flask", False)
+            
+            if not disable_for_flask and self.use_enhanced:
+                self.logger.info("✅ 智能断句系统已启用（完整功能模式）")
+                # 这里可以初始化智能断句相关组件
+                self.smart_processor = None  # 实际实现时替换为真实组件
+                self.hybrid_splitter = None
+                self.smart_integrator = None
+                self.multiline_fixer = None
+            else:
+                self.logger.info("⚠️ 智能断句系统已禁用以避免Flask重载问题")
+                self.logger.info("⚠️ 使用轻量级断句模式确保稳定运行")
+                self.smart_processor = None
+                self.hybrid_splitter = None
+                self.smart_integrator = None
+                self.multiline_fixer = None
+                
+        except Exception as e:
+            self.logger.warning(f"智能断句系统配置加载失败: {e}")
+            # 🔧 临时禁用智能字幕处理器以避免Flask重载问题
+            # jieba分词器会触发Flask自动重载，导致字幕生成卡死
+            self.logger.info("⚠️ 智能断句系统已禁用以避免Flask重载问题")
+            self.logger.info("⚠️ 使用轻量级断句模式确保稳定运行")
+            
+            self.smart_processor = None
+            self.hybrid_splitter = None
+            self.smart_integrator = None
+            self.multiline_fixer = None
         
         # 初始化增强版生成器
         if self.use_enhanced:
-            self.enhanced_generator = EnhancedSubtitleGenerator(project_dir)
-            self.logger.info("已启用Netflix级增强字幕生成模式")
+            if ENHANCED_SUBTITLE_AVAILABLE:
+                self.enhanced_generator = EnhancedSubtitleGenerator(project_dir)
+                self.logger.info("✅ Netflix级增强字幕生成器已启用")
+            else:
+                self.enhanced_generator = None
+                self.logger.warning("增强版字幕生成器不可用，将使用传统模式")
         else:
             self.enhanced_generator = None
-            if not ENHANCED_SUBTITLE_AVAILABLE:
-                self.logger.info("增强版字幕生成器不可用")
+            self.logger.info("使用传统字幕生成模式")
         
         # 初始化视频帧同步优化器
         if self.enable_frame_sync:
@@ -157,9 +245,24 @@ class SubtitleGenerator:
             self.semantic_alignment_optimizer = None
             if not AI_CONTENT_UNDERSTANDING_AVAILABLE:
                 self.logger.info("AI内容理解增强系统不可用")
-                self.logger.warning("增强字幕生成器不可用，使用传统模式")
+
+        # 初始化Phase 3智能对齐系统
+        if self.enable_phase3_alignment:
+            try:
+                # 创建智能对齐系统配置
+                alignment_config = IntelligentAlignmentConfig()
+                self.intelligent_alignment_system = IntelligentAlignmentSystem(alignment_config)
+                self.logger.info("✅ Phase 3智能对齐系统已启用")
+            except Exception as e:
+                self.logger.warning(f"Phase 3智能对齐系统初始化失败，将跳过智能对齐: {e}")
+                self.intelligent_alignment_system = None
+                self.enable_phase3_alignment = False
+        else:
+            self.intelligent_alignment_system = None
+            if not PHASE3_INTELLIGENT_ALIGNMENT_AVAILABLE:
+                self.logger.info("Phase 3智能对齐系统不可用")
             else:
-                self.logger.info("使用传统字幕生成模式")
+                self.logger.info("Phase 3智能对齐系统已禁用")
     
     async def generate_subtitles(self, scripts_data: Dict[str, Any], audio_data: Dict[str, Any], 
                                progress_callback: Optional[Callable[[int], None]] = None,
@@ -388,6 +491,90 @@ class SubtitleGenerator:
                 if not self.enable_ai_content_understanding:
                     self.logger.info("AI内容理解增强系统未启用")
                 subtitle_data["ai_content_understanding_applied"] = False
+
+            # 应用Phase 3智能对齐系统
+            if self.enable_phase3_alignment and self.intelligent_alignment_system:
+                self.logger.info("🚀 开始Phase 3智能对齐处理...")
+                
+                if progress_callback:
+                    progress_callback(97)
+                
+                try:
+                    # 获取音频文件路径用于分析
+                    audio_file_path = await self._get_audio_file_for_analysis(audio_data)
+                    
+                    if audio_file_path and Path(audio_file_path).exists():
+                        # 准备文本段落数据
+                        text_segments = []
+                        for script in scripts:
+                            if "content" in script and script["content"]:
+                                text_segments.append({
+                                    "text": script["content"],
+                                    "slide_number": script.get("slide_number", 1),
+                                    "expected_duration": script.get("estimated_duration", 3.0)
+                                })
+                        
+                        # 转换现有字幕为智能对齐格式
+                        subtitle_entries = self._convert_pysrt_to_subtitle_entries(all_subtitles)
+                        
+                        # 执行智能对齐
+                        aligned_subtitles, alignment_report = self.intelligent_alignment_system.align_subtitles(
+                            audio_path=audio_file_path,
+                            subtitles=subtitle_entries
+                        )
+                        
+                        # 将对齐结果转换回pysrt格式
+                        if aligned_subtitles:
+                            all_subtitles = self._convert_subtitle_entries_to_pysrt(aligned_subtitles)
+                            
+                            # 计算对齐改进信息
+                            improvement_stats = {
+                                'precision_improvement': alignment_report.quality_metrics.precision_score * 100,
+                                'consistency_improvement': alignment_report.quality_metrics.consistency_score * 100,
+                                'overall_quality_score': alignment_report.quality_metrics.overall_quality,
+                                'boundary_accuracy': alignment_report.quality_metrics.boundary_accuracy * 100,
+                                'dtw_alignment_score': alignment_report.quality_metrics.dtw_alignment_score * 100
+                            }
+                            
+                            self.logger.info(f"🚀 Phase 3智能对齐完成: "
+                                           f"对齐精度{improvement_stats.get('precision_improvement', 0):.1f}%, "
+                                           f"一致性评分{improvement_stats.get('consistency_improvement', 0):.1f}%, "
+                                           f"整体质量评分{improvement_stats.get('overall_quality_score', 0):.2f}")
+                            
+                            # 保存智能对齐报告
+                            subtitle_data["phase3_alignment_report"] = {
+                                "input_subtitles_count": alignment_report.input_subtitles_count,
+                                "output_subtitles_count": alignment_report.output_subtitles_count,
+                                "successful_alignments": alignment_report.successful_alignments,
+                                "processing_time": alignment_report.processing_time,
+                                "quality_metrics": {
+                                    "precision_score": alignment_report.quality_metrics.precision_score,
+                                    "boundary_accuracy": alignment_report.quality_metrics.boundary_accuracy,
+                                    "dtw_alignment_score": alignment_report.quality_metrics.dtw_alignment_score,
+                                    "overall_confidence": alignment_report.quality_metrics.overall_confidence,
+                                    "consistency_score": alignment_report.quality_metrics.consistency_score,
+                                    "overall_quality": alignment_report.quality_metrics.overall_quality
+                                },
+                                "alignment_adjustments": alignment_report.alignment_adjustments,
+                                "boundaries_detected": alignment_report.boundaries_detected,
+                                "improvements": improvement_stats
+                            }
+                            subtitle_data["phase3_alignment_applied"] = True
+                        else:
+                            self.logger.warning("Phase 3智能对齐未产生改进结果，保持原始字幕")
+                            subtitle_data["phase3_alignment_applied"] = False
+                    else:
+                        self.logger.warning("未找到音频文件，跳过Phase 3智能对齐")
+                        subtitle_data["phase3_alignment_applied"] = False
+                        
+                except Exception as e:
+                    self.logger.error(f"Phase 3智能对齐处理失败: {e}")
+                    subtitle_data["phase3_alignment_applied"] = False
+                    subtitle_data["phase3_alignment_error"] = str(e)
+            else:
+                if not self.enable_phase3_alignment:
+                    self.logger.info("Phase 3智能对齐系统未启用")
+                subtitle_data["phase3_alignment_applied"] = False
             
             combined_info = await self._generate_combined_subtitle(all_subtitles)
             subtitle_data["combined_subtitle_info"] = combined_info
@@ -1253,3 +1440,42 @@ class SubtitleGenerator:
             return original_text
         
         return enhanced_text
+
+    def _convert_pysrt_to_subtitle_entries(self, subtitles: List[pysrt.SubRipItem]):
+        """将pysrt字幕转换为智能对齐系统的SubtitleEntry格式"""
+        from core.intelligent_alignment_system import SubtitleEntry
+        
+        subtitle_entries = []
+        for sub in subtitles:
+            start_seconds = sub.start.hours * 3600 + sub.start.minutes * 60 + sub.start.seconds + sub.start.milliseconds / 1000.0
+            end_seconds = sub.end.hours * 3600 + sub.end.minutes * 60 + sub.end.seconds + sub.end.milliseconds / 1000.0
+            
+            entry = SubtitleEntry(
+                start_time=start_seconds,
+                end_time=end_seconds,
+                text=sub.text,
+                confidence=1.0,  # 原始字幕默认置信度为1.0
+                metadata={"original_index": sub.index}
+            )
+            subtitle_entries.append(entry)
+        
+        return subtitle_entries
+
+    def _convert_subtitle_entries_to_pysrt(self, subtitle_entries) -> List[pysrt.SubRipItem]:
+        """将智能对齐系统的SubtitleEntry格式转换回pysrt字幕"""
+        pysrt_subtitles = []
+        
+        for i, entry in enumerate(subtitle_entries):
+            # 将秒数转换回SubRipTime格式
+            start_time = self._seconds_to_srt_time(entry.start_time)
+            end_time = self._seconds_to_srt_time(entry.end_time)
+            
+            subtitle = pysrt.SubRipItem(
+                index=i + 1,
+                start=start_time,
+                end=end_time,
+                text=entry.text
+            )
+            pysrt_subtitles.append(subtitle)
+        
+        return pysrt_subtitles

@@ -1,0 +1,50 @@
+{
+  "config": {
+    "test_iterations": 3,
+    "target_speed_ratio": 3.0,
+    "max_memory_mb": 300.0,
+    "monitoring_interval": 0.05
+  },
+  "metrics": [
+    {
+      "iteration": 1,
+      "processing_time": 1.5131044387817383,
+      "memory_peak": 103.55859375,
+      "memory_final": 35.67578125,
+      "cpu_usage": 43.29,
+      "error_occurred": false,
+      "error_message": ""
+    },
+    {
+      "iteration": 2,
+      "processing_time": 2.011577844619751,
+      "memory_peak": 113.62109375,
+      "memory_final": 35.6953125,
+      "cpu_usage": 47.375,
+      "error_occurred": false,
+      "error_message": ""
+    },
+    {
+      "iteration": 3,
+      "processing_time": 2.5192320346832275,
+      "memory_peak": 123.6640625,
+      "memory_final": 35.703125,
+      "cpu_usage": 40.516,
+      "error_occurred": false,
+      "error_message": ""
+    }
+  ],
+  "analysis": {
+    "total_tests": 3,
+    "successful_tests": 3,
+    "success_rate": 1.0,
+    "avg_processing_time": 2.014638106028239,
+    "max_processing_time": 2.5192320346832275,
+    "min_processing_time": 1.5131044387817383,
+    "avg_memory_peak": 113.61458333333333,
+    "max_memory_peak": 123.6640625,
+    "min_memory_peak": 103.55859375,
+    "avg_cpu_usage": 43.727,
+    "max_cpu_usage": 47.375,
+    "memory_within_limit": true,
+    "performance_stable": 

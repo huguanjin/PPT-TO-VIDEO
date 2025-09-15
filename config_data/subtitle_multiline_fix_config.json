@@ -1,8 +1,8 @@
 {
   "subtitle_multiline_fix_config": {
-    "version": "1.0.0",
-    "last_updated": "2025-09-14T18:21:28.849701",
-    "description": "字幕多行显示问题修复配置 - 基于VideoLingo集成分析优化",
+    "version": "2.0.0",
+    "last_updated": "2025-01-14T15:30:00.000000",
+    "description": "增强版字幕分割配置 - 集成VideoLingo NLP技术与多层次分割策略",
     "character_weight_adjustments": {
       "chinese": 2.0,
       "japanese": 2.0,
@@ -10,13 +10,16 @@
       "english": 1.0,
       "punctuation": 0.6,
       "space": 0.3,
-      "number": 0.8
+      "number": 0.8,
+      "emoji": 1.5
     },
     "line_control_rules": {
       "max_lines_strict": 2,
       "max_chars_per_line_chinese": 30,
+      "max_chars_per_line_netflix": 42,
       "enforce_line_limit": true,
-      "prefer_length_over_semantic": true
+      "prefer_length_over_semantic": false,
+      "netflix_standard_enabled": true
     },
     "resolution_adaptive_font": {
       "enabled": true,
@@ -29,13 +32,106 @@
       "scale_factor_limit": [
         0.5,
         2.0
-      ]
+      ],
+      "cjk_font_boost": 1.2
+    },
+    "enhanced_splitting_config": {
+      "enabled": true,
+      "default_strategy": "multi_level",
+      "available_strategies": [
+        "rule_only",
+        "nlp_only",
+        "ai_only",
+        "multi_level"
+      ],
+      "nlp_settings": {
+        "enable_nlp_splitting": true,
+        "nlp_language": "zh",
+        "nlp_model": "zh_core_web_md",
+        "complexity_threshold": 0.5,
+        "syntax_threshold": 40,
+        "sentence_split_enabled": true,
+        "syntax_split_enabled": true
+      },
+      "ai_settings": {
+        "enable_ai_splitting": true,
+        "ai_fallback": true,
+        "semantic_threshold": 35,
+        "max_ai_retries": 2,
+        "ai_model_timeout": 30
+      },
+      "quality_control": {
+        "min_split_length": 10,
+        "max_split_length": 100,
+        "validation_enabled": true,
+        "auto_correction": true,
+        "merge_short_segments": true
+      }
     },
     "videolingo_integration_options": {
       "preserve_smart_features": true,
-      "override_semantic_splitting": true,
+      "override_semantic_splitting": false,
       "use_enhanced_character_weights": true,
-      "apply_netflix_timing_standards": true
+      "apply_netflix_timing_standards": true,
+      "four_stage_splitting": true,
+      "dp_optimization": true,
+      "punctuation_priority": [
+        "。",
+        "！",
+        "？",
+        "；",
+        "，",
+        "、"
+      ]
+    },
+    "performance_optimization": {
+      "enable_caching": true,
+      "batch_processing": true,
+      "parallel_processing": false,
+      "cache_expiry_hours": 24,
+      "max_cache_size_mb": 100
+    },
+    "preset_configurations": {
+      "simple": {
+        "splitting_strategy": "rule_only",
+        "enable_nlp_splitting": false,
+        "use_ai_splitting": false,
+        "max_length": 50
+      },
+      "standard": {
+        "splitting_strategy": "multi_level",
+        "enable_nlp_splitting": true,
+        "use_ai_splitting": false,
+        "max_length": 75,
+        "nlp_complexity_threshold": 0.5
+      },
+      "professional": {
+        "splitting_strategy": "multi_level",
+        "enable_nlp_splitting": true,
+        "use_ai_splitting": true,
+        "max_length": 42,
+        "nlp_complexity_threshold": 0.3,
+        "ai_fallback": true
+      },
+      "netflix": {
+        "splitting_strategy": "multi_level",
+        "enable_nlp_splitting": true,
+        "use_ai_splitting": true,
+        "max_length": 42,
+        "enforce_netflix_standards": true,
+        "cjk_weight_multiplier": 1.75
+      }
     }
+  },
+  "enhanced_subtitle_generator": {
+    "enabled": true,
+    "use_netflix_standards": true,
+    "enable_intelligent_sentence_breaking": true,
+    "use_ai_optimization": true
+  },
+  "intelligent_sentence_breaking": {
+    "enabled": true,
+    "disable_for_flask": false,
+    "use_lightweight_mode": false
   }
 }

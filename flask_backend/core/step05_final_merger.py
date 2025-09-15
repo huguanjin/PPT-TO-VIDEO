@@ -202,6 +202,20 @@ class FFmpegFinalMerger:
             progress_callback=adapted_progress_callback
         )
     
+    def merge_video(self, *args, **kwargs) -> Dict[str, Any]:
+        """
+        merge_videos方法的别名 - 兼容性接口
+        提供单数形式的方法名以保持向后兼容
+        """
+        return self.merge_videos(*args, **kwargs)
+
+    def merge_video(self, *args, **kwargs) -> Dict[str, Any]:
+        """
+        merge_videos方法的别名 - 兼容性接口
+        提供单数形式的方法名以保持向后兼容
+        """
+        return self.merge_videos(*args, **kwargs)
+
     def _prepare_merge_parameters(self, 
                                  video_data: Dict[str, Any], 
                                  audio_data: Dict[str, Any],

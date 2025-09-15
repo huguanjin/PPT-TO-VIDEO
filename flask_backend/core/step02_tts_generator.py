@@ -79,17 +79,42 @@ class TTSGenerator:
             "pitch": self.tts_config.edge_pitch
         }
     
-    async def generate_audio(self, scripts_data: Dict[str, Any], progress_callback: Optional[Callable[[int], None]] = None) -> Dict[str, Any]:
+    async def generate_audio(self, scripts_data: Optional[Dict[str, Any]] = None, text: Optional[str] = None, 
+                               output_file: Optional[str] = None, progress_callback: Optional[Callable[[int], None]] = None) -> Dict[str, Any]:
         """
-        生成所有讲话稿的音频文件 - 支持多引擎和AI优化数据
+        生成所有讲话稿的音频文件 - 支持多引擎和AI优化数据 (兼容接口)
         
         Args:
             scripts_data: 讲话稿数据（支持原始格式和AI优化格式）
+            text: 单一文本内容（用于简单测试，可选）
+            output_file: 输出文件名（用于测试，可选）
             progress_callback: 进度回调函数
             
         Returns:
             音频数据字典
         """
+        # 接口兼容性处理 - 支持text参数调用
+        if text is not None and scripts_data is None:
+            # 从简单text参数构建scripts_data格式
+            scripts_data = {
+                "scripts": [
+                    {
+                        "slide_index": 0,
+                        "slide_number": 1,  # 添加slide_number字段
+                        "title": "测试幻灯片",
+                        "content": text,
+                        "script_content": text,  # 添加script_content字段
+                        "duration": 5.0,
+                        "ai_optimized": False
+                    }
+                ],
+                "total_slides": 1,
+                "ai_enhanced": False
+            }
+            self.logger.info(f"兼容模式: 从text参数构建scripts_data (文本长度: {len(text)})")
+        
+        if scripts_data is None:
+            raise ValueError("必须提供scripts_data或text参数之一")
         try:
             self.logger.info("开始生成音频文件")
             

@@ -10,12 +10,17 @@ import tempfile
 import threading
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 from flask import Blueprint, request, jsonify, send_file, current_app
 from werkzeug.utils import secure_filename
 
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
+
+# 类型检查导入
+if TYPE_CHECKING:
+    from core.step04_subtitle_generator import SubtitleGenerator as RealSubtitleGenerator
 
 try:
     from core.step01_ppt_parser import PPTParser  # type: ignore
@@ -45,7 +50,11 @@ except ImportError as e:
     class VideoGenerator:
         def __init__(self, project_dir): pass
     class SubtitleGenerator:
-        def __init__(self, project_dir): pass
+        def __init__(self, project_dir, use_enhanced=False, enable_frame_sync=True, 
+                     enable_audio_sync=True, enable_ai_content_understanding=False,
+                     enable_phase3_alignment=False): pass
+        async def generate_subtitles(self, scripts_data=None, audio_data=None, progress_callback=None):
+            return {"subtitle_generation_completed": False}
     class FFmpegFinalMerger:
         def __init__(self, project_dir): pass
     class TaskManager:
@@ -114,6 +123,28 @@ class WorkflowConfig:
             'background_color': subtitle_config.get('background_color', '#000000'),
             'position': subtitle_config.get('position', 'bottom'),
             'enabled': subtitle_config.get('enabled', True)
+        }
+        
+        # Phase 3智能对齐配置
+        phase3_config = data.get('phase3_intelligent_alignment', {})
+        self.phase3_alignment = {
+            'enabled': phase3_config.get('enabled', False),
+            'precision_level': phase3_config.get('precision_level', 'enhanced'),
+            'audio_analysis': phase3_config.get('audio_analysis', {
+                'sample_rate': 16000,
+                'frame_length': 1024,
+                'hop_length': 512
+            }),
+            'alignment_settings': phase3_config.get('alignment_settings', {
+                'dtw_step_pattern': 'symmetric2',
+                'boundary_detection_threshold': 0.3,
+                'min_segment_duration': 0.5
+            }),
+            'quality_control': phase3_config.get('quality_control', {
+                'min_confidence_threshold': 0.7,
+                'max_time_deviation': 200,
+                'enable_validation': True
+            })
         }
 
 @bp.route('/config', methods=['GET'])
@@ -485,7 +516,15 @@ async def run_complete_workflow(project_name: str, workflow_id: str, config: Wor
             # 步骤4：生成字幕
             update_step_progress(4, "running", 0.0, "正在生成字幕...")
             
-            subtitle_generator = SubtitleGenerator(project_dir)
+            # 获取Phase 3配置
+            app_config = load_app_config()
+            phase3_config = app_config.get('phase3_intelligent_alignment', {})
+            enable_phase3_alignment = phase3_config.get('enabled', False)
+            
+            subtitle_generator = SubtitleGenerator(
+                project_dir,
+                enable_phase3_alignment=enable_phase3_alignment
+            )
             
             def subtitle_progress_callback(progress: int):
                 update_step_progress(4, "running", progress / 100.0, f"正在生成字幕 {progress}%")

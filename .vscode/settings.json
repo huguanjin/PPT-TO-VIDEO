@@ -3,12 +3,28 @@
     "python.analysis.extraPaths": [
         "./flask_backend",
         "./flask_backend/core",
-        "./flask_backend/api"
+        "./flask_backend/api",
+        "./flask_backend/app",
+        "./flask_backend/app/api"
     ],
     "python.analysis.autoImportCompletions": true,
     "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.indexing": true,
+    "python.analysis.packageIndexDepths": [
+        {
+            "name": "core",
+            "depth": 3
+        },
+        {
+            "name": "flask_backend",
+            "depth": 3
+        }
+    ],
     "python.linting.enabled": true,
     "python.linting.pylintEnabled": false,
     "python.linting.flake8Enabled": false,
-    "python.analysis.diagnosticMode": "workspace"
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.stubPath": "./flask_backend",
+    "python.analysis.logLevel": "Information"
 }

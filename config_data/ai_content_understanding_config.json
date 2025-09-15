@@ -19,19 +19,37 @@
     "semantic_embedding": {
       "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
       "purpose": "多语言语义嵌入",
-      "languages": ["zh", "en", "ja", "ko", "fr", "de", "es"],
+      "languages": [
+        "zh",
+        "en",
+        "ja",
+        "ko",
+        "fr",
+        "de",
+        "es"
+      ],
       "max_sequence_length": 512
     },
     "sentiment_analysis": {
       "model": "cardiffnlp/twitter-roberta-base-sentiment-latest",
       "purpose": "情感分析",
-      "supported_emotions": ["positive", "negative", "neutral"],
+      "supported_emotions": [
+        "positive",
+        "negative",
+        "neutral"
+      ],
       "confidence_threshold": 0.6
     },
     "content_classification": {
       "model": "microsoft/DialoGPT-medium",
       "purpose": "内容分类和理解",
-      "content_types": ["presentation", "dialogue", "technical", "narrative", "explanatory"],
+      "content_types": [
+        "presentation",
+        "dialogue",
+        "technical",
+        "narrative",
+        "explanatory"
+      ],
       "classification_threshold": 0.7
     }
   },
@@ -45,7 +63,13 @@
     "entity_recognition": {
       "enabled": true,
       "model": "zh_core_web_sm",
-      "entity_types": ["PERSON", "ORG", "GPE", "PRODUCT", "EVENT"],
+      "entity_types": [
+        "PERSON",
+        "ORG",
+        "GPE",
+        "PRODUCT",
+        "EVENT"
+      ],
       "confidence_threshold": 0.8
     },
     "sentiment_analysis": {
@@ -56,12 +80,19 @@
     },
     "complexity_analysis": {
       "enabled": true,
-      "metrics": ["sentence_length", "vocabulary_diversity", "syntactic_complexity"],
+      "metrics": [
+        "sentence_length",
+        "vocabulary_diversity",
+        "syntactic_complexity"
+      ],
       "normalization": "z_score"
     },
     "readability_analysis": {
       "enabled": true,
-      "metrics": ["flesch_reading_ease", "automated_readability_index"],
+      "metrics": [
+        "flesch_reading_ease",
+        "automated_readability_index"
+      ],
       "target_audience": "general"
     }
   },
@@ -182,7 +213,12 @@
   },
   "multilingual_support": {
     "primary_language": "zh",
-    "supported_languages": ["zh", "en", "ja", "ko"],
+    "supported_languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko"
+    ],
     "auto_language_detection": true,
     "cross_language_alignment": true,
     "translation_quality_threshold": 0.8,
@@ -204,5 +240,16 @@
     "enable_error_analysis": true,
     "max_log_file_size_mb": 50,
     "log_retention_days": 30
+  },
+  "ai_content_understanding": {
+    "enabled": true,
+    "use_lightweight_mode": false,
+    "enable_semantic_analysis": true,
+    "enable_intelligent_splitting": true
+  },
+  "semantic_alignment": {
+    "enabled": true,
+    "precision_level": "high",
+    "use_transformer_models": true
   }
 }
