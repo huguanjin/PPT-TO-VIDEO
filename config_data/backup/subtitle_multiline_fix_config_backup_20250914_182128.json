@@ -1,7 +1,7 @@
 {
   "subtitle_multiline_fix_config": {
     "version": "1.0.0",
-    "last_updated": "2025-09-14T18:21:28.849701",
+    "last_updated": "2025-09-11T23:53:13.754789",
     "description": "字幕多行显示问题修复配置 - 基于VideoLingo集成分析优化",
     "character_weight_adjustments": {
       "chinese": 2.0,
@@ -14,7 +14,7 @@
     },
     "line_control_rules": {
       "max_lines_strict": 2,
-      "max_chars_per_line_chinese": 30,
+      "max_chars_per_line_chinese": 45,
       "enforce_line_limit": true,
       "prefer_length_over_semantic": true
     },
@@ -24,8 +24,8 @@
         1920,
         1080
       ],
-      "min_font_size": 16,
-      "max_font_size": 60,
+      "min_font_size": 14,
+      "max_font_size": 28,
       "scale_factor_limit": [
         0.5,
         2.0

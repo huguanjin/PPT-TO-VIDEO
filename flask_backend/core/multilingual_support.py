@@ -13,14 +13,238 @@ from datetime import datetime
 import json
 import os
 
-# 导入智能断句系统
-from .smart_sentence_splitter import (
-    AdvancedSentenceSplitter, 
-    SplittingContext, 
-    LanguageType, 
-    SentenceSegment,
-    SplittingStrategy
-)
+# 智能断句系统类定义
+from enum import Enum
+from dataclasses import dataclass
+from typing import List, Optional
+
+class LanguageType(Enum):
+    CHINESE = "chinese"
+    ENGLISH = "english"
+    MIXED = "mixed"
+
+class SplittingStrategy(Enum):
+    SIMPLE = "simple"
+    SEMANTIC = "semantic"
+    BALANCED = "balanced"
+
+@dataclass
+class SentenceSegment:
+    text: str
+    start_pos: int = 0
+    end_pos: int = 0
+    confidence: float = 0.8
+    semantic_weight: float = 1.0
+    readability_score: float = 0.8
+    language: LanguageType = LanguageType.MIXED
+    break_reason: str = "default"
+
+@dataclass
+class SplittingContext:
+    target_length: int = 35
+    max_length: int = 40
+    min_length: int = 10
+    language: LanguageType = LanguageType.MIXED
+    strategy: SplittingStrategy = SplittingStrategy.BALANCED
+    preserve_syntax: bool = True
+    semantic_threshold: float = 0.7
+
+class AdvancedSentenceSplitter:
+    """高级句子分割器实现"""
+    
+    def __init__(self):
+        self.chinese_punctuation = "。！？；：，、"
+        self.english_punctuation = ".!?;:,"
+        self.sentence_terminators = "。！？.!?"
+        
+    async def split_intelligent(self, text: str, context: Optional[SplittingContext] = None) -> List[SentenceSegment]:
+        """智能分割文本为句子段落"""
+        if context is None:
+            context = SplittingContext()
+        
+        segments = []
+        
+        # 根据语言类型选择分割策略
+        if context.language == LanguageType.CHINESE:
+            sentences = self._split_chinese(text, context)
+        elif context.language == LanguageType.ENGLISH:
+            sentences = self._split_english(text, context)
+        else:
+            sentences = self._split_mixed(text, context)
+        
+        # 创建句子段落对象
+        current_pos = 0
+        for sentence in sentences:
+            if sentence.strip():
+                start_pos = text.find(sentence, current_pos)
+                end_pos = start_pos + len(sentence)
+                
+                segment = SentenceSegment(
+                    text=sentence.strip(),
+                    start_pos=start_pos,
+                    end_pos=end_pos,
+                    confidence=self._calculate_confidence(sentence, context),
+                    semantic_weight=self._calculate_semantic_weight(sentence),
+                    readability_score=self._calculate_readability(sentence, context),
+                    language=context.language,
+                    break_reason=self._get_break_reason(sentence)
+                )
+                segments.append(segment)
+                current_pos = end_pos
+        
+        # 应用长度优化
+        segments = self._optimize_segments_length(segments, context)
+        
+        return segments
+    
+    def _split_chinese(self, text: str, context: SplittingContext) -> List[str]:
+        """中文文本分割"""
+        # 基于中文标点符号分割
+        sentences = re.split(f'[{self.chinese_punctuation}]', text)
+        return [s.strip() for s in sentences if s.strip()]
+    
+    def _split_english(self, text: str, context: SplittingContext) -> List[str]:
+        """英文文本分割"""
+        # 基于英文标点符号和语法分割
+        sentences = re.split(r'[.!?]+\s+', text)
+        return [s.strip() for s in sentences if s.strip()]
+    
+    def _split_mixed(self, text: str, context: SplittingContext) -> List[str]:
+        """混合语言文本分割"""
+        # 综合中英文标点符号分割
+        pattern = f'[{self.sentence_terminators}]+\\s*'
+        sentences = re.split(pattern, text)
+        return [s.strip() for s in sentences if s.strip()]
+    
+    def _calculate_confidence(self, sentence: str, context: SplittingContext) -> float:
+        """计算分割置信度"""
+        base_confidence = 0.8
+        
+        # 长度因子
+        length_factor = 1.0
+        if len(sentence) < context.min_length:
+            length_factor = 0.6
+        elif len(sentence) > context.max_length:
+            length_factor = 0.7
+        
+        # 标点符号因子
+        punct_factor = 1.0
+        if any(p in sentence for p in self.sentence_terminators):
+            punct_factor = 1.1
+        
+        return min(base_confidence * length_factor * punct_factor, 1.0)
+    
+    def _calculate_semantic_weight(self, sentence: str) -> float:
+        """计算语义权重"""
+        # 基于句子特征计算语义权重
+        weight = 1.0
+        
+        # 长度因子
+        if len(sentence) > 20:
+            weight += 0.1
+        
+        # 复杂度因子（逗号数量）
+        comma_count = sentence.count(',') + sentence.count('，')
+        weight += comma_count * 0.05
+        
+        return min(weight, 2.0)
+    
+    def _calculate_readability(self, sentence: str, context: SplittingContext) -> float:
+        """计算可读性评分"""
+        # 基于长度和复杂度计算可读性
+        target_length = context.target_length
+        actual_length = len(sentence)
+        
+        # 长度适宜性
+        if actual_length <= target_length:
+            length_score = 1.0
+        else:
+            length_score = max(0.3, target_length / actual_length)
+        
+        # 复杂度评分
+        complexity_score = 1.0 - min(0.5, sentence.count(',') * 0.1)
+        
+        return (length_score + complexity_score) / 2
+    
+    def _get_break_reason(self, sentence: str) -> str:
+        """获取断句原因"""
+        if any(p in sentence for p in "。！？"):
+            return "chinese_punctuation"
+        elif any(p in sentence for p in ".!?"):
+            return "english_punctuation"
+        elif len(sentence) > 40:
+            return "length_limit"
+        else:
+            return "semantic_break"
+    
+    def _optimize_segments_length(self, segments: List[SentenceSegment], context: SplittingContext) -> List[SentenceSegment]:
+        """优化片段长度"""
+        optimized = []
+        
+        for segment in segments:
+            if len(segment.text) > context.max_length:
+                # 分割过长的段落
+                sub_segments = self._split_long_segment(segment, context)
+                optimized.extend(sub_segments)
+            elif len(segment.text) < context.min_length and optimized:
+                # 合并过短的段落
+                last_segment = optimized[-1]
+                if len(last_segment.text + segment.text) <= context.max_length:
+                    merged = SentenceSegment(
+                        text=last_segment.text + " " + segment.text,
+                        start_pos=last_segment.start_pos,
+                        end_pos=segment.end_pos,
+                        confidence=(last_segment.confidence + segment.confidence) / 2,
+                        semantic_weight=max(last_segment.semantic_weight, segment.semantic_weight),
+                        readability_score=(last_segment.readability_score + segment.readability_score) / 2,
+                        language=context.language,
+                        break_reason="merge_short"
+                    )
+                    optimized[-1] = merged
+                else:
+                    optimized.append(segment)
+            else:
+                optimized.append(segment)
+        
+        return optimized
+    
+    def _split_long_segment(self, segment: SentenceSegment, context: SplittingContext) -> List[SentenceSegment]:
+        """分割过长的段落"""
+        text = segment.text
+        target_length = context.target_length
+        
+        # 尝试在逗号处分割
+        parts = []
+        if '，' in text or ',' in text:
+            split_chars = ['，', ',']
+            for char in split_chars:
+                if char in text:
+                    parts = text.split(char)
+                    break
+        
+        if not parts or len(parts) == 1:
+            # 如果没有逗号，按长度强制分割
+            parts = [text[i:i+target_length] for i in range(0, len(text), target_length)]
+        
+        segments = []
+        current_pos = segment.start_pos
+        
+        for i, part in enumerate(parts):
+            if part.strip():
+                part_segment = SentenceSegment(
+                    text=part.strip(),
+                    start_pos=current_pos,
+                    end_pos=current_pos + len(part),
+                    confidence=segment.confidence * 0.9,  # 分割后置信度略降
+                    semantic_weight=segment.semantic_weight,
+                    readability_score=segment.readability_score,
+                    language=segment.language,
+                    break_reason="split_long"
+                )
+                segments.append(part_segment)
+                current_pos += len(part)
+        
+        return segments
 
 logger = logging.getLogger(__name__)
 

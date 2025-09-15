@@ -145,8 +145,7 @@ def split_multilingual_text():
                     "confidence": seg.confidence,
                     "language": seg.language.value,
                     "semantic_weight": seg.semantic_weight,
-                    "readability_score": seg.readability_score,
-                    "segment_type": seg.segment_type
+                    "readability_score": seg.readability_score
                 } for seg in segments
             ]
         

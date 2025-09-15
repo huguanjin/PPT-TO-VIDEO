@@ -63,6 +63,37 @@ class FFmpegFinalMerger:
         except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
             return False
     
+    def _load_subtitle_config_from_metadata(self) -> Optional[Dict[str, Any]]:
+        """从字幕元数据文件中加载字幕配置"""
+        try:
+            subtitle_metadata_path = self.project_dir / "subtitles" / "subtitles_metadata.json"
+            if subtitle_metadata_path.exists():
+                with open(subtitle_metadata_path, 'r', encoding='utf-8') as f:
+                    metadata = json.load(f)
+                
+                # 提取字幕配置
+                subtitle_config = metadata.get('subtitle_config', {})
+                smart_processing = subtitle_config.get('smart_processing', {})
+                
+                # 构建FFmpeg兼容的配置
+                ffmpeg_config = {
+                    "font_family": smart_processing.get('font_name', 'Microsoft YaHei'),
+                    "font_size": smart_processing.get('font_size', 24),
+                    "font_color": smart_processing.get('font_color', '#FFFFFF'),
+                    "background_color": "rgba(0,0,0,0.8)",
+                    "position": "bottom"
+                }
+                
+                self.logger.info(f"✅ 从字幕元数据加载配置: {ffmpeg_config}")
+                return ffmpeg_config
+            else:
+                self.logger.warning("⚠️ 字幕元数据文件不存在")
+                return None
+                
+        except Exception as e:
+            self.logger.warning(f"❌ 加载字幕元数据配置失败: {e}")
+            return None
+    
     def merge_final_video(self, 
                          video_data: Dict[str, Any], 
                          audio_data: Dict[str, Any],
@@ -295,44 +326,48 @@ class FFmpegFinalMerger:
                     if str(project_root) not in sys.path:
                         sys.path.append(str(project_root))
                     
-                    try:
-                        # 优先尝试使用新的配置管理器
-                        from flask_backend.app.utils.config_manager import config_manager
-                        subtitle_config = config_manager.get_subtitle_config_for_ffmpeg()
-                        self.logger.info(f"使用新配置管理器获取字幕配置: {subtitle_config}")
-                    except ImportError:
-                        # 备选：使用传统配置系统
-                        from config.settings import load_app_config
-                        app_config = load_app_config()
-                        
-                        # 检查是否为新的嵌套格式
-                        if 'subtitle' in app_config and isinstance(app_config['subtitle'], dict):
-                            subtitle_section = app_config['subtitle']
-                            subtitle_config = {
-                                "font_family": subtitle_section.get("font_family", "Microsoft YaHei"),
-                                "font_size": subtitle_section.get("font_size", 40),
-                                "font_color": subtitle_section.get("font_color", "#FFFFFF"),
-                                "background_color": subtitle_section.get("background_color", "rgba(0,0,0,0.8)"),
-                                "position": subtitle_section.get("position", "bottom")
-                            }
-                            self.logger.info(f"使用新格式配置: {subtitle_config}")
-                        else:
-                            # 老的扁平化格式
-                            subtitle_config = {
-                                "font_family": app_config.get("subtitle_font_family", "Microsoft YaHei"),
-                                "font_size": app_config.get("subtitle_font_size", 40),
-                                "font_color": app_config.get("subtitle_font_color", "#FFFFFF"),
-                                "background_color": app_config.get("subtitle_background_color", "rgba(0,0,0,0.8)"),
-                                "position": app_config.get("subtitle_position", "bottom")
-                            }
-                            self.logger.info(f"使用传统格式配置: {subtitle_config}")
+                    # 🎯 优先使用字幕元数据文件中的配置
+                    subtitle_config = self._load_subtitle_config_from_metadata()
+                    
+                    if subtitle_config is None:
+                        try:
+                            # 备选：尝试使用新的配置管理器
+                            from flask_backend.app.utils.config_manager import config_manager
+                            subtitle_config = config_manager.get_subtitle_config_for_ffmpeg()
+                            self.logger.info(f"使用新配置管理器获取字幕配置: {subtitle_config}")
+                        except ImportError:
+                            # 备选：使用传统配置系统
+                            from config.settings import load_app_config
+                            app_config = load_app_config()
+                            
+                            # 检查是否为新的嵌套格式
+                            if 'subtitle' in app_config and isinstance(app_config['subtitle'], dict):
+                                subtitle_section = app_config['subtitle']
+                                subtitle_config = {
+                                    "font_family": subtitle_section.get("font_family", "Microsoft YaHei"),
+                                    "font_size": subtitle_section.get("font_size", 24),  # 修改为24px，与Netflix标准一致
+                                    "font_color": subtitle_section.get("font_color", "#FFFFFF"),
+                                    "background_color": subtitle_section.get("background_color", "rgba(0,0,0,0.8)"),
+                                    "position": subtitle_section.get("position", "bottom")
+                                }
+                                self.logger.info(f"使用新格式配置: {subtitle_config}")
+                            else:
+                                # 老的扁平化格式
+                                subtitle_config = {
+                                    "font_family": app_config.get("subtitle_font_family", "Microsoft YaHei"),
+                                    "font_size": app_config.get("subtitle_font_size", 24),  # 修改为24px，与Netflix标准一致
+                                    "font_color": app_config.get("subtitle_font_color", "#FFFFFF"),
+                                    "background_color": app_config.get("subtitle_background_color", "rgba(0,0,0,0.8)"),
+                                    "position": app_config.get("subtitle_position", "bottom")
+                                }
+                                self.logger.info(f"使用传统格式配置: {subtitle_config}")
                         
                 except Exception as e:
                     self.logger.warning(f"获取字幕配置失败，使用默认配置: {e}")
                     # 使用默认配置
                     subtitle_config = {
                         "font_family": "Microsoft YaHei",
-                        "font_size": 40,
+                        "font_size": 24,  # 修改为24px，与Netflix标准一致
                         "font_color": "#FFFFFF",
                         "background_color": "rgba(0,0,0,0.8)",
                         "position": "bottom"
@@ -619,13 +654,14 @@ class FFmpegFinalMerger:
                 # 如果无法获取相对路径，使用绝对路径
                 subtitle_path_fixed = str(subtitle_path_obj).replace('\\', '/')
             
+            # 强制单行显示的关键配置
             vf_filter = (
                 f"scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,"
                 f"pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2,"
                 f"subtitles={subtitle_path_fixed}:force_style='"
                 f"FontSize={user_font_size},FontName={font_name},"
                 f"PrimaryColour={ffmpeg_color},OutlineColour=&H000000,OutlineWidth=1,"
-                f"ShadowColour=&H80000000,BorderStyle=1'"
+                f"ShadowColour=&H80000000,BorderStyle=1,WrapStyle=2,MaxLines=1'"
             )
             
             # 构造 FFmpeg 命令 - 借鉴 testfile 方式

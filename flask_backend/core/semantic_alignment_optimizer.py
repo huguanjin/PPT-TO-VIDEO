@@ -4,6 +4,7 @@ AI内容理解增强系统 - 语音文本语义对齐优化器
 基于Transformer模型的智能语义理解和精准同步
 """
 
+import os  # 操作系统接口模块
 import asyncio
 import numpy as np
 import time
@@ -175,28 +176,47 @@ class SemanticAlignmentOptimizer:
     
     def _initialize_ai_models(self):
         """初始化AI模型"""
+        # 检查是否禁用AI模型
+        if os.environ.get('AI_MODELS_DISABLED') == '1':
+            self.logger.info("🚫 AI模型已被环境变量禁用")
+            self.models_available = False
+            self.semantic_model = None
+            self.sentiment_analyzer = None
+            return
+            
         try:
             if TRANSFORMER_LIBS_AVAILABLE:
-                # 初始化语义嵌入模型
+                # 检查是否存在模型缓存
                 model_name = self.config["semantic_analysis"]["model_name"]
-                self.semantic_model = SentenceTransformer(model_name)
                 
-                # 初始化情感分析模型
+                # 使用简单的异常处理代替超时机制（Windows兼容）
                 try:
-                    # 动态创建pipeline以避免类型检查问题
-                    pipe_func = getattr(transformers, 'pipeline')
-                    self.sentiment_analyzer = pipe_func(
-                        "sentiment-analysis",
-                        model="cardiffnlp/twitter-roberta-base-sentiment-latest"
-                    )
-                except Exception as e:
-                    print(f"情感分析模型初始化失败: {e}")
+                    self.logger.info(f"⏳ 尝试加载语义模型: {model_name}")
+                    self.semantic_model = SentenceTransformer(model_name)
+                    self.logger.info("✅ 语义模型加载成功")
+                    
+                    # 初始化情感分析模型
+                    try:
+                        pipe_func = getattr(transformers, 'pipeline')
+                        self.sentiment_analyzer = pipe_func(
+                            "sentiment-analysis",
+                            model="cardiffnlp/twitter-roberta-base-sentiment-latest"
+                        )
+                        self.logger.info("✅ 情感分析模型加载成功")
+                    except Exception as e:
+                        self.logger.warning(f"情感分析模型初始化失败: {e}")
+                        self.sentiment_analyzer = None
+                    
+                    self.models_available = True
+                    
+                except Exception as model_error:
+                    self.logger.warning(f"⚠️ 模型加载失败，切换到回退模式: {model_error}")
+                    self.models_available = False
+                    self.semantic_model = None
                     self.sentiment_analyzer = None
-                
-                self.logger.info("🧠 AI模型初始化完成")
-                self.models_available = True
+                    
             else:
-                self.logger.info("使用模拟AI模型")
+                self.logger.info("📋 Transformer库不可用，使用模拟模式")
                 self.models_available = False
                 self.semantic_model = None
                 self.sentiment_analyzer = None

@@ -22,9 +22,6 @@ from .multilingual_support import (
     MultilingualConfigManager
 )
 
-# 导入智能断句模块
-from .smart_sentence_splitter import SplittingContext, SplittingStrategy
-
 logger = logging.getLogger(__name__)
 
 @dataclass

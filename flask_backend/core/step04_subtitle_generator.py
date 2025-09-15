@@ -49,14 +49,18 @@ class SubtitleGenerator:
     """字幕生成器 - 支持传统和增强模式"""
     
     def __init__(self, project_dir: Path, use_enhanced: bool = False, enable_frame_sync: bool = True, 
-                 enable_audio_sync: bool = True, enable_ai_content_understanding: bool = True):
+                 enable_audio_sync: bool = True, enable_ai_content_understanding: bool = False):
         self.project_dir = Path(project_dir)
         self.file_manager = FileManager(project_dir)
         self.logger = get_logger(__name__, self.project_dir / "logs")
-        self.use_enhanced = use_enhanced and ENHANCED_SUBTITLE_AVAILABLE
-        self.enable_frame_sync = enable_frame_sync and VIDEO_FRAME_SYNC_AVAILABLE
-        self.enable_audio_sync = enable_audio_sync and AUDIO_INTELLIGENT_SYNC_AVAILABLE
-        self.enable_ai_content_understanding = enable_ai_content_understanding and AI_CONTENT_UNDERSTANDING_AVAILABLE
+        
+        # 临时禁用AI功能以解决HuggingFace模型下载卡死问题
+        self.use_enhanced = False  # 强制禁用增强模式
+        self.enable_frame_sync = False  # 禁用帧同步
+        self.enable_audio_sync = False  # 禁用音频同步
+        self.enable_ai_content_understanding = False  # 禁用AI内容理解
+        
+        self.logger.info("🚀 字幕生成器启动 - 轻量级模式（AI功能已禁用）")
         
         # 加载智能字幕配置
         try:
@@ -76,32 +80,29 @@ class SubtitleGenerator:
                 "use_ai_splitting": False
             }
         
-        # 字幕配置
+        # 字幕配置 - 优化单行显示和时间同步
         self.subtitle_config = {
-            "max_chars_per_line": 40,     # 每行最大字符数
-            "max_lines": 2,               # 最大行数
-            "min_display_time": 1.0,      # 最小显示时间（秒）
-            "max_display_time": 8.0,      # 最大显示时间（秒）
-            "words_per_second": 3.5,      # 阅读速度（字/秒）
-            "line_break_chars": "，。！？；：",  # 断行标点符号
+            "max_chars_per_line": 35,     # 单行最大字符数（调整为35以容纳完整语义）
+            "max_lines": 1,               # 强制单行显示
+            "min_display_time": 0.8,      # 降低最小显示时间，避免字幕重叠
+            "max_display_time": 8.0,      # 合理的最大显示时间
+            "words_per_second": 3.5,      # 标准阅读速度
+            "line_break_chars": "。！？；",    # 主要断句标点（移除逗号避免过度分割）
             "use_enhanced_mode": self.use_enhanced,  # 是否使用增强模式
             
             # 智能字幕处理配置
             "smart_processing": smart_config
         }
         
-        # 初始化智能字幕处理器
-        try:
-            from core.subtitle_utils import SmartSubtitleProcessor
-            from core.ai_subtitle_splitter import HybridSubtitleSplitter
-            
-            self.smart_processor = SmartSubtitleProcessor(self.subtitle_config["smart_processing"])
-            self.hybrid_splitter = HybridSubtitleSplitter(self.subtitle_config["smart_processing"])
-            self.logger.info("智能字幕处理器初始化成功")
-        except ImportError as e:
-            self.logger.warning(f"智能字幕处理器不可用: {e}")
-            self.smart_processor = None
-            self.hybrid_splitter = None
+        # 🔧 临时禁用智能字幕处理器以避免Flask重载问题
+        # jieba分词器会触发Flask自动重载，导致字幕生成卡死
+        self.logger.info("⚠️ 智能断句系统已禁用以避免Flask重载问题")
+        self.logger.info("⚠️ 使用轻量级断句模式确保稳定运行")
+        
+        self.smart_processor = None
+        self.hybrid_splitter = None
+        self.smart_integrator = None
+        self.multiline_fixer = None
         
         # 初始化增强版生成器
         if self.use_enhanced:
@@ -454,24 +455,39 @@ class SubtitleGenerator:
             start_time = audio_info["start_time"]
             duration = audio_info["duration_seconds"]
             
-            # 创建字幕项
+            # 创建字幕项 - 精确时间分配，避免重叠
             subtitles = []
             current_time = start_time
             
+            # 预计算所有片段的字符数以优化时间分配
+            total_chars = sum(len(seg.strip()) for seg in subtitle_segments)
+            self._total_chars_cache = total_chars
+            
+            # 计算每个片段的精确时间
             for i, segment in enumerate(subtitle_segments):
                 # 计算这个片段的时长
                 segment_duration = self._calculate_segment_duration(segment, duration, len(subtitle_segments), i)
+                
+                # 确保最后一个字幕的结束时间不超过音频结束时间
+                if i == len(subtitle_segments) - 1:
+                    segment_end_time = start_time + duration
+                else:
+                    segment_end_time = current_time + segment_duration
                 
                 # 创建字幕项
                 subtitle_item = pysrt.SubRipItem(
                     index=start_index + i,
                     start=self._seconds_to_srt_time(current_time),
-                    end=self._seconds_to_srt_time(current_time + segment_duration),
+                    end=self._seconds_to_srt_time(segment_end_time),
                     text=segment
                 )
                 
                 subtitles.append(subtitle_item)
-                current_time += segment_duration
+                current_time = segment_end_time  # 下一个字幕从当前字幕结束时间开始
+            
+            # 清理缓存
+            if hasattr(self, '_total_chars_cache'):
+                delattr(self, '_total_chars_cache')
             
             # 保存SRT文件
             srt_file = pysrt.SubRipFile(subtitles)
@@ -511,22 +527,13 @@ class SubtitleGenerator:
         if not text:
             return []
         
-        # 优先使用智能字幕处理器
-        if self.hybrid_splitter:
-            try:
-                segments = await self.hybrid_splitter.split_subtitle_text(text)
-                if segments:
-                    self.logger.debug(f"智能分割成功: {len(segments)} 个片段")
-                    return segments
-            except Exception as e:
-                self.logger.warning(f"智能分割失败，使用传统方法: {e}")
-        
-        # 传统分割方法作为fallback
-        return self._legacy_split_text(text)
+        # 🔧 使用轻量级断句方法避免Flask重载
+        self.logger.info("使用轻量级断句方法处理文本")
+        return self._lightweight_split_text(text)
     
     def _legacy_split_text(self, text: str) -> List[str]:
         """
-        传统文本分割方法
+        智能文本分割方法 - 优化单行显示和语义断句
         
         Args:
             text: 输入文本
@@ -535,46 +542,200 @@ class SubtitleGenerator:
             字幕片段列表
         """
         segments = []
+        max_chars = self.subtitle_config["max_chars_per_line"]
+        
+        # 首先按主要标点符号分割成完整语义单元
+        # 使用正则表达式保留分隔符
+        pattern = f'([{re.escape(self.subtitle_config["line_break_chars"])}])'
+        parts = re.split(pattern, text)
+        
         current_segment = ""
+        i = 0
         
-        # 按标点符号分割
-        sentences = re.split(f'([{self.subtitle_config["line_break_chars"]}])', text)
-        
-        for i in range(0, len(sentences), 2):
-            if i < len(sentences):
-                sentence = sentences[i].strip()
-                punctuation = sentences[i + 1] if i + 1 < len(sentences) else ""
-                
-                if sentence:
-                    sentence_with_punct = sentence + punctuation
-                    
-                    # 检查当前片段加上新句子是否超过长度限制
-                    if len(current_segment + sentence_with_punct) <= self.subtitle_config["max_chars_per_line"]:
-                        current_segment += sentence_with_punct
+        while i < len(parts):
+            part = parts[i].strip()
+            
+            if not part:
+                i += 1
+                continue
+            
+            # 检查这个部分是否是标点符号
+            if part in self.subtitle_config["line_break_chars"]:
+                # 这是标点符号，添加到当前片段并结束这个语义单元
+                if current_segment:
+                    current_segment += part
+                    # 完整的语义单元，检查长度
+                    if len(current_segment) <= max_chars:
+                        segments.append(current_segment.strip())
+                        current_segment = ""
                     else:
-                        # 如果当前片段不为空，保存它
+                        # 语义单元过长，需要分割
+                        long_segments = self._smart_split_long_sentence(current_segment)
+                        segments.extend(long_segments)
+                        current_segment = ""
+            else:
+                # 这是文本内容
+                if current_segment:
+                    # 检查是否可以继续添加
+                    test_segment = current_segment + part
+                    # 预先检查后面是否有标点
+                    next_punct = ""
+                    if i + 1 < len(parts) and parts[i + 1] in self.subtitle_config["line_break_chars"]:
+                        next_punct = parts[i + 1]
+                    
+                    if len(test_segment + next_punct) <= max_chars:
+                        current_segment = test_segment
+                    else:
+                        # 当前片段需要结束
                         if current_segment:
                             segments.append(current_segment.strip())
-                        
-                        # 检查单个句子是否过长
-                        if len(sentence_with_punct) <= self.subtitle_config["max_chars_per_line"]:
-                            current_segment = sentence_with_punct
-                        else:
-                            # 句子过长，需要进一步分割
-                            long_segments = self._split_long_sentence(sentence_with_punct)
-                            segments.extend(long_segments[:-1])
-                            current_segment = long_segments[-1] if long_segments else ""
+                        current_segment = part
+                else:
+                    current_segment = part
+            
+            i += 1
         
         # 添加最后的片段
         if current_segment:
             segments.append(current_segment.strip())
         
-        # 如果没有有效分割，返回原文本的截断版本
+        # 如果没有有效分割，按字符数硬切分
         if not segments:
-            max_length = self.subtitle_config["max_chars_per_line"]
-            segments = [text[i:i+max_length] for i in range(0, len(text), max_length)]
+            segments = [text[i:i+max_chars].strip() for i in range(0, len(text), max_chars)]
+            segments = [s for s in segments if s]  # 移除空字符串
         
         return [seg for seg in segments if seg.strip()]
+    
+    def _lightweight_split_text(self, text: str) -> List[str]:
+        """
+        轻量级文本分割 - 专门解决Flask重载问题
+        简单但有效，避免复杂依赖
+        
+        Args:
+            text: 输入文本
+            
+        Returns:
+            断句后的片段列表
+        """
+        if not text.strip():
+            return []
+        
+        segments = []
+        max_chars = self.subtitle_config["max_chars_per_line"]
+        
+        # 按句号分割成完整语义单元
+        sentences = text.split("。")
+        
+        for i, sentence in enumerate(sentences):
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+            
+            # 添加句号（除了最后一个且原文不以句号结尾）
+            if i < len(sentences) - 1:
+                sentence += "。"
+            elif text.endswith("。"):
+                sentence += "。"
+            
+            # 检查长度
+            if len(sentence) <= max_chars:
+                segments.append(sentence)
+            else:
+                # 在逗号处分割长句
+                if "，" in sentence:
+                    # 找到合适的分割点
+                    parts = sentence.split("，", 1)  # 只分割一次
+                    first_part = parts[0] + "，"
+                    second_part = parts[1] if len(parts) > 1 else ""
+                    
+                    # 检查第一部分长度
+                    if len(first_part) <= max_chars:
+                        segments.append(first_part)
+                        if second_part.strip():
+                            # 递归处理第二部分
+                            remaining_segments = self._lightweight_split_text(second_part)
+                            segments.extend(remaining_segments)
+                    else:
+                        # 第一部分也太长，硬切分
+                        self._hard_split_sentence(sentence, max_chars, segments)
+                else:
+                    # 没有逗号，硬切分
+                    self._hard_split_sentence(sentence, max_chars, segments)
+        
+        return [s.strip() for s in segments if s.strip()]
+    
+    def _hard_split_sentence(self, sentence: str, max_chars: int, segments: List[str]) -> None:
+        """
+        硬切分长句子
+        
+        Args:
+            sentence: 要分割的句子
+            max_chars: 最大字符数
+            segments: 结果列表
+        """
+        for i in range(0, len(sentence), max_chars):
+            part = sentence[i:i + max_chars]
+            if part.strip():
+                segments.append(part.strip())
+    
+    def _smart_split_long_sentence(self, sentence: str) -> List[str]:
+        """
+        智能分割长句 - 优先在语义停顿处分割
+        
+        Args:
+            sentence: 长句子
+            
+        Returns:
+            分割后的片段列表
+        """
+        max_chars = self.subtitle_config["max_chars_per_line"]
+        
+        if len(sentence) <= max_chars:
+            return [sentence]
+        
+        segments = []
+        
+        # 优先级分割点：逗号、的、了、在、与、和、或、但、然后、接下来等
+        split_points = ["，", "的", "了", "在", "与", "和", "或", "但", "然后", "接下来", "因此", "所以", "如果", "当", "将"]
+        
+        remaining = sentence
+        while len(remaining) > max_chars:
+            # 寻找最佳分割点
+            best_split = -1
+            
+            # 从后往前找分割点，确保不超过长度限制
+            for i in range(max_chars - 1, max_chars // 2, -1):
+                if i < len(remaining):
+                    # 检查是否在分割点上
+                    for point in split_points:
+                        if remaining[i - len(point) + 1:i + 1] == point:
+                            best_split = i + 1
+                            break
+                    if best_split != -1:
+                        break
+            
+            # 如果没找到合适分割点，从中间位置向后找空格或标点
+            if best_split == -1:
+                for i in range(max_chars // 2, max_chars):
+                    if i < len(remaining) and remaining[i] in " ，。！？；：":
+                        best_split = i + 1
+                        break
+            
+            # 如果还是没找到，就硬切分
+            if best_split == -1:
+                best_split = max_chars
+            
+            # 分割并继续处理剩余部分
+            segment = remaining[:best_split].strip()
+            if segment:
+                segments.append(segment)
+            remaining = remaining[best_split:].strip()
+        
+        # 添加最后的片段
+        if remaining:
+            segments.append(remaining)
+        
+        return segments
     
     def _clean_html_tags(self, text: str) -> str:
         """
@@ -639,7 +800,7 @@ class SubtitleGenerator:
     def _calculate_segment_duration(self, segment: str, total_duration: float, 
                                   total_segments: int, segment_index: int) -> float:
         """
-        计算字幕片段的显示时长
+        计算字幕片段的显示时长 - 精确匹配音频时间，避免重叠
         
         Args:
             segment: 字幕片段文本
@@ -650,30 +811,31 @@ class SubtitleGenerator:
         Returns:
             片段时长（秒）
         """
-        # 基于字符数计算基础时长
-        char_count = len(segment.replace(" ", ""))
-        base_duration = char_count / self.subtitle_config["words_per_second"]
-        
-        # 确保在合理范围内
-        min_duration = self.subtitle_config["min_display_time"]
-        max_duration = self.subtitle_config["max_display_time"]
-        
         # 如果只有一个片段，使用总时长
         if total_segments == 1:
-            return min(max(total_duration, min_duration), max_duration)
+            return total_duration
         
-        # 多个片段时，按比例分配
-        if total_segments > 1:
-            # 简单平均分配，但考虑字符数权重
-            avg_duration = total_duration / total_segments
-            
-            # 基于字符数调整
-            weight = char_count / (sum(len(seg) for seg in [segment]) / total_segments)
-            adjusted_duration = avg_duration * weight
-            
-            return min(max(adjusted_duration, min_duration), max_duration)
+        # 多个片段时，精确按音频时间分配，避免重叠
+        # 计算所有片段的字符数权重
+        segment_char_count = len(segment.strip())
         
-        return min(max(base_duration, min_duration), max_duration)
+        # 基于字符数权重分配时间
+        if hasattr(self, '_total_chars_cache') and self._total_chars_cache > 0:
+            total_chars = self._total_chars_cache
+        else:
+            # 这里无法获取其他片段信息，使用平均分配
+            total_chars = segment_char_count * total_segments
+        
+        # 按字符数比例分配时间
+        time_ratio = segment_char_count / total_chars if total_chars > 0 else (1.0 / total_segments)
+        calculated_duration = total_duration * time_ratio
+        
+        # 确保最小和最大时间限制
+        min_duration = self.subtitle_config["min_display_time"]
+        max_duration = min(self.subtitle_config["max_display_time"], total_duration * 0.8)
+        
+        # 但优先保证总时长匹配，避免重叠
+        return max(min_duration, min(calculated_duration, max_duration))
     
     def _srt_time_to_seconds(self, srt_time: pysrt.SubRipTime) -> float:
         """
