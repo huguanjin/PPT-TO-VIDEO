@@ -21,11 +21,20 @@ core_dir = current_dir / "core"
 try:
     import sys
     sys.path.insert(0, str(core_dir))
-    from api.videolingo_config_api import register_videolingo_config_api
-    from api.config_management_api import register_config_management_api
+    from core.api.videolingo_config_api import register_videolingo_config_api
+    from core.api.config_management_api import register_config_management_api
     VIDEOLINGO_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"VideoLingo API模块导入失败: {e}")
+    # 创建占位函数
+    def register_videolingo_config_api(app):
+        """VideoLingo配置API占位函数"""
+        logger.info("使用VideoLingo配置API占位函数")
+        
+    def register_config_management_api(app):
+        """配置管理API占位函数"""
+        logger.info("使用配置管理API占位函数")
+        
     VIDEOLINGO_AVAILABLE = False
 
 @bp.route('/health', methods=['GET'])
@@ -245,12 +254,13 @@ def videolingo_status():
 def register_videolingo_apis(app):
     """注册VideoLingo相关API到主应用"""
     try:
+        # 始终注册API，使用实际模块或占位函数
+        register_videolingo_config_api(app)
+        register_config_management_api(app)
+        
         if VIDEOLINGO_AVAILABLE:
-            # 导入并注册VideoLingo的API
-            register_videolingo_config_api(app)
-            register_config_management_api(app)
             logger.info("✅ VideoLingo API模块注册成功")
         else:
-            logger.warning("⚠️ VideoLingo API模块不可用，跳过注册")
+            logger.info("📋 VideoLingo API占位函数注册完成")
     except Exception as e:
         logger.error(f"❌ VideoLingo API注册失败: {e}")

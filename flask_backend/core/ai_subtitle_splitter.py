@@ -6,23 +6,19 @@ AI语义分割模块
 """
 import json
 import re
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Type
 import logging
 from datetime import datetime
 import asyncio
 from pathlib import Path
 import sys
 
-# 添加utils路径以导入配置管理器
-current_dir = Path(__file__).parent.parent
-utils_dir = current_dir / 'utils'
-sys.path.insert(0, str(utils_dir))
-
 try:
-    from config_manager import ConfigManager  # type: ignore
+    from app.utils.config_manager import ConfigManager
+    ConfigManagerClass: Optional[Type] = ConfigManager
 except ImportError:
     # 如果导入失败，使用简单的配置管理
-    ConfigManager = None
+    ConfigManagerClass = None
 
 # AI提示词模板 (基于Netflix标准)
 NETFLIX_SUBTITLE_PROMPTS = {
@@ -101,9 +97,9 @@ class AISemanticSplitter:
         self.logger = logging.getLogger(__name__)
         
         # 初始化配置管理器
-        if ConfigManager is not None:
+        if ConfigManagerClass is not None:
             try:
-                self.config_manager = ConfigManager()
+                self.config_manager = ConfigManagerClass()  # type: ignore
                 self.use_config_manager = True
             except Exception as e:
                 self.logger.warning(f"配置管理器初始化失败: {e}")
@@ -114,6 +110,7 @@ class AISemanticSplitter:
             self.use_config_manager = False
         
         # 获取AI配置
+        self.ai_config: Dict[str, Any] = {}  # 明确类型注解
         if ai_config:
             # 使用传入的配置
             self.ai_config = ai_config
@@ -138,53 +135,32 @@ class AISemanticSplitter:
                     'support_json': True
                 }
         else:
-            # 使用默认配置（从配置管理器获取默认值）
-            if ConfigManager is not None:
-                try:
-                    temp_config_manager = ConfigManager()
-                    default_service = 'openai'
-                    self.ai_config = {
-                        'api_key': '',
-                        'base_url': temp_config_manager.get_default_base_url(default_service),
-                        'model': temp_config_manager.get_default_model(default_service),
-                        'timeout': 300,
-                        'max_retries': 3,
-                        'support_json': True
-                    }
-                    self.ai_service_type = default_service
-                except Exception:
-                    # 兜底硬编码默认值
-                    self.ai_config = {
-                        'api_key': '',
-                        'base_url': 'https://api.openai.com',
-                        'model': 'gpt-3.5-turbo',
-                        'timeout': 300,
-                        'max_retries': 3,
-                        'support_json': True
-                    }
-                    self.ai_service_type = 'openai'
-            else:
-                # 兜底硬编码默认值
-                self.ai_config = {
-                    'api_key': '',
-                    'base_url': 'https://api.openai.com',
-                    'model': 'gpt-3.5-turbo',
-                    'timeout': 300,
-                    'max_retries': 3,
-                    'support_json': True
-                }
-                self.ai_service_type = 'openai'
+            # 使用默认配置
+            self._setup_default_config()
         
-        # 设置配置属性
-        self.api_key = self.ai_config.get('api_key', '')
-        self.model = self.ai_config.get('model', 'gpt-3.5-turbo')
-        self.base_url = self.ai_config.get('base_url', '')
-        self.timeout = self.ai_config.get('timeout', 300)
-        self.max_retries = self.ai_config.get('max_retries', 3)
-        self.support_json = self.ai_config.get('support_json', True)
+        # 设置配置属性（使用显式键访问）
+        config = self.ai_config if isinstance(self.ai_config, dict) else {}
+        self.api_key = config['api_key'] if 'api_key' in config else ''
+        self.model = config['model'] if 'model' in config else 'gpt-3.5-turbo'
+        self.base_url = config['base_url'] if 'base_url' in config else ''
+        self.timeout = config['timeout'] if 'timeout' in config else 300
+        self.max_retries = config['max_retries'] if 'max_retries' in config else 3
+        self.support_json = config['support_json'] if 'support_json' in config else True
         
         # 初始化AI客户端
         self._init_ai_client()
+        
+    def _setup_default_config(self):
+        """设置默认配置"""
+        self.ai_service_type = 'openai'
+        self.ai_config = {
+            'api_key': '',
+            'base_url': '',
+            'model': 'gpt-3.5-turbo',
+            'timeout': 300,
+            'max_retries': 3,
+            'support_json': True
+        }
         
     def _init_ai_client(self):
         """初始化AI客户端"""

@@ -133,7 +133,7 @@ def register_blueprints(app):
     # 导入智能字幕API
     smart_subtitle_bp = None
     try:
-        from api.smart_subtitle_api import smart_subtitle_bp
+        from .api.smart_subtitle_api import smart_subtitle_bp
         print("✅ smart_subtitle_api模块导入成功")
     except ImportError as e:
         print(f"❌ smart_subtitle_api模块导入失败: {e}")
@@ -143,7 +143,7 @@ def register_blueprints(app):
     # 导入AI配置API
     ai_config_api = None
     try:
-        from api.ai_config_api import ai_config_api
+        from .api.ai_config_api import ai_config_api
         print("✅ ai_config_api模块导入成功")
     except ImportError as e:
         print(f"❌ ai_config_api模块导入失败: {e}")
@@ -153,7 +153,7 @@ def register_blueprints(app):
     # 导入AI连接测试API
     ai_test_bp = None
     try:
-        from api.ai_config_test_api import ai_test_bp
+        from .api.ai_config_test_api import ai_test_bp
         print("✅ ai_config_test_api模块导入成功")
     except ImportError as e:
         print(f"❌ ai_config_test_api模块导入失败: {e}")
@@ -163,7 +163,7 @@ def register_blueprints(app):
     # 导入提示词管理API
     prompt_api = None
     try:
-        from api.prompt_api import prompt_api
+        from .api.prompt_api import prompt_api
         print("✅ prompt_api模块导入成功")
     except ImportError as e:
         print(f"❌ prompt_api模块导入失败: {e}")
@@ -173,7 +173,7 @@ def register_blueprints(app):
     # 导入自定义AI模型管理API
     custom_ai_api = None
     try:
-        from api.custom_ai_api import custom_ai_api
+        from .api.custom_ai_api import custom_ai_api
         print("✅ custom_ai_api模块导入成功")
     except ImportError as e:
         print(f"❌ custom_ai_api模块导入失败: {e}")

@@ -3,6 +3,7 @@
 提供项目路径解析功能
 """
 from pathlib import Path
+from typing import Optional
 
 def get_backend_root():
     """获取后端根目录路径"""
@@ -25,7 +26,7 @@ def get_project_root():
     backend_root = get_backend_root()
     return backend_root.parent
 
-def resolve_path(relative_path: str, base_path: Path = None):
+def resolve_path(relative_path: str, base_path: Optional[Path] = None):
     """
     解析相对路径
     

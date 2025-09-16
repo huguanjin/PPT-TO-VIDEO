@@ -71,7 +71,7 @@ def enhanced_tts_preview():
         try:
             # 使用集成的TTS管理器（如果可用）
             try:
-                from utils.integrated_tts_manager import IntegratedTTSManager, TTSConfig, TTSEngine
+                from app.utils.integrated_tts_manager import IntegratedTTSManager, TTSConfig, TTSEngine
                 
                 # 如果是Fish TTS，需要获取角色ID
                 fish_character_id = ""
@@ -118,8 +118,8 @@ def enhanced_tts_preview():
                 result = run_async_in_flask(
                     tts_manager.synthesize_speech(
                         text,
-                        audio_path,
-                        preferred_engine=preferred_engine
+                        preferred_engine=preferred_engine,
+                        output_path=audio_path
                     )
                 )
                 

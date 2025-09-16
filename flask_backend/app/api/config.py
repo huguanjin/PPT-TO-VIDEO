@@ -19,32 +19,47 @@ except ImportError:
     def get_logger(name):
         return logging.getLogger(name)
 
-# 导入新的配置管理器
+# 创建配置管理蓝图
+bp = Blueprint('config', __name__)
+logger = get_logger(__name__)
+
+# 导入统一的配置管理器
 try:
-    from flask_backend.app.utils.config_manager import config_manager
-except ImportError:
-    # 如果导入失败，创建一个简单的配置管理器
-    class SimpleConfigManager:
+    from app.utils.config_manager import config_manager
+    logger.info("成功导入统一配置管理器")
+except ImportError as e:
+    logger.error(f"导入配置管理器失败: {e}")
+    # 创建一个最简单的备用配置管理器
+    class FallbackConfigManager:
         def __init__(self):
             self.config_file = project_root / "config_data" / "app_config.json"
+            self.config_file.parent.mkdir(exist_ok=True)
         
         def load_config(self):
             if self.config_file.exists():
-                with open(self.config_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            return {}
+                try:
+                    with open(self.config_file, 'r', encoding='utf-8') as f:
+                        return json.load(f)
+                except Exception as e:
+                    logger.error(f"读取配置文件失败: {e}")
+            return self._get_minimal_config()
         
         def save_config(self, config):
-            self.config_file.parent.mkdir(exist_ok=True)
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(config, f, ensure_ascii=False, indent=2)
-            return True
+            try:
+                with open(self.config_file, 'w', encoding='utf-8') as f:
+                    json.dump(config, f, ensure_ascii=False, indent=2)
+                return True
+            except Exception as e:
+                logger.error(f"保存配置文件失败: {e}")
+                return False
         
         def get_section(self, section):
+            """获取配置段"""
             config = self.load_config()
             return config.get(section, {})
         
         def update_section(self, section, data):
+            """更新配置段"""
             config = self.load_config()
             if section not in config:
                 config[section] = {}
@@ -52,6 +67,7 @@ except ImportError:
             return self.save_config(config)
         
         def get_subtitle_config_for_ffmpeg(self):
+            """获取字幕配置用于FFmpeg"""
             subtitle_config = self.get_section('subtitle')
             return {
                 "font_family": subtitle_config.get("font_family", "Microsoft YaHei"),
@@ -63,33 +79,33 @@ except ImportError:
         
         def _create_default_config(self):
             """创建默认配置"""
-            default_config = {
+            default_config = self._get_minimal_config()
+            return self.save_config(default_config)
+        
+        def _get_minimal_config(self):
+            """获取最小配置"""
+            return {
                 "subtitle": {
+                    "enabled": True,
                     "font_family": "Microsoft YaHei",
                     "font_size": 40,
                     "font_color": "#FFFFFF",
                     "background_color": "rgba(0,0,0,0.8)",
                     "position": "bottom"
                 },
+                "tts": {
+                    "preferred_engine": "edge_tts",
+                    "edge_voice": "zh-CN-XiaoxiaoNeural"
+                },
                 "output": {
                     "format": "mp4",
                     "quality": "high",
                     "resolution": "1920x1080"
-                },
-                "tts": {
-                    "provider": "edge",
-                    "voice": "zh-CN-XiaoxiaoNeural",
-                    "rate": "0%",
-                    "volume": "0%"
                 }
             }
-            return self.save_config(default_config)
     
-    config_manager = SimpleConfigManager()
-
-# 创建配置管理蓝图
-bp = Blueprint('config', __name__)
-logger = get_logger(__name__)
+    config_manager = FallbackConfigManager()
+    logger.warning("使用备用配置管理器")
 
 @bp.route('', methods=['GET'])
 def get_config():

@@ -6,12 +6,19 @@ Phase 3: 智能对齐系统的核心组件
 import numpy as np
 import librosa
 import soundfile as sf
-import webrtcvad
 import logging
 from typing import Dict, List, Tuple, Optional, Union, Any
 from dataclasses import dataclass
 from pathlib import Path
 import warnings
+
+# 尝试导入webrtcvad，如果不可用则使用备用实现
+try:
+    import webrtcvad
+    WEBRTCVAD_AVAILABLE = True
+except ImportError:
+    webrtcvad = None
+    WEBRTCVAD_AVAILABLE = False
 
 # 忽略音频处理相关的警告
 warnings.filterwarnings('ignore', category=UserWarning, module='librosa')
@@ -90,12 +97,17 @@ class AudioFeatureExtractor:
         self.config = config or AudioConfig()
         
         # 初始化VAD检测器
-        try:
-            self.vad = webrtcvad.Vad(self.config.vad_mode)
-            self.vad_available = True
-            logger.info(f"VAD检测器初始化成功 - 模式: {self.config.vad_mode}")
-        except Exception as e:
-            logger.warning(f"VAD检测器初始化失败: {e}，将使用基于能量的检测")
+        if WEBRTCVAD_AVAILABLE and webrtcvad is not None:
+            try:
+                self.vad = webrtcvad.Vad(self.config.vad_mode)  # type: ignore
+                self.vad_available = True
+                logger.info(f"VAD检测器初始化成功 - 模式: {self.config.vad_mode}")
+            except Exception as e:
+                logger.warning(f"VAD检测器初始化失败: {e}，将使用基于能量的检测")
+                self.vad = None
+                self.vad_available = False
+        else:
+            logger.warning("webrtcvad包不可用，使用基于能量的语音检测")
             self.vad = None
             self.vad_available = False
         

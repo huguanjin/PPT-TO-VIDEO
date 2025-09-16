@@ -209,13 +209,6 @@ class FFmpegFinalMerger:
         """
         return self.merge_videos(*args, **kwargs)
 
-    def merge_video(self, *args, **kwargs) -> Dict[str, Any]:
-        """
-        merge_videos方法的别名 - 兼容性接口
-        提供单数形式的方法名以保持向后兼容
-        """
-        return self.merge_videos(*args, **kwargs)
-
     def _prepare_merge_parameters(self, 
                                  video_data: Dict[str, Any], 
                                  audio_data: Dict[str, Any],
@@ -345,10 +338,10 @@ class FFmpegFinalMerger:
                     
                     if subtitle_config is None:
                         try:
-                            # 备选：尝试使用新的配置管理器
-                            from flask_backend.app.utils.config_manager import config_manager
+                            # 备选：尝试使用统一的配置管理器
+                            from app.utils.config_manager import config_manager
                             subtitle_config = config_manager.get_subtitle_config_for_ffmpeg()
-                            self.logger.info(f"使用新配置管理器获取字幕配置: {subtitle_config}")
+                            self.logger.info(f"使用统一配置管理器获取字幕配置: {subtitle_config}")
                         except ImportError:
                             # 备选：使用传统配置系统
                             from config.settings import load_app_config

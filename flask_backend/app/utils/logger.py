@@ -7,12 +7,13 @@ import os
 from pathlib import Path
 from datetime import datetime
 
-def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+def get_logger(name: str, log_dir: str | Path = "logs", level: int = logging.INFO) -> logging.Logger:
     """
     获取日志记录器
     
     Args:
         name: 日志记录器名称
+        log_dir: 日志目录路径
         level: 日志级别
     
     Returns:
@@ -31,8 +32,8 @@ def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
     console_handler.setLevel(level)
     
     # 创建文件处理器
-    log_dir = Path("logs")
-    log_dir.mkdir(exist_ok=True)
+    log_dir = Path(log_dir)
+    log_dir.mkdir(parents=True, exist_ok=True)
     
     log_file = log_dir / f"{name.replace('.', '_')}.log"
     file_handler = logging.FileHandler(log_file, encoding='utf-8')

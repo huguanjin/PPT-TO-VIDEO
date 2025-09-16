@@ -80,7 +80,8 @@ class VideoGenerator:
             self.logger.info("开始生成视频片段")
             
             # 确保视频目录存在
-            self.file_manager.video_clips_dir.mkdir(parents=True, exist_ok=True)
+            video_clips_dir = self.file_manager.base_path / 'video_clips'
+            video_clips_dir.mkdir(parents=True, exist_ok=True)
             
             slides = slides_data.get("slides", [])
             audio_files = audio_data.get("audio_files", [])
@@ -154,7 +155,8 @@ class VideoGenerator:
         
         # 视频文件路径
         video_filename = f"clip_{slide_number:03d}.mp4"
-        video_path = self.file_manager.video_clips_dir / video_filename
+        video_clips_dir = self.file_manager.base_path / 'video_clips'
+        video_path = video_clips_dir / video_filename
         
         # 幻灯片图片路径
         slide_image_path = self.file_manager.slides_dir / slide["image_file"]

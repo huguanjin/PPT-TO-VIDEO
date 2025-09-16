@@ -18,7 +18,7 @@ import audioop
 
 from app.utils.logger import get_logger
 from app.utils.file_manager import FileManager
-from utils.integrated_tts_manager import IntegratedTTSManager, TTSConfig, TTSEngine, load_tts_config_from_app_config
+from app.utils.integrated_tts_manager import IntegratedTTSManager, TTSConfig, TTSEngine, load_tts_config_from_app_config
 
 class TTSGenerator:
     """TTS语音合成器 - 支持多引擎"""
@@ -134,7 +134,7 @@ class TTSGenerator:
                 "total_audio_files": 0,
                 "generation_completed": False,
                 "generation_timestamp": datetime.now().isoformat(),
-                "tts_config": dataclasses.asdict(self.tts_config),
+                "tts_config": self._serialize_tts_config(self.tts_config),
                 "audio_files": [],
                 "total_duration_seconds": 0.0,
                 "ai_optimized": is_ai_optimized
@@ -253,8 +253,8 @@ class TTSGenerator:
             # 使用多引擎TTS合成音频
             result = await self.tts_manager.synthesize_speech(
                 content, 
-                audio_path, 
-                preferred_engine=self.preferred_engine
+                preferred_engine=self.preferred_engine,
+                output_path=audio_path
             )
             
             if result["success"]:
@@ -285,8 +285,12 @@ class TTSGenerator:
                     "estimated_from_text": result.get("estimated", False),
                     "retry_count": result.get("retry_count", 0)
                 }
-            
-            return audio_info
+                
+                return audio_info
+            else:
+                # TTS失败，生成静默音频作为备选
+                self.logger.warning(f"TTS合成失败: {result.get('error', '未知错误')}")
+                return await self._generate_segment_silence(page_num, seg_idx, start_time, error=result.get('error', '未知错误'))
             
         except Exception as e:
             self.logger.error(f"生成分段音频失败 {audio_filename}: {e}")
@@ -391,8 +395,8 @@ class TTSGenerator:
             # 使用多引擎TTS合成音频
             result = await self.tts_manager.synthesize_speech(
                 script_content, 
-                audio_path, 
-                preferred_engine=self.preferred_engine
+                preferred_engine=self.preferred_engine,
+                output_path=audio_path
             )
             
             if result["success"]:
@@ -419,8 +423,12 @@ class TTSGenerator:
                     "estimated_from_text": result.get("estimated", False),
                     "retry_count": result.get("retry_count", 0)
                 }
-            
-            return audio_info
+                
+                return audio_info
+            else:
+                # TTS失败，生成静默音频作为备选
+                self.logger.warning(f"TTS合成失败: {result.get('error', '未知错误')}")
+                return await self._generate_silence_audio(script, start_time, error=result.get('error', '未知错误'))
             
         except Exception as e:
             self.logger.error(f"生成音频失败 {audio_filename}: {e}")
@@ -566,7 +574,11 @@ class TTSGenerator:
             test_path.parent.mkdir(parents=True, exist_ok=True)
             
             # 使用集成TTS管理器测试
-            result = await self.tts_manager.synthesize_speech(text, test_path)
+            result = await self.tts_manager.synthesize_speech(
+                text, 
+                preferred_engine=self.preferred_engine,
+                output_path=test_path
+            )
             
             # 检查文件是否生成
             if result["success"] and test_path.exists() and test_path.stat().st_size > 0:
@@ -606,6 +618,22 @@ class TTSGenerator:
         
         # 重新初始化TTS管理器
         self.tts_manager = IntegratedTTSManager(self.tts_config)
+    
+    def _serialize_tts_config(self, config) -> Dict[str, Any]:
+        """
+        序列化TTS配置，处理枚举类型
+        
+        Args:
+            config: TTSConfig对象
+            
+        Returns:
+            可JSON序列化的字典
+        """
+        config_dict = dataclasses.asdict(config)
+        # 将TTSEngine枚举转换为字符串
+        if 'preferred_engine' in config_dict:
+            config_dict['preferred_engine'] = config_dict['preferred_engine'].value
+        return config_dict
     
     def _clean_html_tags(self, text: str) -> str:
         """

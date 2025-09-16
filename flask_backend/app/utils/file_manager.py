@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 class FileManager:
     """文件管理器类"""
     
-    def __init__(self, base_path: str = "."):
+    def __init__(self, base_path: str | Path = "."):
         """
         初始化文件管理器
         
@@ -22,6 +22,15 @@ class FileManager:
             base_path: 基础路径
         """
         self.base_path = Path(base_path)
+        
+        # 定义项目目录结构
+        self.slides_dir = self.base_path / "slides"
+        self.audio_dir = self.base_path / "audios"
+        self.temp_dir = self.base_path / "temp"
+        self.output_dir = self.base_path / "output"
+        self.subtitles_dir = self.base_path / "subtitles"
+        self.video_clips_dir = self.base_path / "video_clips"
+        self.final_dir = self.base_path / "final"
         
     def ensure_dir(self, path: str | Path) -> Path:
         """
@@ -201,3 +210,91 @@ class FileManager:
         except Exception as e:
             logger.error(f"获取文件大小失败: {e}")
             return 0
+    
+    def create_directory_structure(self):
+        """创建项目目录结构"""
+        try:
+            self.ensure_dir(self.slides_dir)
+            self.ensure_dir(self.audio_dir)
+            self.ensure_dir(self.temp_dir)
+            self.ensure_dir(self.output_dir)
+            self.ensure_dir(self.subtitles_dir)
+            logger.info("项目目录结构创建完成")
+        except Exception as e:
+            logger.error(f"创建目录结构失败: {e}")
+    
+    def save_project_metadata(self, metadata: Dict[str, Any], filename: str = "project_metadata.json"):
+        """保存项目元数据"""
+        metadata_path = self.base_path / filename
+        return self.save_json(metadata, metadata_path)
+    
+    def load_project_metadata(self, filename: str = "project_metadata.json") -> Optional[Dict[str, Any]]:
+        """加载项目元数据"""
+        metadata_path = self.base_path / filename
+        return self.load_json(metadata_path)
+    
+    def save_slides_metadata(self, slides_data: Dict[str, Any], filename: str = "slides_metadata.json"):
+        """保存幻灯片元数据"""
+        slides_path = self.base_path / filename
+        return self.save_json(slides_data, slides_path)
+    
+    def load_slides_metadata(self, filename: str = "slides_metadata.json") -> Optional[Dict[str, Any]]:
+        """加载幻灯片元数据"""
+        # 首先尝试从slides目录加载
+        slides_path = self.slides_dir / filename
+        if slides_path.exists():
+            return self.load_json(slides_path)
+        
+        # 如果slides目录没有，尝试从base_path加载
+        base_path = self.base_path / filename
+        return self.load_json(base_path)
+    
+    def save_scripts_metadata(self, scripts_data: Dict[str, Any], filename: str = "scripts_metadata.json"):
+        """保存脚本元数据"""
+        scripts_path = self.base_path / filename
+        return self.save_json(scripts_data, scripts_path)
+    
+    def load_scripts_metadata(self, filename: str = "scripts_metadata.json") -> Optional[Dict[str, Any]]:
+        """加载脚本元数据"""
+        scripts_path = self.base_path / filename
+        return self.load_json(scripts_path)
+    
+    def save_audio_metadata(self, audio_data: Dict[str, Any], filename: str = "audio_metadata.json"):
+        """保存音频元数据"""
+        audio_path = self.base_path / filename
+        return self.save_json(audio_data, audio_path)
+    
+    def load_audio_metadata(self, filename: str = "audio_metadata.json") -> Optional[Dict[str, Any]]:
+        """加载音频元数据"""
+        audio_path = self.base_path / filename
+        return self.load_json(audio_path)
+    
+    def save_video_metadata(self, video_data: Dict[str, Any], filename: str = "video_metadata.json"):
+        """保存视频元数据"""
+        video_path = self.base_path / filename
+        return self.save_json(video_data, video_path)
+    
+    def load_video_metadata(self, filename: str = "video_metadata.json") -> Optional[Dict[str, Any]]:
+        """加载视频元数据"""
+        video_path = self.base_path / filename
+        return self.load_json(video_path)
+    
+    def save_subtitles_metadata(self, subtitles_data: Dict[str, Any], filename: str = "subtitles_metadata.json"):
+        """保存字幕元数据"""
+        subtitles_path = self.base_path / filename
+        return self.save_json(subtitles_data, subtitles_path)
+    
+    def load_subtitles_metadata(self, filename: str = "subtitles_metadata.json") -> Optional[Dict[str, Any]]:
+        """加载字幕元数据"""
+        subtitles_path = self.base_path / filename
+        return self.load_json(subtitles_path)
+    
+    def save_merge_metadata(self, merge_data: Dict[str, Any], filename: str = "merge_metadata.json"):
+        """保存合并元数据"""
+        merge_path = self.base_path / filename
+        return self.save_json(merge_data, merge_path)
+    
+    def load_merge_metadata(self, filename: str = "merge_metadata.json") -> Optional[Dict[str, Any]]:
+        """加载合并元数据"""
+        merge_path = self.base_path / filename
+        return self.load_json(merge_path)

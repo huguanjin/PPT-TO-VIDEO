@@ -389,8 +389,16 @@ class EnhancedWorkflowExecutor:
         slides_data = self.file_manager.load_slides_metadata()
         audio_data = self.file_manager.load_audio_metadata()
         
-        if not slides_data or not audio_data:
-            raise Exception("缺少必要的输入数据")
+        # 详细的错误检查
+        if not slides_data:
+            self.logger.error("无法加载slides_metadata.json文件")
+            raise Exception("缺少幻灯片元数据，请先执行数据准备步骤")
+        
+        if not audio_data:
+            self.logger.error("无法加载audio_metadata.json文件")
+            raise Exception("缺少音频元数据，请先执行音频生成步骤")
+        
+        self.logger.info(f"成功加载: slides={len(slides_data.get('slides', []))}张, audio={len(audio_data.get('audio_files', []))}个文件")
         
         # 创建视频生成器
         video_generator = VideoGenerator(self.project_dir)

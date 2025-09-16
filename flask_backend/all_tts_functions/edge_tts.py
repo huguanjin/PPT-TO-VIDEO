@@ -164,13 +164,36 @@ def edge_tts(text, save_path):
         
         return False
     
-    # 尝试方法1: edge-tts库
+    # 尝试方法1: edge-tts库 (避免在已运行的事件循环中使用asyncio.run)
     try:
-        success = asyncio.run(async_edge_tts_lib())
-        if success:
-            return
+        # 检查是否已有运行的事件循环
+        try:
+            current_loop = asyncio.get_running_loop()
+            print("⚠️ 检测到运行的事件循环，使用新线程执行Edge TTS")
+            # 在新线程中运行asyncio.run以避免事件循环冲突
+            import threading
+            import concurrent.futures
+            
+            def run_edge_tts():
+                return asyncio.run(async_edge_tts_lib())
+            
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(run_edge_tts)
+                success = future.result(timeout=30)  # 30秒超时
+                
+            if success:
+                print("✅ Edge TTS库成功生成音频")
+                return True
+        except RuntimeError:
+            # 没有运行的事件循环，可以安全使用asyncio.run
+            print("🔄 使用asyncio.run执行Edge TTS")
+            success = asyncio.run(async_edge_tts_lib())
+            if success:
+                print("✅ Edge TTS库成功生成音频")
+                return True
     except Exception as e:
-        print(f"❌ Edge TTS库完全失败: {str(e)}")
+        print(f"❌ Edge TTS库失败: {str(e)}")
+        success = False
     
     # 方法2: 回退到自定义Edge TTS方法
     print(f"🔄 Edge TTS库失败，尝试自定义方法...")
