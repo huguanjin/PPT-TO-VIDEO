@@ -1,4 +1,4 @@
-"""
+﻿"""
 增强的工作流执行器 - 支持断点续传和智能跳过
 """
 import asyncio
@@ -21,8 +21,8 @@ from core.step02_tts_generator import TTSGenerator
 from core.step03_video_generator import VideoGenerator
 from core.step04_subtitle_generator import SubtitleGenerator
 from core.step05_final_merger import FFmpegFinalMerger
-from utils.logger import get_logger
-from utils.file_manager import FileManager
+from app.utils.logger import get_logger
+from app.utils.file_manager import FileManager
 
 class EnhancedWorkflowExecutor:
     """增强的工作流执行器"""
@@ -510,3 +510,4 @@ class EnhancedWorkflowExecutor:
             execution_file.unlink()
             return True
         return False
+

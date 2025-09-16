@@ -1,4 +1,4 @@
-"""
+﻿"""
 AI内容优化器 - 前置断句和内容润色
 在TTS生成前对讲话稿进行AI优化，解决多行字幕问题
 """
@@ -10,7 +10,7 @@ from datetime import datetime
 import logging
 import re
 
-from utils.logger import get_logger
+from app.utils.logger import get_logger
 
 class AIContentOptimizer:
     """AI内容优化器 - 断句、润色、字数控制"""
@@ -395,3 +395,4 @@ class AIContentOptimizer:
         content = re.sub(r'\s+', ' ', content).strip()
         
         return content
+

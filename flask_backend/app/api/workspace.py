@@ -22,7 +22,7 @@ workspace_bp = Blueprint('workspace', __name__)
 class WorkspaceManager:
     def __init__(self):
         # 使用动态路径解析，自适应 flask_backend 或 backend 目录
-        from utils.path_resolver import get_backend_root
+        from app.utils.path_resolver import get_backend_root
         backend_root = get_backend_root()
         self.output_dir = backend_root / 'output'
         self.history_dir = backend_root / 'history'

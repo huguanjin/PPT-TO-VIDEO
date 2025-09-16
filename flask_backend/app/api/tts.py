@@ -1,4 +1,4 @@
-"""
+﻿"""
 TTS语音合成API接口
 处理语音试听和生成相关操作
 """
@@ -20,7 +20,7 @@ try:
     from all_tts_functions.openai_tts import openai_tts  # type: ignore
     from all_tts_functions.azure_tts import azure_tts  # type: ignore
     from all_tts_functions.fish_tts import fish_tts  # type: ignore
-    from utils.logger import get_logger  # type: ignore
+    from app.utils.logger import get_logger  # type: ignore
 except ImportError as e:
     print(f"Warning: Could not import TTS modules: {e}")
     # 提供模拟函数
@@ -489,3 +489,4 @@ def get_engines():
             'success': False,
             'message': str(e)
         }), 500
+

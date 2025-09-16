@@ -1,4 +1,4 @@
-"""
+﻿"""
 增强的工作流API接口 - 合并FastAPI功能到Flask
 处理完整的PPT到视频工作流，包含项目导入、配置管理、执行监控等
 """
@@ -28,9 +28,9 @@ try:
     from core.step03_video_generator import VideoGenerator  # type: ignore
     from core.step04_subtitle_generator import SubtitleGenerator  # type: ignore
     from core.step05_final_merger import FFmpegFinalMerger  # type: ignore
-    from utils.task_manager import TaskManager  # type: ignore
-    from utils.file_manager import FileManager  # type: ignore
-    from utils.logger import get_logger  # type: ignore
+    from app.utils.task_manager import TaskManager  # type: ignore
+    from app.utils.file_manager import FileManager  # type: ignore
+    from app.utils.logger import get_logger  # type: ignore
     from config.settings import load_app_config  # type: ignore
     
     # save_app_config 可能不存在，提供安全的导入
@@ -728,3 +728,4 @@ def download_video(project_name, filename):
     except Exception as e:
         logger.error(f"下载失败: {e}")
         return jsonify({"success": False, "message": f"下载失败: {str(e)}"}), 500
+

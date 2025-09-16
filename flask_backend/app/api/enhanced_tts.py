@@ -1,4 +1,4 @@
-"""
+﻿"""
 增强的TTS试听API - 合并FastAPI的多引擎支持到Flask
 """
 import os
@@ -16,7 +16,7 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
 
 try:
-    from utils.logger import get_logger  # type: ignore
+    from app.utils.logger import get_logger  # type: ignore
 except ImportError:
     import logging
     def get_logger(name):
@@ -311,3 +311,4 @@ def simple_fish_tts(text, output_path, api_key, character="雷军"):
     except Exception as e:
         logger.error(f"Fish TTS失败: {e}")
         return False
+

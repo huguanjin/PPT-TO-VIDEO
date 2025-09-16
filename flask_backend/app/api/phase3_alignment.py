@@ -1,4 +1,4 @@
-"""
+﻿"""
 Phase 3智能对齐系统API端点
 提供智能对齐功能的HTTP接口
 """
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 try:
     from core.intelligent_alignment_system import IntelligentAlignmentSystem, IntelligentAlignmentConfig
     from core.audio_feature_extractor import AudioFeatureExtractor, AudioConfig
-    from utils.logger import get_logger
+    from app.utils.logger import get_logger
     PHASE3_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: Phase 3智能对齐系统不可用: {e}")

@@ -1,4 +1,4 @@
-"""
+﻿"""
 增强版字幕生成器 - Netflix级字幕处理机制
 基于精确时间对齐和智能间隙填充算法
 集成多行显示修复功能
@@ -13,8 +13,8 @@ from datetime import datetime
 import logging
 import dataclasses
 
-from utils.logger import get_logger
-from utils.file_manager import FileManager
+from app.utils.logger import get_logger
+from app.utils.file_manager import FileManager
 from .subtitle_multiline_fixer import SubtitleMultilineFixer
 
 
@@ -733,3 +733,4 @@ class EnhancedSubtitleGenerator:
         """更新字幕配置"""
         self.subtitle_config.update(new_config)
         self.logger.info(f"字幕配置已更新: {new_config}")
+

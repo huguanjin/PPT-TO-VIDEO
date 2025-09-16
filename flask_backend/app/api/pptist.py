@@ -1,4 +1,4 @@
-"""
+﻿"""
 PPTist导入API接口
 处理PPTist前端导出的数据
 """
@@ -18,8 +18,8 @@ sys.path.append(str(project_root))
 
 try:
     from core.step01_pptist_importer import PPTistImporter  # type: ignore
-    from utils.task_manager import TaskManager  # type: ignore
-    from utils.logger import get_logger  # type: ignore
+    from app.utils.task_manager import TaskManager  # type: ignore
+    from app.utils.logger import get_logger  # type: ignore
 except ImportError as e:
     print(f"Warning: Could not import core modules: {e}")
     # 在没有依赖时提供模拟类
@@ -383,3 +383,4 @@ def delete_project(project_name):
             'success': False,
             'message': str(e)
         }), 500
+

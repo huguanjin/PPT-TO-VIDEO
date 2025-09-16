@@ -1,4 +1,4 @@
-"""
+﻿"""
 步骤4: 字幕生成器
 基于讲话稿内容和音频时间轴生成SRT字幕文件
 支持传统模式和Netflix级增强模式
@@ -14,8 +14,8 @@ import html
 
 import pysrt
 
-from utils.logger import get_logger
-from utils.file_manager import FileManager
+from app.utils.logger import get_logger
+from app.utils.file_manager import FileManager
 
 # 导入增强版字幕生成器
 try:
@@ -1479,3 +1479,4 @@ class SubtitleGenerator:
             pysrt_subtitles.append(subtitle)
         
         return pysrt_subtitles
+

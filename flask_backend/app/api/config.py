@@ -1,4 +1,4 @@
-"""
+﻿"""
 配置管理API接口
 处理应用程序配置的读取和保存
 """
@@ -13,7 +13,7 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
 
 try:
-    from utils.logger import get_logger  # type: ignore
+    from app.utils.logger import get_logger  # type: ignore
 except ImportError:
     import logging
     def get_logger(name):
@@ -242,3 +242,4 @@ def update_config_section(section):
             'success': False,
             'message': str(e)
         }), 500
+

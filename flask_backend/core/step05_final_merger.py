@@ -1,4 +1,4 @@
-"""
+﻿"""
 步骤5: 最终视频合并器 - 基于FFmpeg
 使用FFmpeg合并视频片段、音频文件和字幕，生成最终视频
 """
@@ -22,8 +22,8 @@ try:
 except ImportError:
     cv2 = None
 
-from utils.file_manager import FileManager
-from utils.logger import get_logger
+from app.utils.file_manager import FileManager
+from app.utils.logger import get_logger
 
 class FFmpegFinalMerger:
     """基于FFmpeg的最终视频合并器"""
@@ -1105,3 +1105,4 @@ class FFmpegFinalMerger:
 
 # 为了向后兼容，创建一个别名
 FinalMerger = FFmpegFinalMerger
+

@@ -1,4 +1,4 @@
-"""
+﻿"""
 项目管理API接口
 处理项目创建、更新、删除等操作
 
@@ -20,8 +20,8 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
 
 try:
-    from utils.file_manager import FileManager  # type: ignore
-    from utils.logger import get_logger  # type: ignore
+    from app.utils.file_manager import FileManager  # type: ignore
+    from app.utils.logger import get_logger  # type: ignore
 except ImportError as e:
     print(f"Warning: Could not import utils modules: {e}")
     # 提供模拟类
@@ -620,3 +620,4 @@ def upload_project_images_chunked(project_name):
             'success': False,
             'message': str(e)
         }), 500
+

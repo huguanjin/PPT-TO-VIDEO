@@ -1,4 +1,4 @@
-"""
+﻿"""
 步骤3: PPT视频片段生成器
 基于PPT图片和音频时长生成视频片段
 """
@@ -33,8 +33,8 @@ except ImportError as e:
     # 定义替代类型
     NDArray = Any
 
-from utils.logger import get_logger
-from utils.file_manager import FileManager
+from app.utils.logger import get_logger
+from app.utils.file_manager import FileManager
 
 class VideoGenerator:
     """视频片段生成器"""
@@ -357,3 +357,4 @@ class VideoGenerator:
         total_frames = duration * self.fps
         
         return int(total_frames * bytes_per_frame)
+

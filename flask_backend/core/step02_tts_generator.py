@@ -1,4 +1,4 @@
-"""
+﻿"""
 步骤2: 讲话稿配音生成器
 基于讲话稿内容生成语音文件 - 支持多种TTS引擎
 """
@@ -16,8 +16,8 @@ import edge_tts
 import wave
 import audioop
 
-from utils.logger import get_logger
-from utils.file_manager import FileManager
+from app.utils.logger import get_logger
+from app.utils.file_manager import FileManager
 from utils.integrated_tts_manager import IntegratedTTSManager, TTSConfig, TTSEngine, load_tts_config_from_app_config
 
 class TTSGenerator:
@@ -630,3 +630,4 @@ class TTSGenerator:
         clean_text = re.sub(r'\s+', ' ', clean_text).strip()
         
         return clean_text
+
