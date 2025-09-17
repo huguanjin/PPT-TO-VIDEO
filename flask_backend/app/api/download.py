@@ -16,7 +16,33 @@ def download_project_file(project_name, filename):
     try:
         # 构建文件路径
         output_dir = Path(current_app.config.get('OUTPUT_FOLDER', 'output'))
-        file_path = output_dir / filename
+        
+        # 对于final_video.mp4，需要查找final目录中的最新文件
+        if filename == 'final_video.mp4':
+            final_dir = output_dir / 'final'
+            if final_dir.exists():
+                # 查找最新的final_video_*.mp4文件
+                video_files = list(final_dir.glob('final_video_*.mp4'))
+                if video_files:
+                    # 按文件名排序（时间戳），获取最新的
+                    latest_video = sorted(video_files, key=lambda x: x.name)[-1]
+                    file_path = latest_video
+                    logger.info(f"找到最新视频文件: {file_path}")
+                else:
+                    logger.error(f"final目录中没有找到视频文件: {final_dir}")
+                    return jsonify({
+                        'success': False,
+                        'message': f'没有找到视频文件'
+                    }), 404
+            else:
+                logger.error(f"final目录不存在: {final_dir}")
+                return jsonify({
+                    'success': False,
+                    'message': f'final目录不存在'
+                }), 404
+        else:
+            # 其他文件直接在output目录查找
+            file_path = output_dir / filename
         
         # 检查文件是否存在
         if not file_path.exists():
@@ -28,11 +54,18 @@ def download_project_file(project_name, filename):
         
         logger.info(f"开始下载文件: {file_path}")
         
+        # 确定下载文件名
+        download_name = filename
+        if filename == 'final_video.mp4' and 'final_video_' in file_path.name:
+            # 对于final_video.mp4，可以选择保持原名或使用实际文件名
+            # 这里保持原名便于前端处理
+            download_name = filename
+        
         # 发送文件
         return send_file(
             str(file_path),
             as_attachment=True,
-            download_name=filename
+            download_name=download_name
         )
         
     except Exception as e:

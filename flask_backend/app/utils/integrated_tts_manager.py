@@ -111,6 +111,111 @@ class IntegratedTTSManager:
             self.logger.error(f"TTS合成失败: {e}")
             return {"success": False, "error": str(e)}
     
+    def _get_audio_metadata(self, audio_path: str, text: str) -> Dict[str, Any]:
+        """
+        获取音频文件的元数据（时长、文件大小等）
+        支持WAV、MP3等多种音频格式
+        
+        Args:
+            audio_path: 音频文件路径
+            text: 原始文本（用于估算时长）
+            
+        Returns:
+            包含音频元数据的字典
+        """
+        import os
+        
+        if not os.path.exists(audio_path):
+            return {"duration": 0.0, "file_size": 0}
+        
+        # 获取文件大小
+        file_size = os.path.getsize(audio_path)
+        
+        # 获取音频时长 - 使用多种方法尝试
+        duration = self._get_audio_duration(audio_path, text)
+        
+        return {
+            "duration": duration,
+            "file_size": file_size
+        }
+    
+    def _get_audio_duration(self, audio_path: str, text: str) -> float:
+        """
+        获取音频时长，使用多种方法回退
+        
+        Args:
+            audio_path: 音频文件路径
+            text: 原始文本（用于估算）
+            
+        Returns:
+            音频时长（秒）
+        """
+        import os
+        
+        # 首先检查文件是否存在
+        if not os.path.exists(audio_path):
+            # 文件不存在，直接使用文本估算
+            chars_per_second = 3.5 if self._is_chinese_text(text) else 12
+            return max(1.0, len(text) / chars_per_second)
+        
+        duration = 0.0
+        
+        # 方法1: 使用wave模块（适用于WAV格式）
+        try:
+            import wave
+            with wave.open(audio_path, 'rb') as audio_file:
+                frame_rate = audio_file.getframerate()
+                frame_count = audio_file.getnframes()
+                duration = frame_count / float(frame_rate)
+                return duration
+        except Exception:
+            pass
+        
+        # 方法2: 使用mutagen（适用于MP3等格式）
+        try:
+            # 尝试使用mutagen的通用接口
+            # 为了避免Pylance警告，我们使用动态导入
+            import importlib
+            mutagen_module = importlib.import_module('mutagen')
+            if hasattr(mutagen_module, 'File'):
+                audio_file = mutagen_module.File(audio_path)
+                if audio_file is not None and hasattr(audio_file, 'info') and hasattr(audio_file.info, 'length'):
+                    duration = float(audio_file.info.length)
+                    return duration
+        except (ImportError, AttributeError, TypeError, Exception):
+            pass
+        
+        # 方法3: 使用librosa（通用但需要额外依赖）
+        try:
+            import librosa
+            y, sr = librosa.load(audio_path)
+            duration = len(y) / sr
+            return duration
+        except (ImportError, Exception):
+            pass
+        
+        # 方法4: 使用pydub（如果可用）
+        try:
+            from pydub import AudioSegment
+            audio = AudioSegment.from_file(audio_path)
+            duration = len(audio) / 1000.0  # pydub返回毫秒
+            return duration
+        except (ImportError, Exception):
+            pass
+        
+        # 最后回退: 根据文本长度估算时长
+        self.logger.warning(f"无法获取音频时长，使用文本长度估算: {audio_path}")
+        # 中文大约每秒3-4个字符，英文约每秒10-15个字符
+        chars_per_second = 3.5 if self._is_chinese_text(text) else 12
+        duration = max(1.0, len(text) / chars_per_second)
+        
+        return duration
+    
+    def _is_chinese_text(self, text: str) -> bool:
+        """判断文本是否主要为中文"""
+        chinese_chars = sum(1 for char in text if '\u4e00' <= char <= '\u9fff')
+        return chinese_chars > len(text) * 0.5
+
     async def _synthesize_edge_tts(self, text: str, output_path: Optional[Union[str, Path]]) -> Dict[str, Any]:
         """Edge TTS合成"""
         try:
@@ -120,15 +225,21 @@ class IntegratedTTSManager:
             save_path = str(output_path) if output_path else None
             result = edge_tts(text, save_path)
             
-            # 包装结果为统一格式
-            if result:
+            # 检查文件是否成功生成
+            if save_path and os.path.exists(save_path):
+                metadata = self._get_audio_metadata(save_path, text)
+                
                 return {
                     "success": True,
                     "message": "Edge TTS合成成功",
-                    "audio_path": save_path
+                    "audio_path": save_path,
+                    "duration": metadata["duration"],
+                    "file_size": metadata["file_size"],
+                    "engine": "edge_tts",
+                    "estimated": False
                 }
             else:
-                return {"success": False, "error": "Edge TTS合成失败"}
+                return {"success": False, "error": "Edge TTS音频文件生成失败"}
             
         except Exception as e:
             return {"success": False, "error": f"Edge TTS合成失败: {e}"}
@@ -142,15 +253,21 @@ class IntegratedTTSManager:
             save_path = str(output_path) if output_path else None
             result = fish_tts(text, save_path, self.config.fish_character_name)
             
-            # 包装结果为统一格式
-            if result:
+            # 检查文件是否成功生成
+            if save_path and os.path.exists(save_path):
+                metadata = self._get_audio_metadata(save_path, text)
+                
                 return {
                     "success": True,
                     "message": "Fish TTS合成成功",
-                    "audio_path": save_path
+                    "audio_path": save_path,
+                    "duration": metadata["duration"],
+                    "file_size": metadata["file_size"],
+                    "engine": "fish_tts",
+                    "estimated": False
                 }
             else:
-                return {"success": False, "error": "Fish TTS合成失败"}
+                return {"success": False, "error": "Fish TTS音频文件生成失败"}
             
         except Exception as e:
             return {"success": False, "error": f"Fish TTS合成失败: {e}"}
@@ -164,15 +281,21 @@ class IntegratedTTSManager:
             save_path = str(output_path) if output_path else None
             result = openai_tts(text, save_path)
             
-            # 包装结果为统一格式
-            if result:
+            # 检查文件是否成功生成
+            if save_path and os.path.exists(save_path):
+                metadata = self._get_audio_metadata(save_path, text)
+                
                 return {
                     "success": True,
                     "message": "OpenAI TTS合成成功",
-                    "audio_path": save_path
+                    "audio_path": save_path,
+                    "duration": metadata["duration"],
+                    "file_size": metadata["file_size"],
+                    "engine": "openai_tts",
+                    "estimated": False
                 }
             else:
-                return {"success": False, "error": "OpenAI TTS合成失败"}
+                return {"success": False, "error": "OpenAI TTS音频文件生成失败"}
             
         except Exception as e:
             return {"success": False, "error": f"OpenAI TTS合成失败: {e}"}

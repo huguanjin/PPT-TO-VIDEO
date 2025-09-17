@@ -24,6 +24,13 @@ try:
 except ImportError:
     ENHANCED_SUBTITLE_AVAILABLE = False
 
+# 导入增强语义分割器
+try:
+    from core.enhanced_semantic_splitter import EnhancedSemanticSplitter
+    ENHANCED_SEMANTIC_SPLITTER_AVAILABLE = True
+except ImportError:
+    ENHANCED_SEMANTIC_SPLITTER_AVAILABLE = False
+
 # 导入视频帧同步优化器
 try:
     from core.video_frame_sync_optimizer import VideoFrameSyncOptimizer, VideoMetadata, TimecodeFormat
@@ -136,9 +143,9 @@ class SubtitleGenerator:
         
         # 字幕配置 - 优化单行显示和时间同步
         self.subtitle_config = {
-            "max_chars_per_line": 35,     # 单行最大字符数（调整为35以容纳完整语义）
+            "max_chars_per_line": 30,     # 调整为30个字符，平衡可读性和完整性
             "max_lines": 1,               # 强制单行显示
-            "min_display_time": 0.8,      # 降低最小显示时间，避免字幕重叠
+            "min_display_time": 1.0,      # 最小显示时间1秒，确保可读性
             "max_display_time": 8.0,      # 合理的最大显示时间
             "words_per_second": 3.5,      # 标准阅读速度
             "line_break_chars": "。！？；",    # 主要断句标点（移除逗号避免过度分割）
@@ -714,7 +721,34 @@ class SubtitleGenerator:
         if not text:
             return []
         
-        # 🔧 使用轻量级断句方法避免Flask重载
+        # � 使用增强语义分割器 - 保护URL和技术术语
+        if ENHANCED_SEMANTIC_SPLITTER_AVAILABLE:
+            try:
+                self.logger.info("🤖 使用AI增强语义分割器处理文本")
+                from core.enhanced_semantic_splitter import EnhancedSemanticSplitter
+                
+                # 创建分割器实例
+                splitter = EnhancedSemanticSplitter()
+                splitter.max_chars_per_line = self.subtitle_config["max_chars_per_line"]
+                
+                # 使用异步AI分割
+                import asyncio
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    segments = loop.run_until_complete(splitter.split_with_semantic_awareness(text))
+                    if segments and len(segments) > 0:
+                        self.logger.info(f"✅ AI语义分割成功，生成 {len(segments)} 个片段")
+                        return segments
+                    else:
+                        self.logger.warning("⚠️ AI分割返回空结果，使用备用方案")
+                finally:
+                    loop.close()
+                    
+            except Exception as e:
+                self.logger.warning(f"增强语义分割器失败，回退到轻量级方法: {e}")
+        
+        # �🔧 回退：使用轻量级断句方法
         self.logger.info("使用轻量级断句方法处理文本")
         return self._lightweight_split_text(text)
     
@@ -796,7 +830,8 @@ class SubtitleGenerator:
     def _lightweight_split_text(self, text: str) -> List[str]:
         """
         轻量级文本分割 - 专门解决Flask重载问题
-        简单但有效，避免复杂依赖
+        简单但有效，避免复杂依赖，确保单行显示
+        增加URL和技术术语保护功能
         
         Args:
             text: 输入文本
@@ -810,8 +845,19 @@ class SubtitleGenerator:
         segments = []
         max_chars = self.subtitle_config["max_chars_per_line"]
         
-        # 按句号分割成完整语义单元
-        sentences = text.split("。")
+        # 🛡️ URL保护：先识别并保护URL
+        protected_text, url_map = self._protect_urls_in_text(text)
+        
+        # 1. 先检查是否真的需要分割 - 语义完整性优先
+        if len(protected_text) <= max_chars * 1.5:  # 增加到50%的容忍度
+            # 如果只是稍微超出限制，且包含重要元素，优先保持完整
+            if self._should_keep_intact(protected_text, url_map):
+                sentences = [text]  # 保持完整，不分割
+                final_segments = [self._restore_urls_in_text(protected_text, url_map)]
+                return final_segments
+        
+        # 2. 首先按句号分割成完整语义单元
+        sentences = protected_text.split("。")
         
         for i, sentence in enumerate(sentences):
             sentence = sentence.strip()
@@ -824,32 +870,252 @@ class SubtitleGenerator:
             elif text.endswith("。"):
                 sentence += "。"
             
-            # 检查长度
+            # 2. 处理每个句子的长度
             if len(sentence) <= max_chars:
                 segments.append(sentence)
             else:
-                # 在逗号处分割长句
-                if "，" in sentence:
-                    # 找到合适的分割点
-                    parts = sentence.split("，", 1)  # 只分割一次
-                    first_part = parts[0] + "，"
-                    second_part = parts[1] if len(parts) > 1 else ""
-                    
-                    # 检查第一部分长度
-                    if len(first_part) <= max_chars:
-                        segments.append(first_part)
-                        if second_part.strip():
-                            # 递归处理第二部分
-                            remaining_segments = self._lightweight_split_text(second_part)
-                            segments.extend(remaining_segments)
-                    else:
-                        # 第一部分也太长，硬切分
-                        self._hard_split_sentence(sentence, max_chars, segments)
-                else:
-                    # 没有逗号，硬切分
-                    self._hard_split_sentence(sentence, max_chars, segments)
+                # 3. 智能分割长句子 - 保护URL的多级分割策略
+                sentence_segments = self._smart_split_long_sentence_with_protection(sentence, max_chars, url_map)
+                segments.extend(sentence_segments)
         
-        return [s.strip() for s in segments if s.strip()]
+        # 🔄 还原URL保护
+        final_segments = []
+        for segment in segments:
+            restored_segment = self._restore_urls_in_text(segment, url_map)
+            if restored_segment.strip():
+                final_segments.append(restored_segment.strip())
+        
+        return final_segments
+    
+    def _protect_urls_in_text(self, text: str) -> Tuple[str, Dict[str, str]]:
+        """
+        保护文本中的URL，避免被分割
+        
+        Args:
+            text: 原始文本
+            
+        Returns:
+            Tuple[保护后的文本, URL映射表]
+        """
+        import re
+        
+        # URL正则表达式 - 匹配http/https URL
+        url_pattern = r'https?://[^\s，。！？；：\'"]*'
+        
+        url_map = {}
+        counter = 0
+        
+        def replace_url(match):
+            nonlocal counter
+            url = match.group(0)
+            placeholder = f"__URL_{counter}__"
+            url_map[placeholder] = url
+            counter += 1
+            return placeholder
+        
+        protected_text = re.sub(url_pattern, replace_url, text)
+        return protected_text, url_map
+    
+    def _restore_urls_in_text(self, text: str, url_map: Dict[str, str]) -> str:
+        """
+        还原文本中的URL
+        
+        Args:
+            text: 保护后的文本
+            url_map: URL映射表
+            
+        Returns:
+            还原后的文本
+        """
+        for placeholder, url in url_map.items():
+            text = text.replace(placeholder, url)
+        return text
+    
+    def _should_keep_intact(self, text: str, url_map: Dict[str, str]) -> bool:
+        """
+        判断文本是否应该保持完整，不进行分割
+        
+        Args:
+            text: 文本内容
+            url_map: URL映射表
+            
+        Returns:
+            是否应该保持完整
+        """
+        # 1. 包含URL的句子优先保持完整
+        if url_map:
+            return True
+        
+        # 2. 包含技术术语的句子（如软件名）
+        tech_terms = ["studio", "客户端", "程序", "下载", "安装", "cherry"]
+        if any(term in text.lower() for term in tech_terms):
+            return True
+        
+        # 3. 包含特殊格式的句子（如带冒号的说明）
+        if "：" in text or ":" in text:
+            return True
+        
+        # 4. 中等长度句子也倾向保持完整（<=45字符）
+        if len(text) <= 45:
+            return True
+            
+        return False
+    
+    def _smart_split_long_sentence_with_protection(self, sentence: str, max_chars: int, url_map: Dict[str, str]) -> List[str]:
+        """
+        保护URL的智能长句分割策略
+        
+        Args:
+            sentence: 要分割的句子
+            max_chars: 最大字符数
+            url_map: URL映射表
+            
+        Returns:
+            分割后的句子列表
+        """
+        segments = []
+        remaining = sentence
+        
+        # 分割优先级：逗号 > 冒号 > 连词 > 介词 > 的字 > 强制分割
+        split_patterns = [
+            {"patterns": ["，"], "priority": 1},
+            {"patterns": ["："], "priority": 2},  # 添加冒号优先级
+            {"patterns": ["、"], "priority": 3},
+            {"patterns": ["和", "与", "或", "但", "然后", "接下来", "因此", "所以"], "priority": 4},
+            {"patterns": ["在", "对", "的", "了"], "priority": 5},
+            {"patterns": ["如果", "当", "将", "进行"], "priority": 6}
+        ]
+        
+        while len(remaining) > max_chars:
+            best_split_pos = -1
+            
+            # 🛡️ 特殊处理：如果包含URL占位符，优先在URL前分割
+            for placeholder in url_map.keys():
+                if placeholder in remaining:
+                    placeholder_pos = remaining.find(placeholder)
+                    # 在URL前的合适位置分割
+                    for i in range(placeholder_pos - 1, max(0, placeholder_pos - 20), -1):
+                        if i < len(remaining) and remaining[i] in "，：、 ":
+                            best_split_pos = i + 1
+                            break
+                    if best_split_pos != -1:
+                        break
+            
+            # 按优先级查找分割点
+            if best_split_pos == -1:
+                for pattern_group in split_patterns:
+                    for pattern in pattern_group["patterns"]:
+                        # 在允许范围内查找最后一个分割点
+                        search_end = min(max_chars - len(pattern), len(remaining))
+                        
+                        for pos in range(search_end, max_chars // 3, -1):
+                            if pos + len(pattern) <= len(remaining):
+                                if remaining[pos:pos + len(pattern)] == pattern:
+                                    best_split_pos = pos + len(pattern)
+                                    break
+                        
+                        if best_split_pos != -1:
+                            break
+                    
+                    if best_split_pos != -1:
+                        break
+            
+            # 如果没找到合适的分割点，寻找空格
+            if best_split_pos == -1:
+                for pos in range(min(max_chars - 1, len(remaining) - 1), max_chars // 2, -1):
+                    if pos < len(remaining) and remaining[pos] == ' ':
+                        best_split_pos = pos + 1
+                        break
+            
+            # 最后手段：强制在3/4位置分割
+            if best_split_pos == -1:
+                best_split_pos = max_chars * 3 // 4
+            
+            # 执行分割
+            if best_split_pos > 0 and best_split_pos < len(remaining):
+                segment = remaining[:best_split_pos].strip()
+                if segment:
+                    segments.append(segment)
+                remaining = remaining[best_split_pos:].strip()
+            else:
+                # 极端情况，直接按最大长度切分
+                segment = remaining[:max_chars].strip()
+                if segment:
+                    segments.append(segment)
+                remaining = remaining[max_chars:].strip()
+        
+        # 添加剩余部分
+        if remaining.strip():
+            segments.append(remaining.strip())
+        
+        return segments
+    
+    def _smart_split_long_sentence_enhanced(self, sentence: str, max_chars: int) -> List[str]:
+        """
+        增强版智能长句分割 - 多级分割策略
+        """
+        segments = []
+        remaining = sentence
+        
+        # 分割优先级：逗号 > 连词 > 介词 > 的字 > 强制分割
+        split_patterns = [
+            {"patterns": ["，"], "priority": 1},
+            {"patterns": ["、"], "priority": 2},
+            {"patterns": ["和", "与", "或", "但", "然后", "接下来", "因此", "所以"], "priority": 3},
+            {"patterns": ["在", "对", "的", "了"], "priority": 4},
+            {"patterns": ["如果", "当", "将", "进行"], "priority": 5}
+        ]
+        
+        while len(remaining) > max_chars:
+            best_split_pos = -1
+            
+            # 按优先级查找分割点
+            for pattern_group in split_patterns:
+                for pattern in pattern_group["patterns"]:
+                    # 在允许范围内查找最后一个分割点
+                    search_end = min(max_chars - len(pattern), len(remaining))
+                    
+                    for pos in range(search_end, max_chars // 3, -1):
+                        if pos + len(pattern) <= len(remaining):
+                            if remaining[pos:pos + len(pattern)] == pattern:
+                                best_split_pos = pos + len(pattern)
+                                break
+                    
+                    if best_split_pos != -1:
+                        break
+                
+                if best_split_pos != -1:
+                    break
+            
+            # 如果没找到合适的分割点，寻找空格
+            if best_split_pos == -1:
+                for pos in range(min(max_chars - 1, len(remaining) - 1), max_chars // 2, -1):
+                    if pos < len(remaining) and remaining[pos] == ' ':
+                        best_split_pos = pos + 1
+                        break
+            
+            # 最后手段：强制在3/4位置分割
+            if best_split_pos == -1:
+                best_split_pos = max_chars * 3 // 4
+            
+            # 执行分割
+            if best_split_pos > 0:
+                segment = remaining[:best_split_pos].strip()
+                if segment:
+                    segments.append(segment)
+                remaining = remaining[best_split_pos:].strip()
+            else:
+                # 极端情况，直接按最大长度切分
+                segment = remaining[:max_chars].strip()
+                if segment:
+                    segments.append(segment)
+                remaining = remaining[max_chars:].strip()
+        
+        # 添加剩余部分
+        if remaining.strip():
+            segments.append(remaining.strip())
+        
+        return segments
     
     def _hard_split_sentence(self, sentence: str, max_chars: int, segments: List[str]) -> None:
         """

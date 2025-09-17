@@ -118,11 +118,16 @@ class WorkflowConfig:
         subtitle_config = data.get('subtitle', {})
         self.subtitle = {
             'font_family': subtitle_config.get('font_family', '微软雅黑'),
-            'font_size': subtitle_config.get('font_size', 24),
+            'font_size': subtitle_config.get('font_size', 16),  # 优化后的字体大小
             'font_color': subtitle_config.get('font_color', '#FFFFFF'),
             'background_color': subtitle_config.get('background_color', '#000000'),
             'position': subtitle_config.get('position', 'bottom'),
-            'enabled': subtitle_config.get('enabled', True)
+            'enabled': subtitle_config.get('enabled', True),
+            # 新增优化配置
+            'max_chars_per_line': subtitle_config.get('max_chars_per_line', 26),  # 优化后的字符限制
+            'enable_adaptive_font': subtitle_config.get('enable_adaptive_font', True),
+            'enable_semantic_split': subtitle_config.get('enable_semantic_split', True),
+            'enable_ai_optimization': subtitle_config.get('enable_ai_optimization', False)
         }
         
         # Phase 3智能对齐配置
@@ -178,11 +183,16 @@ def get_enhanced_config():
             "tts": tts_config,
             "subtitle": {
                 "font_family": app_config.get("subtitle_font_family", "微软雅黑"),
-                "font_size": app_config.get("subtitle_font_size", 24),
+                "font_size": app_config.get("subtitle_font_size", 16),  # 优化后的字体大小
                 "font_color": app_config.get("subtitle_font_color", "#FFFFFF"),
                 "background_color": app_config.get("subtitle_background_color", "#000000"),
                 "position": app_config.get("subtitle_position", "bottom"),
-                "enabled": app_config.get("subtitle_enabled", True)
+                "enabled": app_config.get("subtitle_enabled", True),
+                # 新增优化配置
+                "max_chars_per_line": app_config.get("max_chars_per_line", 26),  # 优化后的字符限制
+                "enable_adaptive_font": app_config.get("enable_adaptive_font", True),
+                "enable_semantic_split": app_config.get("enable_semantic_split", True),
+                "enable_ai_optimization": app_config.get("enable_ai_optimization", False)
             }
         }
         
@@ -218,6 +228,14 @@ def update_enhanced_config():
             "subtitle_font_family": config.subtitle['font_family'],
             "subtitle_font_size": config.subtitle['font_size'],
             "subtitle_font_color": config.subtitle['font_color'],
+            "subtitle_background_color": config.subtitle['background_color'],
+            "subtitle_position": config.subtitle['position'],
+            "subtitle_enabled": config.subtitle['enabled'],
+            # 新增优化配置
+            "max_chars_per_line": config.subtitle.get('max_chars_per_line', 26),
+            "enable_adaptive_font": config.subtitle.get('enable_adaptive_font', True),
+            "enable_semantic_split": config.subtitle.get('enable_semantic_split', True),
+            "enable_ai_optimization": config.subtitle.get('enable_ai_optimization', False),
             "subtitle_background_color": config.subtitle['background_color'],
             "subtitle_position": config.subtitle['position'],
             "subtitle_enabled": config.subtitle['enabled']
@@ -623,7 +641,12 @@ async def update_config_internal(config: WorkflowConfig):
             "subtitle_font_color": config.subtitle['font_color'],
             "subtitle_background_color": config.subtitle['background_color'],
             "subtitle_position": config.subtitle['position'],
-            "subtitle_enabled": config.subtitle['enabled']
+            "subtitle_enabled": config.subtitle['enabled'],
+            # 新增优化配置
+            "max_chars_per_line": config.subtitle.get('max_chars_per_line', 26),
+            "enable_adaptive_font": config.subtitle.get('enable_adaptive_font', True),
+            "enable_semantic_split": config.subtitle.get('enable_semantic_split', True),
+            "enable_ai_optimization": config.subtitle.get('enable_ai_optimization', False)
         })
         
         save_app_config(app_config)

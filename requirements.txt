@@ -24,13 +24,21 @@ webrtcvad>=2.0.10
 fastdtw>=0.3.4
 scikit-learn>=1.3.0
 scipy>=1.10.0
+mutagen>=1.47.0  # 音频元数据处理
 
 # 机器学习和NLP
 torch>=1.11.0
 transformers>=4.20.0
 sentence-transformers>=2.2.0
+
+# Netflix级别字幕分割系统 (Phase 1)
 spacy>=3.7.0
+zh-core-web-sm>=3.7.0  # 中文spaCy模型（小型，推荐）
 zh-core-web-md @ https://github.com/explosion/spacy-models/releases/download/zh_core_web_md-3.7.0/zh_core_web_md-3.7.0-py3-none-any.whl
+
+# Netflix质量监控和配置管理
+psutil>=5.9.0  # 系统监控（内存使用等）
+threading  # Python内置，并发处理支持
 
 # 字幕处理
 pysrt==1.1.2
@@ -53,3 +61,8 @@ python-json-logger>=2.0.7
 
 # 开发工具
 python-multipart>=0.0.6
+
+# Netflix Phase 1 测试依赖
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.11.0

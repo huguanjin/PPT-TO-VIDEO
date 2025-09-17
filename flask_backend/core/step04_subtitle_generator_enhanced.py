@@ -34,8 +34,8 @@ class EnhancedSubtitleGenerator:
         
         # 增强的字幕配置
         self.subtitle_config = {
-            "max_chars_per_line": 30,           # 每行最大字符数 (优化后)
-            "max_lines": 2,                     # 最大行数
+            "max_chars_per_line": 18,           # 每行最大字符数 (减少到18确保绝对单行)
+            "max_lines": 1,                     # 强制单行显示
             "min_display_time": 1.0,            # 最小显示时间(秒)
             "max_display_time": 8.0,            # 最大显示时间(秒)
             "words_per_second": 3.5,            # 每秒字数(用于时长估算)

@@ -41,11 +41,11 @@ class SubtitleMultilineFixer:
                 "korean": 1.0        # 🎯 激进优化: 从1.6降低到1.0
             },
             "line_control_rules": {
-                "max_lines_strict": 2,
-                "max_chars_per_line_chinese": 30,  # 🎯 调整: 回调至30以配合低权重
+                "max_lines_strict": 1,              # 🎯 强制单行显示
+                "max_chars_per_line_chinese": 18,   # 🎯 减少到18字符确保绝对单行 
                 "enforce_line_limit": True,
-                "target_weight_ratio": 0.75,       # 🎯 优化: 从0.8降低到0.75
-                "balance_tolerance": 0.25           # 🎯 优化: 从0.3降低到0.25
+                "target_weight_ratio": 0.75,        # 🎯 优化: 从0.8降低到0.75
+                "balance_tolerance": 0.25            # 🎯 优化: 从0.3降低到0.25
             },
             "split_strategies": {
                 "punctuation_priority": ["。", "！", "？", "；", "：", "，", "、"],

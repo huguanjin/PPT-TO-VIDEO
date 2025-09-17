@@ -5,8 +5,8 @@
 import os
 import numpy as np
 import tempfile
-from typing import List, Dict, Any, Tuple
-from dataclasses import dataclass
+from typing import List, Dict, Any, Tuple, Optional
+from dataclasses import dataclass, field
 import wave
 from pathlib import Path
 
@@ -15,7 +15,7 @@ class TestCase:
     """测试用例数据结构"""
     name: str
     test_data: Dict[str, Any]
-    expected_results: Dict[str, Any] = None
+    expected_results: Optional[Dict[str, Any]] = None
 
 class AudioTestSuite:
     """音频测试套件"""

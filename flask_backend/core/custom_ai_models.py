@@ -561,7 +561,18 @@ class CustomAIModelManager:
             
             response = await client.chat.completions.create(**kwargs)
             
-            content = response.choices[0].message.content
+            # 兼容性处理：检查响应类型
+            if hasattr(response, 'choices') and response.choices:
+                content = response.choices[0].message.content
+            elif isinstance(response, dict):
+                # 处理字典格式的响应
+                content = response.get('content', response.get('text', str(response)))
+            elif isinstance(response, str):
+                # 处理字符串响应
+                content = response
+            else:
+                # 最后尝试直接转换为字符串
+                content = str(response)
             
             # 尝试解析JSON
             try:
