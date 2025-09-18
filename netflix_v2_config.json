@@ -1,0 +1,46 @@
+{
+  "metadata": {
+    "name": "Default Netflix V2 Config",
+    "description": "Netflix V2字幕系统默认配置",
+    "version": "2.0",
+    "category": "netflix_subtitle",
+    "scope": "global",
+    "created_time": "2025-09-18T18:50:23.306354",
+    "modified_time": "2025-09-18T18:50:23.307353",
+    "author": "Netflix V2 Config System",
+    "tags": [
+      "netflix",
+      "v2",
+      "default"
+    ],
+    "dependencies": []
+  },
+  "config": {
+    "enabled": true,
+    "style_preset": "videolingo_netflix",
+    "max_chars_per_line": 36,
+    "validation_level": "netflix",
+    "chinese_weight": 1.75,
+    "english_weight": 1.0,
+    "punctuation_weight": 0.5,
+    "enable_semantic_splitting": true,
+    "max_optimization_rounds": 5,
+    "quality_threshold": 0.7,
+    "output_formats": [
+      "srt",
+      "ass",
+      "webvtt"
+    ],
+    "font_color": "&H00FFFF",
+    "font_size": 17,
+    "outline_color": "&H000000",
+    "outline_width": 1,
+    "background_alpha": 0.8,
+    "min_duration": 1.0,
+    "max_duration": 8.0,
+    "gap_threshold": 0.3,
+    "enable_quality_validation": true,
+    "auto_fix_issues": true,
+    "strict_netflix_compliance": true
+  }
+}

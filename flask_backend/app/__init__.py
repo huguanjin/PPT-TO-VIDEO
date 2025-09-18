@@ -193,6 +193,26 @@ def register_blueprints(app):
     except Exception as e:
         print(f"❌ netflix_subtitle_api模块加载错误: {e}")
     
+    # 导入Enhanced Netflix字幕API V2 (Phase 2核心)
+    enhanced_netflix_v2_bp = None
+    try:
+        from app.api.enhanced_netflix_subtitle_api_v2 import enhanced_netflix_bp as enhanced_netflix_v2_bp
+        print("✅ enhanced_netflix_subtitle_api_v2模块导入成功")
+    except ImportError as e:
+        print(f"❌ enhanced_netflix_subtitle_api_v2模块导入失败: {e}")
+    except Exception as e:
+        print(f"❌ enhanced_netflix_subtitle_api_v2模块加载错误: {e}")
+    
+    # 导入Netflix V2配置管理API (Phase 3核心)
+    netflix_config_v2_api = None
+    try:
+        from flask_backend.api.netflix_v2_config_api import netflix_config_api_v2 as netflix_config_v2_api
+        print("✅ Netflix V2配置管理API模块导入成功")
+    except ImportError as e:
+        print(f"❌ Netflix V2配置管理API模块导入失败: {e}")
+    except Exception as e:
+        print(f"❌ Netflix V2配置管理API模块加载错误: {e}")
+    
     # 注册原有蓝图
     app.register_blueprint(common_bp)
     app.register_blueprint(pptist_bp, url_prefix='/api/pptist')
@@ -272,6 +292,22 @@ def register_blueprints(app):
             print("✅ netflix_subtitle_api蓝图注册成功: /api/netflix-subtitle/*")
         except Exception as e:
             print(f"❌ netflix_subtitle_api蓝图注册失败: {e}")
+    
+    # 注册Enhanced Netflix字幕API V2 (Phase 2核心)
+    if enhanced_netflix_v2_bp is not None:
+        try:
+            app.register_blueprint(enhanced_netflix_v2_bp)
+            print("✅ enhanced_netflix_subtitle_api_v2蓝图注册成功: /api/v2/netflix-subtitle/*")
+        except Exception as e:
+            print(f"❌ enhanced_netflix_subtitle_api_v2蓝图注册失败: {e}")
+    
+    # 注册Netflix V2配置管理API (Phase 3)
+    if netflix_config_v2_api is not None:
+        try:
+            app.register_blueprint(netflix_config_v2_api)
+            print("✅ Netflix V2配置管理API蓝图注册成功: /api/v2/netflix/config/*")
+        except Exception as e:
+            print(f"❌ Netflix V2配置管理API蓝图注册失败: {e}")
     
     # 注册增强的API蓝图（只注册成功导入的）
     enhanced_count = 0

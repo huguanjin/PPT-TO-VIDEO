@@ -1,0 +1,231 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "success": "成功",
+    "error": "错误", 
+    "warning": "警告",
+    "confirm": "确认",
+    "cancel": "取消",
+    "save": "保存",
+    "export": "导出",
+    "import": "导入",
+    "delete": "删除",
+    "edit": "编辑",
+    "copy": "复制",
+    "refresh": "刷新",
+    "reset": "重置",
+    "apply": "应用",
+    "preview": "预览",
+    "close": "关闭"
+  },
+  "navigation": {
+    "home": "首页",
+    "settings": "设置",
+    "help": "帮助",
+    "about": "关于"
+  },
+  "netflix": {
+    "title": "Netflix配置预览",
+    "subtitle": "Phase 6 高级功能版本",
+    "config": {
+      "title": "配置管理",
+      "selector": "配置选择器",
+      "preview": "配置预览",
+      "comparison": "配置比较",
+      "recommendations": "智能推荐",
+      "details": "配置详情",
+      "performance": "性能指标",
+      "quality": "质量评分",
+      "memory": "内存使用"
+    },
+    "parameters": {
+      "whisper_model": "Whisper模型",
+      "batch_size": "批处理大小", 
+      "performance_mode": "性能模式",
+      "subtitle_style": "字幕样式",
+      "sync_accuracy": "同步精度",
+      "audio_quality": "音频质量",
+      "video_resolution": "视频分辨率",
+      "encoding_format": "编码格式"
+    },
+    "values": {
+      "enabled": "启用",
+      "disabled": "禁用",
+      "high": "高",
+      "medium": "中等",
+      "low": "低",
+      "auto": "自动",
+      "manual": "手动",
+      "unset": "未设置",
+      "default": "默认"
+    },
+    "recommendations": {
+      "title": "智能推荐",
+      "subtitle": "基于您的使用习惯和项目特点推荐最优配置",
+      "performance_title": "性能优化推荐",
+      "performance_desc": "基于您的硬件配置，建议使用高性能模式以提升处理速度",
+      "quality_title": "质量优化推荐", 
+      "quality_desc": "为了获得更好的字幕质量，建议调整同步精度和语音识别参数",
+      "balanced_title": "平衡模式推荐",
+      "balanced_desc": "在性能和质量之间找到最佳平衡点",
+      "benefits": {
+        "speed_improvement": "处理速度提升{percent}%",
+        "memory_optimization": "内存使用优化",
+        "batch_optimization": "批处理优化", 
+        "accuracy_improvement": "字幕精度提升",
+        "sync_accuracy": "同步准确性",
+        "voice_recognition": "语音识别优化",
+        "performance_balance": "性能质量平衡",
+        "resource_reasonable": "资源使用合理",
+        "universal_adaptation": "通用适配"
+      },
+      "apply": "应用推荐",
+      "preview_effect": "预览效果",
+      "generate": "生成推荐",
+      "no_recommendations": "暂无智能推荐"
+    },
+    "comparison": {
+      "title": "配置比较",
+      "add_to_comparison": "添加到比较",
+      "clear_comparison": "清空比较",
+      "remove_config": "移除配置",
+      "no_comparison": "暂无配置进行比较",
+      "add_config": "添加配置",
+      "parameter": "参数",
+      "max_configs": "最多比较3个配置"
+    },
+    "preview": {
+      "title": "配置详情预览",
+      "real_time": "实时预览",
+      "manual": "手动预览",
+      "refreshing": "正在刷新预览...",
+      "core_parameters": "核心参数",
+      "performance_optimization": "性能优化",
+      "processing_speed": "处理速度",
+      "memory_usage": "内存使用",
+      "quality_score": "质量评分"
+    },
+    "actions": {
+      "export_config": "导出配置",
+      "save_config": "保存配置",
+      "refresh_preview": "刷新预览",
+      "switch_language": "切换语言"
+    },
+    "status": {
+      "config_selected": "已选择配置：{name}",
+      "preview_mode_real_time": "切换到实时预览模式",
+      "preview_mode_manual": "切换到手动预览模式",
+      "preview_refreshed": "预览刷新完成",
+      "preview_refresh_failed": "预览刷新失败",
+      "config_exported": "配置已导出",
+      "config_saved": "配置已保存",
+      "recommendation_applied": "已应用推荐：{title}",
+      "recommendation_previewed": "预览推荐：{title}",
+      "config_added_to_comparison": "已添加 {name} 到比较列表",
+      "config_removed_from_comparison": "已从比较列表移除 {name}",
+      "comparison_cleared": "已清空配置比较列表"
+    },
+    "configs": {
+      "high_performance": {
+        "name": "Netflix高性能配置",
+        "description": "针对处理速度优化的高性能配置"
+      },
+      "quality_first": {
+        "name": "Netflix质量优先配置", 
+        "description": "注重字幕质量和准确性的配置"
+      },
+      "balanced": {
+        "name": "Netflix平衡配置",
+        "description": "性能与质量的完美平衡"
+      }
+    },
+    "badges": {
+      "recommended": "推荐",
+      "new": "新",
+      "popular": "热门",
+      "enterprise": "企业版"
+    }
+  },
+  "language": {
+    "current": "当前语言",
+    "switch_to": "切换到{language}",
+    "switching": "正在切换语言...",
+    "switch_success": "语言切换成功",
+    "switch_failed": "语言切换失败",
+    "auto_detect": "自动检测",
+    "browser_language": "浏览器语言"
+  },
+  "performance": {
+    "metrics": "性能指标",
+    "processing_time": "处理时间",
+    "memory_usage": "内存使用", 
+    "cpu_usage": "CPU使用率",
+    "cache_hit_rate": "缓存命中率",
+    "throughput": "吞吐量",
+    "latency": "延迟",
+    "optimization": "优化建议",
+    "improvement": "性能提升{percent}%"
+  },
+  "errors": {
+    "network_error": "网络连接错误",
+    "server_error": "服务器错误",
+    "validation_error": "验证错误",
+    "file_not_found": "文件未找到",
+    "permission_denied": "权限不足",
+    "timeout": "请求超时",
+    "unknown_error": "未知错误",
+    "try_again": "请重试"
+  },
+  "ai": {
+    "optimization": {
+      "title": "AI智能优化",
+      "auto": "自动优化",
+      "analyze": "分析优化",
+      "analyzing": "分析中...",
+      "hardware": {
+        "title": "硬件分析",
+        "detecting": "检测硬件中...",
+        "cpu": "处理器",
+        "memory": "内存",
+        "gpu": "显卡",
+        "storage": "存储",
+        "cores": "核心",
+        "no_gpu": "未检测到GPU",
+        "rating": {
+          "low": "基础",
+          "medium": "良好", 
+          "high": "高性能",
+          "ultra": "超高性能"
+        }
+      },
+      "recommendations": {
+        "title": "优化推荐",
+        "confidence": "置信度",
+        "expected_gain": "预期性能提升",
+        "apply": "应用",
+        "applied": "已应用",
+        "apply_all": "应用全部",
+        "learn_more": "了解更多"
+      },
+      "learning": {
+        "title": "AI学习状态",
+        "active": "学习中",
+        "inactive": "未启用",
+        "data_points": "数据点",
+        "accuracy": "准确率",
+        "improvements": "累计提升"
+      },
+      "details": {
+        "description": "详细说明",
+        "expected_improvement": "预期改善",
+        "performance": "性能",
+        "quality": "质量",
+        "resource_usage": "资源使用",
+        "implementation": "实施详情",
+        "config_key": "配置键",
+        "change": "变更",
+        "reason": "原因"
+      }
+    }
+  }
+}

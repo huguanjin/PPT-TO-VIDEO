@@ -1,0 +1,179 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "success": "Success",
+    "error": "Error",
+    "warning": "Warning", 
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "save": "Save",
+    "export": "Export",
+    "import": "Import",
+    "delete": "Delete",
+    "edit": "Edit",
+    "copy": "Copy",
+    "refresh": "Refresh",
+    "reset": "Reset",
+    "apply": "Apply",
+    "preview": "Preview",
+    "close": "Close"
+  },
+  "navigation": {
+    "home": "Home",
+    "settings": "Settings",
+    "help": "Help",
+    "about": "About"
+  },
+  "netflix": {
+    "title": "Netflix Configuration Preview",
+    "subtitle": "Phase 6 Advanced Features Edition",
+    "config": {
+      "title": "Configuration Management",
+      "selector": "Configuration Selector",
+      "preview": "Configuration Preview",
+      "comparison": "Configuration Comparison",
+      "recommendations": "Smart Recommendations",
+      "details": "Configuration Details",
+      "performance": "Performance Metrics",
+      "quality": "Quality Score",
+      "memory": "Memory Usage"
+    },
+    "parameters": {
+      "whisper_model": "Whisper Model",
+      "batch_size": "Batch Size",
+      "performance_mode": "Performance Mode",
+      "subtitle_style": "Subtitle Style",
+      "sync_accuracy": "Sync Accuracy",
+      "audio_quality": "Audio Quality",
+      "video_resolution": "Video Resolution",
+      "encoding_format": "Encoding Format"
+    },
+    "values": {
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "auto": "Auto",
+      "manual": "Manual",
+      "unset": "Unset",
+      "default": "Default"
+    },
+    "recommendations": {
+      "title": "Smart Recommendations",
+      "subtitle": "Optimal configuration recommendations based on your usage patterns and project characteristics",
+      "performance_title": "Performance Optimization Recommendation",
+      "performance_desc": "Based on your hardware configuration, we recommend using high-performance mode to improve processing speed",
+      "quality_title": "Quality Optimization Recommendation",
+      "quality_desc": "For better subtitle quality, we recommend adjusting sync accuracy and speech recognition parameters",
+      "balanced_title": "Balanced Mode Recommendation",
+      "balanced_desc": "Find the perfect balance between performance and quality",
+      "benefits": {
+        "speed_improvement": "{percent}% Speed Improvement",
+        "memory_optimization": "Memory Usage Optimization",
+        "batch_optimization": "Batch Processing Optimization",
+        "accuracy_improvement": "Subtitle Accuracy Enhancement",
+        "sync_accuracy": "Sync Accuracy",
+        "voice_recognition": "Voice Recognition Optimization",
+        "performance_balance": "Performance Quality Balance",
+        "resource_reasonable": "Reasonable Resource Usage",
+        "universal_adaptation": "Universal Adaptation"
+      },
+      "apply": "Apply Recommendation",
+      "preview_effect": "Preview Effect",
+      "generate": "Generate Recommendations",
+      "no_recommendations": "No smart recommendations available"
+    },
+    "comparison": {
+      "title": "Configuration Comparison",
+      "add_to_comparison": "Add to Comparison",
+      "clear_comparison": "Clear Comparison",
+      "remove_config": "Remove Configuration",
+      "no_comparison": "No configurations to compare",
+      "add_config": "Add Configuration",
+      "parameter": "Parameter",
+      "max_configs": "Maximum 3 configurations for comparison"
+    },
+    "preview": {
+      "title": "Configuration Details Preview",
+      "real_time": "Real-time Preview",
+      "manual": "Manual Preview",
+      "refreshing": "Refreshing preview...",
+      "core_parameters": "Core Parameters",
+      "performance_optimization": "Performance Optimization",
+      "processing_speed": "Processing Speed",
+      "memory_usage": "Memory Usage",
+      "quality_score": "Quality Score"
+    },
+    "actions": {
+      "export_config": "Export Configuration",
+      "save_config": "Save Configuration",
+      "refresh_preview": "Refresh Preview",
+      "switch_language": "Switch Language"
+    },
+    "status": {
+      "config_selected": "Configuration selected: {name}",
+      "preview_mode_real_time": "Switched to real-time preview mode",
+      "preview_mode_manual": "Switched to manual preview mode",
+      "preview_refreshed": "Preview refreshed successfully",
+      "preview_refresh_failed": "Preview refresh failed",
+      "config_exported": "Configuration exported",
+      "config_saved": "Configuration saved",
+      "recommendation_applied": "Applied recommendation: {title}",
+      "recommendation_previewed": "Previewing recommendation: {title}",
+      "config_added_to_comparison": "Added {name} to comparison list",
+      "config_removed_from_comparison": "Removed {name} from comparison list",
+      "comparison_cleared": "Cleared configuration comparison list"
+    },
+    "configs": {
+      "high_performance": {
+        "name": "Netflix High Performance Config",
+        "description": "High-performance configuration optimized for processing speed"
+      },
+      "quality_first": {
+        "name": "Netflix Quality First Config",
+        "description": "Configuration focused on subtitle quality and accuracy"
+      },
+      "balanced": {
+        "name": "Netflix Balanced Config",
+        "description": "Perfect balance between performance and quality"
+      }
+    },
+    "badges": {
+      "recommended": "Recommended",
+      "new": "New",
+      "popular": "Popular",
+      "enterprise": "Enterprise"
+    }
+  },
+  "language": {
+    "current": "Current Language",
+    "switch_to": "Switch to {language}",
+    "switching": "Switching language...",
+    "switch_success": "Language switched successfully",
+    "switch_failed": "Language switch failed",
+    "auto_detect": "Auto Detect",
+    "browser_language": "Browser Language"
+  },
+  "performance": {
+    "metrics": "Performance Metrics",
+    "processing_time": "Processing Time",
+    "memory_usage": "Memory Usage",
+    "cpu_usage": "CPU Usage",
+    "cache_hit_rate": "Cache Hit Rate",
+    "throughput": "Throughput",
+    "latency": "Latency",
+    "optimization": "Optimization Suggestions",
+    "improvement": "{percent}% Performance Improvement"
+  },
+  "errors": {
+    "network_error": "Network connection error",
+    "server_error": "Server error",
+    "validation_error": "Validation error",
+    "file_not_found": "File not found",
+    "permission_denied": "Permission denied",
+    "timeout": "Request timeout",
+    "unknown_error": "Unknown error",
+    "try_again": "Please try again"
+  }
+}

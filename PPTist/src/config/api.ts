@@ -3,11 +3,11 @@
  * 适配VideoLingo技术融合主入口
  */
 
-// 从环境变量获取API基础URL，默认指向VideoLingo技术融合主入口
-export const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8004'
+// 从环境变量获取API基础URL，默认指向Flask后端
+export const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
 
-// 备用API地址（传统Flask应用）
-export const API_FALLBACK_URL: string = import.meta.env.VITE_API_FALLBACK_URL || 'http://localhost:5000'
+// 备用API地址（VideoLingo技术融合）
+export const API_FALLBACK_URL: string = import.meta.env.VITE_API_FALLBACK_URL || 'http://localhost:8004'
 
 // 后端服务配置
 export const API_CONFIG = {
@@ -102,6 +102,20 @@ export const API_ENDPOINTS = {
     UPDATE_SECTION: '/api/config/unified/section',
     SCHEMA: '/api/config/schema',
     VALIDATE: '/api/config/validate'
+  },
+  
+  // 🎯 Netflix V2配置管理API
+  NETFLIX: {
+    HEALTH: '/api/v2/netflix/config/health',
+    INFO: '/api/v2/netflix/config/info',
+    CONFIGS: '/api/v2/netflix/config/configs',
+    CONFIG: (name: string) => `/api/v2/netflix/config/configs/${name}`,
+    VALIDATE: (name: string) => `/api/v2/netflix/config/configs/${name}/validate`,
+    TEMPLATES: '/api/v2/netflix/config/templates',
+    CREATE_FROM_TEMPLATE: (templateName: string) => `/api/v2/netflix/config/templates/${templateName}/create-config`,
+    EXPORT: (name: string) => `/api/v2/netflix/config/configs/${name}/export`,
+    IMPORT: '/api/v2/netflix/config/configs/import',
+    DELETE: (name: string) => `/api/v2/netflix/config/configs/${name}`
   },
 
   // 兼容旧的端点配置（逐步废弃）

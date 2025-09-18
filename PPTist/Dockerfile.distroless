@@ -1,0 +1,77 @@
+# =============================================================================
+# PPTist Docker镜像 - 高安全性Distroless版本
+# =============================================================================
+# 此版本使用Google Distroless镜像以获得最高安全性
+# Distroless镜像只包含应用程序及其运行时依赖，不包含包管理器、shell等
+# 优点：攻击面最小，安全漏洞极少
+# 缺点：调试困难，需要更多配置
+# =============================================================================
+
+# =============================================================================
+# 构建阶段 - Node.js环境
+# =============================================================================
+FROM node:22-slim AS builder
+
+# 设置工作目录
+WORKDIR /app
+
+# 安装系统依赖和安全更新
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# 复制package文件
+COPY package*.json ./
+
+# 安装依赖
+RUN npm ci --only=production
+
+# 复制源代码
+COPY . .
+
+# 构建应用
+RUN npm run build
+
+# =============================================================================
+# Nginx构建阶段 - 准备nginx二进制文件
+# =============================================================================
+FROM nginx:mainline-alpine AS nginx-source
+
+# =============================================================================
+# 生产阶段 - Google Distroless镜像（最高安全性）
+# =============================================================================
+FROM gcr.io/distroless/static-debian11 AS production
+
+# 从nginx镜像复制必要的文件
+COPY --from=nginx-source /usr/sbin/nginx /usr/sbin/nginx
+COPY --from=nginx-source /etc/nginx /etc/nginx
+COPY --from=nginx-source /usr/share/nginx/html /usr/share/nginx/html
+COPY --from=nginx-source /var/log/nginx /var/log/nginx
+COPY --from=nginx-source /var/cache/nginx /var/cache/nginx
+COPY --from=nginx-source /usr/lib /usr/lib
+
+# 复制构建产物
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# 复制nginx配置（如果存在）
+# COPY docker/nginx.conf /etc/nginx/nginx.conf
+# COPY docker/default.conf /etc/nginx/conf.d/default.conf
+
+# 设置非root用户
+USER 65534:65534
+
+# 暴露端口
+EXPOSE 8080
+
+# 由于distroless镜像限制，使用简化的启动命令
+ENTRYPOINT ["/usr/sbin/nginx"]
+CMD ["-g", "daemon off;"]
+
+# 安全标签
+LABEL maintainer="PPTist Team" \
+      version="1.0-distroless" \
+      description="PPTist Web Application - Ultra Secure Distroless" \
+      security.level="maximum" \
+      security.scan.required="false"

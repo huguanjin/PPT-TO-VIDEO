@@ -1,0 +1,63 @@
+# =============================================================================
+# Docker构建忽略文件
+# =============================================================================
+# 提高构建安全性和效率，排除不必要的文件
+
+# Git相关
+.git
+.gitignore
+.gitattributes
+
+# Node.js
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 构建产物和缓存
+dist
+build
+.nuxt
+.cache
+.parcel-cache
+
+# 环境文件（可能包含敏感信息）
+.env
+.env.local
+.env.*.local
+*.env
+
+# IDE和编辑器
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+logs
+
+# 测试覆盖率
+coverage
+.nyc_output
+
+# 文档
+README.md
+CHANGELOG.md
+*.md
+docs
+
+# Docker相关
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# 其他开发工具
+.eslintrc*
+.prettierrc*
+.editorconfig

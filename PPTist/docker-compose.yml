@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  # 前端应用
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: pptist-frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - nginx-logs:/var/log/nginx
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - pptist-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 后端服务
+  backend:
+    build:
+      context: ../flask_backend
+      dockerfile: Dockerfile
+    container_name: pptist-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend-data:/app/data
+      - backend-logs:/app/logs
+      - upload-files:/app/uploads
+      - output-files:/app/output
+    environment:
+      - FLASK_ENV=production
+      - FLASK_APP=unified_app.py
+      - DATABASE_URL=sqlite:///data/app.db
+      - SECRET_KEY=your-secret-key-change-in-production
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+    networks:
+      - pptist-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Redis缓存服务
+  redis:
+    image: redis:7-alpine
+    container_name: pptist-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    environment:
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+    networks:
+      - pptist-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # 监控服务
+  monitor:
+    image: prom/prometheus:latest
+    container_name: pptist-monitor
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    environment:
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+    networks:
+      - pptist-network
+
+networks:
+  pptist-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  nginx-logs:
+    driver: local
+  backend-data:
+    driver: local
+  backend-logs:
+    driver: local
+  upload-files:
+    driver: local
+  output-files:
+    driver: local
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local

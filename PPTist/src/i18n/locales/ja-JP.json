@@ -1,0 +1,179 @@
+{
+  "common": {
+    "loading": "読み込み中...",
+    "success": "成功",
+    "error": "エラー",
+    "warning": "警告",
+    "confirm": "確認",
+    "cancel": "キャンセル",
+    "save": "保存",
+    "export": "エクスポート",
+    "import": "インポート",
+    "delete": "削除",
+    "edit": "編集",
+    "copy": "コピー",
+    "refresh": "更新",
+    "reset": "リセット",
+    "apply": "適用",
+    "preview": "プレビュー",
+    "close": "閉じる"
+  },
+  "navigation": {
+    "home": "ホーム",
+    "settings": "設定",
+    "help": "ヘルプ",
+    "about": "について"
+  },
+  "netflix": {
+    "title": "Netflix設定プレビュー",
+    "subtitle": "Phase 6 高度機能版",
+    "config": {
+      "title": "設定管理",
+      "selector": "設定セレクター",
+      "preview": "設定プレビュー",
+      "comparison": "設定比較",
+      "recommendations": "スマート推奨",
+      "details": "設定詳細",
+      "performance": "パフォーマンス指標",
+      "quality": "品質スコア",
+      "memory": "メモリ使用量"
+    },
+    "parameters": {
+      "whisper_model": "Whisperモデル",
+      "batch_size": "バッチサイズ",
+      "performance_mode": "パフォーマンスモード",
+      "subtitle_style": "字幕スタイル",
+      "sync_accuracy": "同期精度",
+      "audio_quality": "オーディオ品質",
+      "video_resolution": "ビデオ解像度",
+      "encoding_format": "エンコード形式"
+    },
+    "values": {
+      "enabled": "有効",
+      "disabled": "無効",
+      "high": "高",
+      "medium": "中",
+      "low": "低",
+      "auto": "自動",
+      "manual": "手動",
+      "unset": "未設定",
+      "default": "デフォルト"
+    },
+    "recommendations": {
+      "title": "スマート推奨",
+      "subtitle": "ご利用パターンとプロジェクト特性に基づく最適設定の推奨",
+      "performance_title": "パフォーマンス最適化推奨",
+      "performance_desc": "お使いのハードウェア設定に基づき、処理速度向上のため高パフォーマンスモードを推奨します",
+      "quality_title": "品質最適化推奨",
+      "quality_desc": "より良い字幕品質のため、同期精度と音声認識パラメータの調整を推奨します",
+      "balanced_title": "バランスモード推奨",
+      "balanced_desc": "パフォーマンスと品質の最適なバランスを見つけます",
+      "benefits": {
+        "speed_improvement": "処理速度{percent}%向上",
+        "memory_optimization": "メモリ使用最適化",
+        "batch_optimization": "バッチ処理最適化",
+        "accuracy_improvement": "字幕精度向上",
+        "sync_accuracy": "同期精度",
+        "voice_recognition": "音声認識最適化",
+        "performance_balance": "パフォーマンス品質バランス",
+        "resource_reasonable": "リソース使用合理化",
+        "universal_adaptation": "汎用適応"
+      },
+      "apply": "推奨を適用",
+      "preview_effect": "効果をプレビュー",
+      "generate": "推奨を生成",
+      "no_recommendations": "スマート推奨はありません"
+    },
+    "comparison": {
+      "title": "設定比較",
+      "add_to_comparison": "比較に追加",
+      "clear_comparison": "比較をクリア",
+      "remove_config": "設定を削除",
+      "no_comparison": "比較する設定がありません",
+      "add_config": "設定を追加",
+      "parameter": "パラメータ",
+      "max_configs": "最大3つの設定で比較"
+    },
+    "preview": {
+      "title": "設定詳細プレビュー",
+      "real_time": "リアルタイムプレビュー",
+      "manual": "手動プレビュー",
+      "refreshing": "プレビューを更新中...",
+      "core_parameters": "コアパラメータ",
+      "performance_optimization": "パフォーマンス最適化",
+      "processing_speed": "処理速度",
+      "memory_usage": "メモリ使用量",
+      "quality_score": "品質スコア"
+    },
+    "actions": {
+      "export_config": "設定をエクスポート",
+      "save_config": "設定を保存",
+      "refresh_preview": "プレビューを更新",
+      "switch_language": "言語を切り替え"
+    },
+    "status": {
+      "config_selected": "設定が選択されました：{name}",
+      "preview_mode_real_time": "リアルタイムプレビューモードに切り替えました",
+      "preview_mode_manual": "手動プレビューモードに切り替えました",
+      "preview_refreshed": "プレビューの更新が完了しました",
+      "preview_refresh_failed": "プレビューの更新に失敗しました",
+      "config_exported": "設定がエクスポートされました",
+      "config_saved": "設定が保存されました",
+      "recommendation_applied": "推奨を適用しました：{title}",
+      "recommendation_previewed": "推奨をプレビュー中：{title}",
+      "config_added_to_comparison": "{name}を比較リストに追加しました",
+      "config_removed_from_comparison": "比較リストから{name}を削除しました",
+      "comparison_cleared": "設定比較リストをクリアしました"
+    },
+    "configs": {
+      "high_performance": {
+        "name": "Netflix高パフォーマンス設定",
+        "description": "処理速度に最適化された高パフォーマンス設定"
+      },
+      "quality_first": {
+        "name": "Netflix品質優先設定",
+        "description": "字幕品質と精度に重点を置いた設定"
+      },
+      "balanced": {
+        "name": "Netflixバランス設定",
+        "description": "パフォーマンスと品質の完璧なバランス"
+      }
+    },
+    "badges": {
+      "recommended": "推奨",
+      "new": "新規",
+      "popular": "人気",
+      "enterprise": "エンタープライズ"
+    }
+  },
+  "language": {
+    "current": "現在の言語",
+    "switch_to": "{language}に切り替え",
+    "switching": "言語を切り替え中...",
+    "switch_success": "言語の切り替えが成功しました",
+    "switch_failed": "言語の切り替えに失敗しました",
+    "auto_detect": "自動検出",
+    "browser_language": "ブラウザ言語"
+  },
+  "performance": {
+    "metrics": "パフォーマンス指標",
+    "processing_time": "処理時間",
+    "memory_usage": "メモリ使用量",
+    "cpu_usage": "CPU使用率",
+    "cache_hit_rate": "キャッシュヒット率",
+    "throughput": "スループット",
+    "latency": "遅延",
+    "optimization": "最適化提案",
+    "improvement": "パフォーマンス{percent}%向上"
+  },
+  "errors": {
+    "network_error": "ネットワーク接続エラー",
+    "server_error": "サーバーエラー",
+    "validation_error": "検証エラー",
+    "file_not_found": "ファイルが見つかりません",
+    "permission_denied": "権限が不足しています",
+    "timeout": "リクエストタイムアウト",
+    "unknown_error": "不明なエラー",
+    "try_again": "再試行してください"
+  }
+}

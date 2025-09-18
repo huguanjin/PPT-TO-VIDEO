@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Netflix配置测试页面</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .test-title {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Netflix V2配置管理测试页面</h1>
+    
+    <div class="test-section">
+        <h2 class="test-title">API连接测试</h2>
+        <button onclick="testApiConnection()">测试API连接</button>
+        <div id="api-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2 class="test-title">Netflix配置列表</h2>
+        <button onclick="loadNetflixConfigs()">加载配置列表</button>
+        <div id="configs-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2 class="test-title">Netflix模板列表</h2>
+        <button onclick="loadNetflixTemplates()">加载模板列表</button>
+        <div id="templates-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2 class="test-title">配置验证测试</h2>
+        <select id="config-selector">
+            <option value="">选择配置...</option>
+        </select>
+        <button onclick="validateConfig()">验证配置</button>
+        <div id="validation-result"></div>
+    </div>
+
+    <script>
+        // API基础URL
+        const API_BASE_URL = 'http://localhost:5000';
+        
+        // 通用API请求函数
+        async function apiRequest(endpoint, options = {}) {
+            const url = `${API_BASE_URL}${endpoint}`;
+            console.log(`🚀 API请求: ${options.method || 'GET'} ${url}`);
+            
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${data.message || response.statusText}`);
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('API请求失败:', error);
+                throw error;
+            }
+        }
+        
+        // 显示结果
+        function showResult(elementId, type, content) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="test-result ${type}">${content}</div>`;
+        }
+        
+        // 测试API连接
+        async function testApiConnection() {
+            try {
+                showResult('api-result', 'warning', '正在测试API连接...');
+                
+                // 测试基础健康检查
+                const healthResponse = await apiRequest('/health');
+                console.log('健康检查响应:', healthResponse);
+                
+                // 测试Netflix配置API健康检查
+                const netflixHealthResponse = await apiRequest('/api/v2/netflix/config/health');
+                console.log('Netflix配置API健康检查响应:', netflixHealthResponse);
+                
+                const content = `
+                    <strong>✅ API连接成功!</strong><br>
+                    <strong>基础API:</strong> ${healthResponse.service} (${healthResponse.status})<br>
+                    <strong>Netflix配置API:</strong> 正常 (版本 ${netflixHealthResponse.data.config_manager_version})<br>
+                    <strong>可用模板数:</strong> ${netflixHealthResponse.data.total_templates}<br>
+                    <strong>用户配置数:</strong> ${netflixHealthResponse.data.total_user_configs}
+                `;
+                
+                showResult('api-result', 'success', content);
+                
+            } catch (error) {
+                showResult('api-result', 'error', `❌ API连接失败: ${error.message}`);
+            }
+        }
+        
+        // 加载Netflix配置列表
+        async function loadNetflixConfigs() {
+            try {
+                showResult('configs-result', 'warning', '正在加载配置列表...');
+                
+                const response = await apiRequest('/api/v2/netflix/config/configs');
+                console.log('配置列表响应:', response);
+                
+                if (response.success && response.data) {
+                    const configs = response.data;
+                    
+                    // 更新配置选择器
+                    const selector = document.getElementById('config-selector');
+                    selector.innerHTML = '<option value="">选择配置...</option>';
+                    configs.forEach(config => {
+                        const option = document.createElement('option');
+                        option.value = config;
+                        option.textContent = config;
+                        selector.appendChild(option);
+                    });
+                    
+                    const content = `
+                        <strong>✅ 配置加载成功!</strong><br>
+                        <strong>可用配置:</strong> ${configs.length} 个<br>
+                        <pre>${JSON.stringify(configs, null, 2)}</pre>
+                    `;
+                    
+                    showResult('configs-result', 'success', content);
+                } else {
+                    throw new Error(response.message || '配置加载失败');
+                }
+                
+            } catch (error) {
+                showResult('configs-result', 'error', `❌ 配置加载失败: ${error.message}`);
+            }
+        }
+        
+        // 加载Netflix模板列表
+        async function loadNetflixTemplates() {
+            try {
+                showResult('templates-result', 'warning', '正在加载模板列表...');
+                
+                const response = await apiRequest('/api/v2/netflix/config/templates');
+                console.log('模板列表响应:', response);
+                
+                if (response.success && response.data) {
+                    const templates = response.data;
+                    
+                    const content = `
+                        <strong>✅ 模板加载成功!</strong><br>
+                        <strong>可用模板:</strong> ${templates.length} 个<br>
+                        <pre>${JSON.stringify(templates, null, 2)}</pre>
+                    `;
+                    
+                    showResult('templates-result', 'success', content);
+                } else {
+                    throw new Error(response.message || '模板加载失败');
+                }
+                
+            } catch (error) {
+                showResult('templates-result', 'error', `❌ 模板加载失败: ${error.message}`);
+            }
+        }
+        
+        // 验证配置
+        async function validateConfig() {
+            const configName = document.getElementById('config-selector').value;
+            
+            if (!configName) {
+                showResult('validation-result', 'warning', '请先选择一个配置');
+                return;
+            }
+            
+            try {
+                showResult('validation-result', 'warning', `正在验证配置: ${configName}...`);
+                
+                const response = await apiRequest(`/api/v2/netflix/config/configs/${configName}/validate`, {
+                    method: 'POST'
+                });
+                console.log('配置验证响应:', response);
+                
+                if (response.success) {
+                    const data = response.data;
+                    const content = `
+                        <strong>✅ 配置验证成功!</strong><br>
+                        <strong>配置名称:</strong> ${configName}<br>
+                        <strong>验证结果:</strong> ${data.is_valid ? '✅ 有效' : '❌ 无效'}<br>
+                        ${data.errors?.length ? `<strong>错误:</strong> ${data.errors.join(', ')}<br>` : ''}
+                        ${data.warnings?.length ? `<strong>警告:</strong> ${data.warnings.join(', ')}<br>` : ''}
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                    
+                    showResult('validation-result', data.is_valid ? 'success' : 'warning', content);
+                } else {
+                    throw new Error(response.message || '配置验证失败');
+                }
+                
+            } catch (error) {
+                showResult('validation-result', 'error', `❌ 配置验证失败: ${error.message}`);
+            }
+        }
+        
+        // 页面加载时自动测试API连接
+        window.onload = function() {
+            testApiConnection();
+        };
+    </script>
+</body>
+</html>
