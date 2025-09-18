@@ -42,7 +42,7 @@ def load_fish_tts_config():
 def load_app_config():
     """加载应用配置"""
     try:
-        config_path = Path(__file__).parent.parent.parent / "config_data" / "app_config.json"
+        config_path = Path(__file__).parent.parent.parent / "config_data" / "backend_app_config.json"
         if config_path.exists():
             with open(config_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
@@ -299,7 +299,7 @@ def update_tts_config():
         # 保存配置
         app_config['_updated_at'] = (request.json or {}).get('_updated_at', '')
         
-        config_path = Path(__file__).parent.parent.parent / "config_data" / "app_config.json"
+        config_path = Path(__file__).parent.parent.parent / "config_data" / "backend_app_config.json"
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(app_config, f, ensure_ascii=False, indent=2)
         

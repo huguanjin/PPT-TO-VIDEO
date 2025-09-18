@@ -1,0 +1,18 @@
+{
+  "id": "bbc689f1-f94e-4925-92d5-dad7ddd79b8b",
+  "name": "用户自定义FFmpeg设置",
+  "preset_key": "ffmpeg_user_settings",
+  "config_data": {
+    "video_bitrate": "3500k",
+    "audio_bitrate": "192k",
+    "preset": "slow"
+  },
+  "description": "用户于2025-09-18 10:53保存的自定义设置",
+  "tags": [
+    "ffmpeg",
+    "user",
+    "custom"
+  ],
+  "created_at": "2025-09-18T10:53:12.125823",
+  "version": "3.0.0"
+}

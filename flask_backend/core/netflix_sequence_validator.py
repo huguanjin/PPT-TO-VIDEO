@@ -11,7 +11,7 @@ from difflib import SequenceMatcher
 from dataclasses import dataclass
 from collections import defaultdict
 
-from ..utils.netflix_config_loader import NetflixConfigLoader
+from flask_backend.core.unified_config_manager import UnifiedConfigManager, ConfigContext, ConfigModuleType, ConfigComplexityLevel
 
 @dataclass
 class ValidationResult:
@@ -50,19 +50,29 @@ class ValidationResult:
 class NetflixSequenceValidator:
     """Netflix级别序列匹配验证器 - 确保90%+准确度"""
     
-    def __init__(self, config_loader: Optional[NetflixConfigLoader] = None):
+    def __init__(self, config_manager: Optional[UnifiedConfigManager] = None):
         """
         初始化Netflix序列验证器
         
         Args:
-            config_loader: 配置加载器，包含Netflix标准配置
+            config_manager: 统一配置管理器，包含Netflix标准配置
         """
         self.logger = logging.getLogger(__name__)
         
         # 配置管理
-        self.config = config_loader or NetflixConfigLoader()
-        self.netflix_standards = self.config.netflix_standards
-        self.validation_settings = self.config.validation_settings
+        self.config_manager = config_manager or UnifiedConfigManager()
+        
+        # 创建Netflix配置上下文
+        self.context = ConfigContext(
+            module_type=ConfigModuleType.NETFLIX,
+            complexity_level=ConfigComplexityLevel.PROFESSIONAL,
+            preset_name="netflix_sequence_validator"
+        )
+        
+        # 获取配置
+        config = self.config_manager.get_config(self.context)
+        self.netflix_standards = config.get('netflix_standards', {})
+        self.validation_settings = config.get('validation_settings', {})
         
         # Netflix质量阈值
         self.similarity_threshold = self.netflix_standards.get('similarity_threshold', 0.9)

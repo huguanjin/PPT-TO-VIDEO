@@ -1,0 +1,22 @@
+{
+  "video": {
+    "resolution": "1920x1080",
+    "fps": 30,
+    "video_bitrate": "5000k",
+    "background_color": "#000000",
+    "include_subtitles": true
+  },
+  "tts": {
+    "preferred_engine": "edge_tts",
+    "preferred_voice": "zh-CN-YunxiNeural"
+  },
+  "subtitle": {
+    "enabled": true,
+    "font_family": "Microsoft YaHei",
+    "font_size": 40,
+    "font_color": "#e91616",
+    "background_color": "rgba(0,0,0,0.8)",
+    "position": "bottom"
+  },
+  "_updated_at": "2025-08-28T09:45:10.568437"
+}

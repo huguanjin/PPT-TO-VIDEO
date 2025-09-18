@@ -1,0 +1,11 @@
+{
+  "semantic_analysis": {
+    "enabled": false,
+    "model_name": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "use_local_fallback": true
+  },
+  "subtitle_generation": {
+    "mode": "basic",
+    "ai_enhanced": false
+  }
+}

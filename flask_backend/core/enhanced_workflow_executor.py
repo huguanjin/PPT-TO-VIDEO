@@ -1,4 +1,4 @@
-﻿"""
+"""
 增强的工作流执行器 - 支持断点续传和智能跳过
 """
 import asyncio
@@ -292,14 +292,14 @@ class EnhancedWorkflowExecutor:
             # 加载AI配置
             ai_config = None
             try:
-                from core.subtitle_config_loader import SmartSubtitleConfigLoader
+                from flask_backend.core.unified_config_manager import UnifiedConfigManager, ConfigContext, ConfigModuleType, ConfigComplexityLevel
                 # 修正配置目录路径 - 配置文件在flask_backend/config_data目录
                 config_dir = Path(__file__).parent.parent / "config_data"
-                config_loader = SmartSubtitleConfigLoader(config_dir)
+                config_loader = UnifiedConfigManager(config_dir)
                 if hasattr(config_loader, 'load_ai_config'):
                     ai_config = config_loader.load_ai_config()  # type: ignore
                 else:
-                    self.logger.warning("SmartSubtitleConfigLoader不支持load_ai_config方法")
+                    self.logger.warning("UnifiedConfigManager不支持load_ai_config方法")
                     ai_config = None
                 
                 if not ai_config or not ai_config.get("api_key"):

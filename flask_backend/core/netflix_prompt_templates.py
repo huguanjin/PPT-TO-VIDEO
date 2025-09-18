@@ -11,7 +11,7 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 from abc import ABC, abstractmethod
 
-from ..utils.netflix_config_loader import NetflixConfigLoader
+from flask_backend.core.unified_config_manager import UnifiedConfigManager, ConfigContext, ConfigModuleType, ConfigComplexityLevel
 
 @dataclass
 class PromptContext:
@@ -61,10 +61,17 @@ class NetflixPromptTemplate(ABC):
 class NetflixStandardPromptTemplate(NetflixPromptTemplate):
     """Netflix标准提示词模板"""
     
-    def __init__(self, config_loader: Optional[NetflixConfigLoader] = None):
-        self.config = config_loader or NetflixConfigLoader()
-        self.netflix_standards = self.config.netflix_standards
-        self.ai_settings = self.config.ai_settings
+    def __init__(self, config_manager: Optional[UnifiedConfigManager] = None):
+        self.config = config_manager or UnifiedConfigManager()
+        # 创建Netflix配置上下文
+        self.context = ConfigContext(
+            module_type=ConfigModuleType.NETFLIX,
+            complexity_level=ConfigComplexityLevel.PROFESSIONAL,
+            preset_name="netflix_optimized"
+        )
+        self.netflix_config = self.config.get_config(self.context)
+        self.netflix_standards = self.netflix_config.get('netflix_standards', {})
+        self.ai_settings = self.netflix_config.get('ai_settings', {})
         self.logger = logging.getLogger(__name__)
     
     def generate_prompt(self, context: PromptContext) -> str:
@@ -442,18 +449,27 @@ class NetflixEducationalPromptTemplate(NetflixStandardPromptTemplate):
 class NetflixPromptTemplateManager:
     """Netflix提示词模板管理器"""
     
-    def __init__(self, config_loader: Optional[NetflixConfigLoader] = None):
-        self.config = config_loader or NetflixConfigLoader()
+    def __init__(self, config_manager: Optional[UnifiedConfigManager] = None):
+        self.config = config_manager or UnifiedConfigManager()
         self.logger = logging.getLogger(__name__)
+        
+        # 创建Netflix配置上下文
+        self.context = ConfigContext(
+            module_type=ConfigModuleType.NETFLIX,
+            complexity_level=ConfigComplexityLevel.PROFESSIONAL,
+            preset_name="netflix_optimized"
+        )
+        self.netflix_config = self.config.get_config(self.context)
+        self.ai_settings = self.netflix_config.get('ai_settings', {})
         
         # 注册可用模板
         self.templates = {
-            'standard': NetflixStandardPromptTemplate(config_loader),
-            'educational': NetflixEducationalPromptTemplate(config_loader)
+            'standard': NetflixStandardPromptTemplate(config_manager),
+            'educational': NetflixEducationalPromptTemplate(config_manager)
         }
         
         # 默认模板
-        self.default_template = self.config.ai_settings.get('prompt_style', 'netflix_professional')
+        self.default_template = self.ai_settings.get('prompt_style', 'netflix_professional')
         if self.default_template == 'netflix_professional':
             self.default_template = 'standard'
         
@@ -566,8 +582,8 @@ class NetflixPromptTemplateManager:
         
         # 质量要求
         quality_requirements = {
-            'min_similarity': self.config.netflix_standards.get('similarity_threshold', 0.9),
-            'max_chars_per_line': self.config.netflix_standards.get('max_chars_per_line', 20),
+            'min_similarity': self.netflix_config.get('line_break_rules', {}).get('similarity_threshold', 0.9),
+            'max_chars_per_line': self.netflix_config.get('line_break_rules', {}).get('max_chars_per_line_chinese', 20),
             'netflix_compliant': True
         }
         

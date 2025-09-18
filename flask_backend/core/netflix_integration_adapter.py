@@ -41,7 +41,7 @@ except ImportError as e:
     NetflixStyleSemanticSplitter = MockNetflixStyleSemanticSplitter
 from .netflix_sequence_validator import NetflixSequenceValidator, ValidationResult
 from .netflix_prompt_templates import NetflixPromptTemplateManager, PromptContext
-from ..utils.netflix_config_loader import NetflixConfigLoader
+from flask_backend.core.unified_config_manager import UnifiedConfigManager, ConfigContext, ConfigModuleType, ConfigComplexityLevel
 from ..utils.netflix_quality_metrics import NetflixQualityMetrics
 
 # 现有系统组件
@@ -104,7 +104,7 @@ class NetflixSplitterIntegrationAdapter:
         """初始化Netflix组件"""
         try:
             # 配置加载器
-            self.config_loader = NetflixConfigLoader()
+            self.config_loader = UnifiedConfigManager()
             
             # AI模型管理器
             if CustomAIModelManager:
@@ -122,7 +122,7 @@ class NetflixSplitterIntegrationAdapter:
             # Netflix语义分割器
             if self.integration_config.enable_netflix_splitter and NETFLIX_SPLITTER_AVAILABLE:
                 self.netflix_splitter = NetflixStyleSemanticSplitter(
-                    config_loader=self.config_loader,
+                    config_manager=self.config_loader,
                     ai_manager=self.ai_manager,
                     quality_metrics=self.quality_metrics
                 )
@@ -133,7 +133,7 @@ class NetflixSplitterIntegrationAdapter:
             
             # 序列验证器
             if self.integration_config.enable_validation:
-                self.validator = NetflixSequenceValidator(self.config_loader)
+                self.validator = NetflixSequenceValidator(config_manager=self.config_loader)
             else:
                 self.validator = None
             
@@ -208,7 +208,12 @@ class NetflixSplitterIntegrationAdapter:
                 return self._create_empty_result(text)
             
             # 长度检查
-            max_chars = self.config_loader.netflix_standards.get('max_chars_per_line', 20)
+            netflix_context = ConfigContext(
+                module_type=ConfigModuleType.NETFLIX,
+                complexity_level=ConfigComplexityLevel.PROFESSIONAL
+            )
+            netflix_config = self.config_loader.get_config(netflix_context)
+            max_chars = netflix_config.get('line_break_rules', {}).get('max_chars_per_line_chinese', 20)
             if len(text) <= max_chars:
                 return self._create_simple_result(text, "text_too_short")
             

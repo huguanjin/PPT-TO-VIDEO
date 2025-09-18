@@ -32,7 +32,7 @@ except ImportError as e:
     # 创建一个最简单的备用配置管理器
     class FallbackConfigManager:
         def __init__(self):
-            self.config_file = project_root / "config_data" / "app_config.json"
+            self.config_file = project_root / "config_data" / "backend_app_config.json"
             self.config_file.parent.mkdir(exist_ok=True)
         
         def load_config(self):

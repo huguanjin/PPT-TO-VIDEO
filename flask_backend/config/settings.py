@@ -61,13 +61,13 @@ config = {
 }
 
 def load_app_config():
-    """从app_config.json加载应用配置"""
-    config_file = Path(__file__).parent.parent / 'config_data' / 'app_config.json'
+    """从backend_app_config.json加载应用配置"""
+    config_file = Path(__file__).parent.parent / 'config_data' / 'backend_app_config.json'
     if config_file.exists():
         try:
             with open(config_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"Warning: Failed to load app_config.json: {e}")
+            print(f"Warning: Failed to load backend_app_config.json: {e}")
             return {}
     return {}

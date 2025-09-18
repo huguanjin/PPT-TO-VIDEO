@@ -26,15 +26,27 @@ from app.utils.file_manager import FileManager
 from app.utils.logger import get_logger
 
 class FFmpegFinalMerger:
-    """基于FFmpeg的最终视频合并器"""
+    """基于FFmpeg的最终视频合并器 - 支持动态配置"""
     
-    def __init__(self, project_dir: Path):
+    def __init__(self, project_dir: Path, config_manager=None):
         self.project_dir = Path(project_dir)
         self.file_manager = FileManager(project_dir)
         self.logger = get_logger(__name__, self.project_dir / "logs")
         
-        # FFmpeg配置
-        self.ffmpeg_config: Dict[str, str] = {
+        # ✅ 集成动态FFmpeg配置管理器
+        if config_manager is None:
+            try:
+                from .ffmpeg_config_manager import FFmpegConfigManager
+                self.ffmpeg_config_manager = FFmpegConfigManager()
+                self.logger.info("✅ 动态FFmpeg配置管理器初始化成功")
+            except ImportError as e:
+                self.logger.warning(f"❌ 动态配置管理器导入失败，使用硬编码配置: {e}")
+                self.ffmpeg_config_manager = None
+        else:
+            self.ffmpeg_config_manager = config_manager
+        
+        # 默认FFmpeg配置 (如果动态配置失败时使用)
+        self.default_ffmpeg_config: Dict[str, str] = {
             "video_codec": "libx264",
             "audio_codec": "aac",
             "audio_bitrate": "128k",
@@ -48,7 +60,19 @@ class FFmpegFinalMerger:
         # 检查FFmpeg可用性
         self.ffmpeg_available = self._check_ffmpeg_availability()
         if not self.ffmpeg_available:
-            self.logger.warning("FFmpeg不可用，将使用MoviePy作为备选方案")
+            self.logger.error("❌ FFmpeg不可用，视频合并功能将受限")
+    
+    def _get_ffmpeg_config(self) -> Dict[str, str]:
+        """获取当前FFmpeg配置（优先使用动态配置）"""
+        if self.ffmpeg_config_manager:
+            try:
+                config = self.ffmpeg_config_manager.get_ffmpeg_config()
+                self.logger.info(f"✅ 使用动态FFmpeg配置: {config['preset']}")
+                return config
+            except Exception as e:
+                self.logger.warning(f"❌ 动态配置获取失败，使用默认配置: {e}")
+        
+        return self.default_ffmpeg_config
     
     def _check_ffmpeg_availability(self) -> bool:
         """检查FFmpeg是否可用"""
@@ -536,18 +560,21 @@ class FFmpegFinalMerger:
         try:
             output_path = self.file_manager.temp_dir / "merged_av.mp4"
             
+            # 获取当前FFmpeg配置
+            ffmpeg_config = self._get_ffmpeg_config()
+            
             cmd = [
                 'ffmpeg', '-y',
                 '-i', video_path,
                 '-i', audio_path,
-                '-c:v', self.ffmpeg_config["video_codec"],
-                '-c:a', self.ffmpeg_config["audio_codec"],
-                '-b:a', self.ffmpeg_config["audio_bitrate"],
-                '-b:v', self.ffmpeg_config["video_bitrate"],
-                '-preset', self.ffmpeg_config["preset"],
-                '-crf', self.ffmpeg_config["crf"],
-                '-pix_fmt', self.ffmpeg_config["pixel_format"],
-                '-movflags', self.ffmpeg_config["movflags"],
+                '-c:v', ffmpeg_config["video_codec"],
+                '-c:a', ffmpeg_config["audio_codec"],
+                '-b:a', ffmpeg_config["audio_bitrate"],
+                '-b:v', ffmpeg_config["video_bitrate"],
+                '-preset', ffmpeg_config["preset"],
+                '-crf', ffmpeg_config["crf"],
+                '-pix_fmt', ffmpeg_config["pixel_format"],
+                '-movflags', ffmpeg_config["movflags"],
                 '-shortest',  # 以较短的流为准
                 str(output_path)
             ]
@@ -787,7 +814,7 @@ class FFmpegFinalMerger:
             "output_path": merge_result["output_path"],
             "file_size_bytes": merge_result["file_size"],
             "duration_seconds": merge_result["duration"],
-            "ffmpeg_config": self.ffmpeg_config,
+            "ffmpeg_config": self._get_ffmpeg_config(),
             "input_summary": {
                 "video_files_count": len(video_data.get("video_files", [])),
                 "audio_files_count": len(audio_data.get("audio_files", [])),
@@ -820,7 +847,7 @@ class FFmpegFinalMerger:
             return {
                 "available": True,
                 "version": version_info,
-                "config": self.ffmpeg_config
+                "config": self._get_ffmpeg_config()
             }
             
         except Exception as e:

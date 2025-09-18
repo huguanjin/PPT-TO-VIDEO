@@ -1,0 +1,42 @@
+{
+  "engines": {
+    "edge_tts": {
+      "enabled": true,
+      "config_file": "edge_tts_voices.json",
+      "default_voice": "zh-CN-XiaoxiaoNeural",
+      "default_rate": "medium",
+      "default_pitch": "medium"
+    },
+    "fish_tts": {
+      "enabled": true,
+      "config_file": "fish_tts_config.json",
+      "api_key_ref": "fish_api_key",
+      "default_character": "雷军"
+    },
+    "openai_tts": {
+      "enabled": false,
+      "api_key_ref": "openai_api_key",
+      "default_voice": "alloy",
+      "default_model": "tts-1"
+    },
+    "azure_tts": {
+      "enabled": false,
+      "api_key_ref": "azure_api_key",
+      "region_ref": "azure_region",
+      "default_voice": "zh-CN-XiaoxiaoNeural"
+    }
+  },
+  "common": {
+    "sample_rate": 22050,
+    "max_retries": 3,
+    "timeout": 30
+  },
+  "credentials": {
+    "fish_api_key": "f9515b8c22e74f49a8ac8b7a487b42e9",
+    "openai_api_key": "",
+    "azure_api_key": "",
+    "azure_region": ""
+  },
+  "_schema_version": "2.0",
+  "_updated_at": "2025-08-28T09:50:00.000000"
+}

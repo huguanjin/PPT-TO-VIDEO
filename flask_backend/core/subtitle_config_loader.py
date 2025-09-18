@@ -6,10 +6,11 @@
 """
 import json
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional
 import logging
-from .enhanced_config_loader import EnhancedSubtitleConfigLoader
+from flask_backend.core.unified_config_manager import UnifiedConfigManager, ConfigContext, ConfigModuleType, ConfigComplexityLevel
 from .config_presets import ConfigPresets, SimpleConfigManager
 from .subtitle_multiline_fixer import SubtitleMultilineFixer
 
@@ -32,25 +33,31 @@ class SmartSubtitleConfigLoader:
         # 配置文件路径
         self.config_file = self.config_dir / "subtitle_config.json"
         
-        # 初始化增强配置加载器
-        self.enhanced_loader = EnhancedSubtitleConfigLoader(
-            str(self.config_file) if self.config_file.exists() else None,
-            self.preset
+        # 初始化统一配置管理器
+        self.config_manager = UnifiedConfigManager(
+            config_root=self.config_dir
+        )
+        
+        # 创建配置上下文
+        self.context = ConfigContext(
+            module_type=ConfigModuleType.SUBTITLE,
+            complexity_level=ConfigComplexityLevel.STANDARD,
+            preset_name=self.preset or "smart_subtitle"
         )
         
         # 初始化多行修复器
         self.multiline_fixer = SubtitleMultilineFixer()
         
         # 加载配置
-        self.config = self.enhanced_loader.get_config()
+        self.config = self.config_manager.get_config(self.context)
         self._ensure_backward_compatibility()
         self._apply_multiline_fix_config()
         
         # 记录配置信息
-        config_summary = self.enhanced_loader.get_config_summary()
+        config_summary = self.get_config_summary()
         self.logger.info(
-            f"字幕配置加载完成 - 预设: {config_summary['preset_display_name']}, "
-            f"复杂度: {config_summary['complexity_level']}"
+            f"字幕配置加载完成 - 预设: {config_summary.get('preset', 'default')}, "
+            f"复杂度: {self.context.complexity_level.value}"
         )
         self.logger.info("多行显示修复功能已集成到配置系统")
     
@@ -61,7 +68,7 @@ class SmartSubtitleConfigLoader:
             self.config["smart_subtitle_processing"] = {}
         
         # 如果使用预设，将预设配置映射到传统配置结构
-        if hasattr(self.enhanced_loader, 'config_manager') and self.enhanced_loader.config_manager:
+        if self.config_manager:
             subtitle_config = self.config["smart_subtitle_processing"]
             
             # 映射基础配置
@@ -110,7 +117,13 @@ class SmartSubtitleConfigLoader:
     
     def get_simple_config(self) -> Dict[str, Any]:
         """获取简化配置（仅包含常用设置）"""
-        return self.enhanced_loader.get_simple_config()
+        # 返回简化的配置字典，只包含最常用的设置
+        simple_keys = [
+            'font_family', 'font_size', 'font_color', 'background_color',
+            'max_chars_per_line', 'max_lines', 'position_y', 'alignment',
+            'language_code', 'voice_name', 'speech_rate'
+        ]
+        return {key: self.config.get(key) for key in simple_keys if key in self.config}
     
     def update_config(self, updates: Dict[str, Any], save: bool = True):
         """
@@ -120,9 +133,12 @@ class SmartSubtitleConfigLoader:
             updates: 更新的配置项
             save: 是否保存到文件
         """
-        self.enhanced_loader.update_config(updates, save)
-        self.config = self.enhanced_loader.get_config()
+        # 更新本地配置
+        self.config.update(updates)
         self._ensure_backward_compatibility()
+        
+        if save:
+            self.save_config()
     
     def switch_preset(self, preset_name: str, keep_overrides: bool = True):
         """
@@ -132,8 +148,25 @@ class SmartSubtitleConfigLoader:
             preset_name: 新预设名称
             keep_overrides: 是否保留当前的自定义配置
         """
-        self.enhanced_loader.switch_preset(preset_name, keep_overrides)
-        self.config = self.enhanced_loader.get_config()
+        # 保存当前的自定义配置
+        current_overrides = {}
+        if keep_overrides and hasattr(self, 'config'):
+            current_overrides = self.config.copy()
+        
+        # 创建新的配置上下文
+        self.context = ConfigContext(
+            module_type=ConfigModuleType.SUBTITLE,
+            complexity_level=ConfigComplexityLevel.STANDARD,
+            preset_name=preset_name
+        )
+        
+        # 重新加载配置
+        self.config = self.config_manager.get_config(self.context)
+        
+        # 如果需要保留重写配置，则应用它们
+        if keep_overrides and current_overrides:
+            self.config.update(current_overrides)
+        
         self.preset = preset_name
         self._ensure_backward_compatibility()
         
@@ -141,31 +174,122 @@ class SmartSubtitleConfigLoader:
     
     def get_preset_info(self) -> Dict[str, Any]:
         """获取当前预设信息"""
-        return self.enhanced_loader.get_preset_info()
+        return {
+            'preset_name': self.preset or 'default',
+            'module_type': self.context.module_type.value,
+            'complexity_level': self.context.complexity_level.value,
+            'config_count': len(self.config),
+            'has_custom_config': self.preset != self.context.preset_name
+        }
     
     def validate_config(self) -> Dict[str, Any]:
         """验证当前配置"""
-        return self.enhanced_loader.validate_config()
+        validation_result = {
+            'is_valid': True,
+            'errors': [],
+            'warnings': []
+        }
+        
+        # 检查必需的配置项
+        required_keys = ['font_family', 'font_size', 'language_code']
+        for key in required_keys:
+            if key not in self.config or self.config[key] is None:
+                validation_result['errors'].append(f"缺少必需的配置项: {key}")
+                validation_result['is_valid'] = False
+        
+        # 检查配置值的有效性
+        if 'font_size' in self.config:
+            try:
+                size = int(self.config['font_size'])
+                if size < 8 or size > 72:
+                    validation_result['warnings'].append("字体大小建议在8-72之间")
+            except (ValueError, TypeError):
+                validation_result['errors'].append("字体大小必须是数字")
+                validation_result['is_valid'] = False
+        
+        return validation_result
     
     def get_config_summary(self) -> Dict[str, Any]:
         """获取配置摘要"""
-        return self.enhanced_loader.get_config_summary()
+        return {
+            'preset': self.preset or 'default',
+            'total_settings': len(self.config),
+            'font_settings': {
+                'family': self.config.get('font_family', 'default'),
+                'size': self.config.get('font_size', 16),
+                'color': self.config.get('font_color', '#FFFFFF')
+            },
+            'layout_settings': {
+                'max_chars_per_line': self.config.get('max_chars_per_line', 40),
+                'max_lines': self.config.get('max_lines', 2),
+                'position_y': self.config.get('position_y', 0.8)
+            },
+            'language': self.config.get('language_code', 'zh-CN'),
+            'has_custom_overrides': self.preset != self.context.preset_name
+        }
     
     def save_config(self, filepath: Optional[str] = None):
         """保存配置到文件"""
-        self.enhanced_loader.save_config(filepath or str(self.config_file))
+        try:
+            save_path = Path(filepath) if filepath else self.config_file
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(save_path, 'w', encoding='utf-8') as f:
+                json.dump(self.config, f, indent=2, ensure_ascii=False)
+            
+            self.logger.info(f"配置已保存到: {save_path}")
+        except Exception as e:
+            self.logger.error(f"保存配置失败: {e}")
+            raise
     
     def export_for_sharing(self, include_metadata: bool = True) -> str:
         """导出配置用于分享"""
-        return self.enhanced_loader.export_for_sharing(include_metadata)
+        export_data = {
+            'config': self.config.copy(),
+            'preset': self.preset
+        }
+        
+        if include_metadata:
+            export_data['metadata'] = {
+                'exported_at': datetime.now().isoformat(),
+                'module_type': self.context.module_type.value,
+                'complexity_level': self.context.complexity_level.value,
+                'version': '2.0'
+            }
+        
+        return json.dumps(export_data, indent=2, ensure_ascii=False)
     
     def import_shared_config(self, config_str: str) -> bool:
         """导入分享的配置"""
-        success = self.enhanced_loader.import_shared_config(config_str)
-        if success:
-            self.config = self.enhanced_loader.get_config()
-            self._ensure_backward_compatibility()
-        return success
+        try:
+            import_data = json.loads(config_str)
+            
+            if 'config' not in import_data:
+                self.logger.error("导入数据缺少config字段")
+                return False
+            
+            # 验证导入的配置
+            imported_config = import_data['config']
+            if not isinstance(imported_config, dict):
+                self.logger.error("导入的配置格式无效")
+                return False
+            
+            # 应用导入的配置
+            self.update_config(imported_config, save=True)
+            
+            # 如果有预设信息，也更新预设
+            if 'preset' in import_data:
+                self.preset = import_data['preset']
+            
+            self.logger.info("配置导入成功")
+            return True
+            
+        except json.JSONDecodeError as e:
+            self.logger.error(f"配置导入失败，JSON格式错误: {e}")
+            return False
+        except Exception as e:
+            self.logger.error(f"配置导入失败: {e}")
+            return False
     
     @staticmethod
     def get_available_presets() -> list:

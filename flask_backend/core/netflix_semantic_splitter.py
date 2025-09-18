@@ -19,7 +19,7 @@ import logging
 
 # Phase 1基础设施
 from ..utils.nlp_preprocessor import NetflixStyleNLPPreprocessor
-from ..utils.netflix_config_loader import NetflixConfigLoader
+from flask_backend.core.unified_config_manager import UnifiedConfigManager, ConfigContext, ConfigModuleType, ConfigComplexityLevel
 from ..utils.netflix_quality_metrics import NetflixQualityMetrics
 
 # 现有AI管理器（假设存在）
@@ -48,27 +48,37 @@ except ImportError:
 class NetflixStyleSemanticSplitter:
     """Netflix级别语义分割器 - 双层架构实现"""
     
-    def __init__(self, config_loader: Optional[NetflixConfigLoader] = None, 
+    def __init__(self, config_manager: Optional[UnifiedConfigManager] = None, 
                  ai_manager: Optional[CustomAIModelManager] = None,
                  quality_metrics: Optional[NetflixQualityMetrics] = None):
         """
         初始化Netflix级别语义分割器
         
         Args:
-            config_loader: 配置加载器
+            config_manager: 统一配置管理器
             ai_manager: AI模型管理器
             quality_metrics: 质量监控器
         """
         self.logger = logging.getLogger(__name__)
         
         # 配置管理
-        self.config = config_loader or NetflixConfigLoader()
-        self.netflix_standards = self.config.netflix_standards
-        self.ai_settings = self.config.ai_settings
+        self.config_manager = config_manager or UnifiedConfigManager()
+        
+        # 创建Netflix配置上下文
+        self.context = ConfigContext(
+            module_type=ConfigModuleType.NETFLIX,
+            complexity_level=ConfigComplexityLevel.PROFESSIONAL,
+            preset_name="netflix_semantic_splitter"
+        )
+        
+        # 获取配置
+        self.config = self.config_manager.get_config(self.context)
+        self.netflix_standards = self.config.get('netflix_standards', {})
+        self.ai_settings = self.config.get('ai_settings', {})
         
         # Phase 1基础设施
         self.nlp_preprocessor = NetflixStyleNLPPreprocessor()
-        self.quality_metrics = quality_metrics or NetflixQualityMetrics(self.config)
+        self.quality_metrics = quality_metrics or NetflixQualityMetrics(self.config_manager)
         
         # AI模型管理
         self.ai_manager = ai_manager
@@ -82,7 +92,7 @@ class NetflixStyleSemanticSplitter:
         self.min_chars_per_line = self.netflix_standards.get('min_chars_per_line', 3)
         
         # 性能设置
-        self.enable_caching = self.config.is_feature_enabled('caching')
+        self.enable_caching = self.config.get('performance_settings', {}).get('enable_caching', True)
         self.cache = {} if self.enable_caching else None
         
         self.logger.info(f"Netflix语义分割器初始化完成，使用模型: {self.model_name}")
@@ -557,7 +567,7 @@ class NetflixStyleSemanticSplitter:
         """缓存结果"""
         if self.enable_caching and self.cache is not None:
             # 限制缓存大小
-            cache_limit = self.config.performance_settings.get('cache_size', 1000)
+            cache_limit = self.config.get('performance_settings', {}).get('cache_size', 1000)
             if len(self.cache) >= cache_limit:
                 # 移除最旧的条目
                 oldest_key = next(iter(self.cache))

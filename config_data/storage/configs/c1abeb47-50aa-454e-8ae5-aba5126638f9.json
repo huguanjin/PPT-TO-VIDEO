@@ -1,0 +1,14 @@
+{
+  "id": "c1abeb47-50aa-454e-8ae5-aba5126638f9",
+  "name": "subtitle_preset_创意内容",
+  "preset_key": "subtitle_preset_创意内容",
+  "config_data": {
+    "font_size": 24,
+    "creative_effects": true,
+    "animation": true
+  },
+  "description": "创意内容专用配置",
+  "tags": [],
+  "created_at": "2025-09-18T11:09:48.985081",
+  "version": "3.0.0"
+}

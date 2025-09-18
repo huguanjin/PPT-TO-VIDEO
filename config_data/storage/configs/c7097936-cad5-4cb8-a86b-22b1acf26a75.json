@@ -1,0 +1,13 @@
+{
+  "id": "c7097936-cad5-4cb8-a86b-22b1acf26a75",
+  "name": "subtitle_user_settings",
+  "preset_key": "subtitle_user_settings",
+  "config_data": {
+    "font_size": 24,
+    "custom_setting": "test_value"
+  },
+  "description": "测试用户配置",
+  "tags": [],
+  "created_at": "2025-09-18T11:09:04.882198",
+  "version": "3.0.0"
+}

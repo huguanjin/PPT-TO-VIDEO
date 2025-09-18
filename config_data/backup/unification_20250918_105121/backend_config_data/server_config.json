@@ -1,0 +1,56 @@
+{
+  "development": {
+    "servers": {
+      "frontend": {
+        "host": "localhost",
+        "port": 5173,
+        "description": "PPTist前端开发服务器"
+      },
+      "main_api": {
+        "host": "0.0.0.0",
+        "port": 8502,
+        "description": "主要API服务器 (api_full_workflow.py)",
+        "features": ["完整工作流", "项目管理", "PPT存储"]
+      },
+      "pptist_api": {
+        "host": "0.0.0.0", 
+        "port": 8001,
+        "description": "PPTist集成API服务器 (api_pptist_import.py)",
+        "features": ["PPTist导入", "项目管理"]
+      },
+      "simple_api": {
+        "host": "0.0.0.0",
+        "port": 8002,
+        "description": "简化API服务器 (api_simple.py)",
+        "features": ["测试用途"]
+      },
+      "workflow_api": {
+        "host": "0.0.0.0",
+        "port": 8003,
+        "description": "备用工作流API服务器",
+        "features": ["工作流管理"]
+      }
+    },
+    "api_paths": {
+      "project_management": "/pm/api",
+      "ppt_storage": "/api/ppt",
+      "workflow": "/api/workflow",
+      "tts_config": "/api/tts/config",
+      "health": "/health"
+    }
+  },
+  "production": {
+    "servers": {
+      "frontend": {
+        "host": "0.0.0.0",
+        "port": 80,
+        "description": "PPTist前端生产服务器"
+      },
+      "main_api": {
+        "host": "0.0.0.0",
+        "port": 8502,
+        "description": "主要API服务器"
+      }
+    }
+  }
+}

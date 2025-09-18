@@ -59,7 +59,7 @@ class ResolutionAdaptiveConfigManager:
     
     def _load_base_config(self) -> Dict[str, Any]:
         """加载基础配置"""
-        app_config_path = self.config_dir / "app_config.json"
+        app_config_path = self.config_dir / "backend_app_config.json"
         
         try:
             with open(app_config_path, 'r', encoding='utf-8') as f:

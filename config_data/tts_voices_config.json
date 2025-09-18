@@ -1,0 +1,119 @@
+{
+  "edge_tts_voices": {
+    "zh-CN": {
+      "name": "中文（普通话）",
+      "voices": [
+        {
+          "name": "zh-CN-XiaoxiaoNeural",
+          "gender": "Female",
+          "display_name": "晓晓（女声）",
+          "description": "标准女声，声音甜美自然"
+        },
+        {
+          "name": "zh-CN-XiaoyiNeural", 
+          "gender": "Female",
+          "display_name": "晓伊（女声）",
+          "description": "温柔女声，适合叙述"
+        },
+        {
+          "name": "zh-CN-YunjianNeural",
+          "gender": "Male", 
+          "display_name": "云健（男声）",
+          "description": "成熟男声，声音稳重"
+        },
+        {
+          "name": "zh-CN-YunxiNeural",
+          "gender": "Male",
+          "display_name": "云希（男声）", 
+          "description": "年轻男声，活力充沛"
+        },
+        {
+          "name": "zh-CN-YunxiaNeural",
+          "gender": "Male",
+          "display_name": "云夏（男声）",
+          "description": "清朗男声，适合教学"
+        },
+        {
+          "name": "zh-CN-YunyangNeural",
+          "gender": "Male",
+          "display_name": "云扬（男声）",
+          "description": "专业男声，适合播报"
+        },
+        {
+          "name": "zh-CN-liaoning-XiaobeiNeural",
+          "gender": "Female",
+          "display_name": "小北（女声，辽宁口音）",
+          "description": "辽宁方言女声，亲切自然"
+        },
+        {
+          "name": "zh-CN-shaanxi-XiaoniNeural", 
+          "gender": "Female",
+          "display_name": "小妮（女声，陕西口音）",
+          "description": "陕西方言女声，温暖亲和"
+        }
+      ]
+    },
+    "zh-HK": {
+      "name": "中文（粤语）",
+      "voices": [
+        {
+          "name": "zh-HK-HiuGaaiNeural",
+          "gender": "Female",
+          "display_name": "晓佳（女声）",
+          "description": "香港粤语女声"
+        },
+        {
+          "name": "zh-HK-HiuMaanNeural",
+          "gender": "Female", 
+          "display_name": "晓曼（女声）",
+          "description": "香港粤语女声，声音柔美"
+        },
+        {
+          "name": "zh-HK-WanLungNeural",
+          "gender": "Male",
+          "display_name": "云龙（男声）",
+          "description": "香港粤语男声"
+        }
+      ]
+    },
+    "zh-TW": {
+      "name": "中文（台湾）",
+      "voices": [
+        {
+          "name": "zh-TW-HsiaoChenNeural",
+          "gender": "Female", 
+          "display_name": "晓臻（女声）",
+          "description": "台湾国语女声"
+        },
+        {
+          "name": "zh-TW-HsiaoYuNeural",
+          "gender": "Female",
+          "display_name": "晓雨（女声）",
+          "description": "台湾国语女声，声音清甜"
+        },
+        {
+          "name": "zh-TW-YunJheNeural",
+          "gender": "Male",
+          "display_name": "云哲（男声）", 
+          "description": "台湾国语男声"
+        }
+      ]
+    }
+  },
+  "default_voice": "zh-CN-XiaoxiaoNeural",
+  "voice_settings": {
+    "rate_options": [
+      { "value": "slow", "label": "慢速", "rate": "-50%" },
+      { "value": "medium", "label": "正常", "rate": "+0%" },
+      { "value": "fast", "label": "快速", "rate": "+50%" },
+      { "value": "x-fast", "label": "极快", "rate": "+100%" }
+    ],
+    "pitch_options": [
+      { "value": "x-low", "label": "极低", "pitch": "-50Hz" },
+      { "value": "low", "label": "低", "pitch": "-25Hz" },
+      { "value": "medium", "label": "正常", "pitch": "+0Hz" },
+      { "value": "high", "label": "高", "pitch": "+25Hz" },
+      { "value": "x-high", "label": "极高", "pitch": "+50Hz" }
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "id": "e82893f6-c210-4131-b6e5-6d30cc622121",
+  "name": "FFmpeg基础配置",
+  "preset_key": "ffmpeg_base_config",
+  "config_data": {
+    "video_codec": "libx264",
+    "audio_codec": "aac",
+    "pixel_format": "yuv420p",
+    "movflags": "+faststart"
+  },
+  "description": "FFmpeg编码器基础配置参数",
+  "tags": [
+    "ffmpeg",
+    "base",
+    "codec"
+  ],
+  "created_at": "2025-09-18T10:44:27.654889",
+  "version": "3.0.0"
+}

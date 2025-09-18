@@ -159,7 +159,7 @@ def get_enhanced_config():
         # 读取应用配置
         app_config = load_app_config()
         
-        # 优先从app_config.json读取TTS配置（前端主配置文件）
+        # 优先从backend_app_config.json读取TTS配置（前端主配置文件）
         tts_config = app_config.get("tts", {})
         
         # 如果app_config中没有TTS配置，则从tts_config.json读取（兼容性后备）
@@ -243,7 +243,7 @@ def update_enhanced_config():
         
         save_app_config(app_config)
         
-        # 注意：不再更新tts_config.json，统一使用app_config.json作为主配置
+        # 注意：不再更新tts_config.json，统一使用backend_app_config.json作为主配置
         # 这避免了配置文件之间的不一致问题
         
         # 如果是Fish TTS，同时更新fish_tts_config.json（仅用于Fish角色配置）
@@ -651,7 +651,7 @@ async def update_config_internal(config: WorkflowConfig):
         
         save_app_config(app_config)
         
-        # 注意：不再更新tts_config.json，统一使用app_config.json作为主配置
+        # 注意：不再更新tts_config.json，统一使用backend_app_config.json作为主配置
         # 这避免了配置文件之间的不一致问题
             
     except Exception as e:

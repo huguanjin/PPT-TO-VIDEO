@@ -18,7 +18,7 @@ from werkzeug.exceptions import BadRequest, InternalServerError
 from ...core.netflix_integration_adapter import NetflixSplitterIntegrationAdapter, IntegrationConfig
 from ...core.netflix_semantic_splitter import NetflixStyleSemanticSplitter
 from ...core.netflix_sequence_validator import NetflixSequenceValidator
-from ...utils.netflix_config_loader import NetflixConfigLoader
+from flask_backend.core.unified_config_manager import UnifiedConfigManager, ConfigContext, ConfigModuleType, ConfigComplexityLevel
 
 # 错误处理和监控
 from ...utils.netflix_error_monitoring import (
@@ -78,12 +78,12 @@ def get_adapter() -> NetflixSplitterIntegrationAdapter:
     
     return _adapter_instance
 
-def get_config_loader() -> NetflixConfigLoader:
-    """获取配置加载器实例"""
+def get_config_manager() -> UnifiedConfigManager:
+    """获取统一配置管理器实例"""
     global _config_loader
     
     if _config_loader is None:
-        _config_loader = NetflixConfigLoader()
+        _config_loader = UnifiedConfigManager()
     
     return _config_loader
 
@@ -91,13 +91,23 @@ def get_config_loader() -> NetflixConfigLoader:
 def get_netflix_config():
     """获取Netflix配置信息"""
     try:
-        config_loader = get_config_loader()
+        config_manager = get_config_manager()
+        
+        # 创建Netflix配置上下文
+        context = ConfigContext(
+            module_type=ConfigModuleType.NETFLIX,
+            complexity_level=ConfigComplexityLevel.PROFESSIONAL,
+            preset_name="netflix_optimized"
+        )
+        
+        # 获取Netflix配置
+        netflix_config = config_manager.get_config(context)
         
         config_info = {
-            'netflix_standards': config_loader.netflix_standards,
-            'ai_settings': config_loader.ai_settings,
-            'prompt_templates': config_loader.prompt_templates,
-            'validation_settings': config_loader.validation_settings,
+            'netflix_standards': netflix_config.get('netflix_standards', {}),
+            'ai_settings': netflix_config.get('ai_settings', {}),
+            'prompt_templates': netflix_config.get('prompt_templates', {}),
+            'validation_settings': netflix_config.get('validation_settings', {}),
             'feature_flags': {
                 'netflix_splitter_enabled': True,
                 'sequence_validation_enabled': True,
@@ -127,7 +137,14 @@ def update_netflix_config():
         if not data:
             raise BadRequest("请提供配置数据")
         
-        config_loader = get_config_loader()
+        config_manager = get_config_manager()
+        
+        # 创建Netflix配置上下文
+        context = ConfigContext(
+            module_type=ConfigModuleType.NETFLIX,
+            complexity_level=ConfigComplexityLevel.PROFESSIONAL,
+            preset_name="netflix_optimized"
+        )
         
         # 更新配置（这里简化处理，实际应该有更完善的验证）
         updated_sections = []

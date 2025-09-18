@@ -96,7 +96,7 @@ def handle_config():
     if request.method == 'GET':
         try:
             # 返回当前配置
-            config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'config_data', 'app_config.json')
+            config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'config_data', 'backend_app_config.json')
             if os.path.exists(config_path):
                 with open(config_path, 'r', encoding='utf-8') as f:
                     config = json.load(f)
@@ -126,7 +126,7 @@ def handle_config():
                 }), 400
             
             # 更新配置文件
-            config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'config_data', 'app_config.json')
+            config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'config_data', 'backend_app_config.json')
             if os.path.exists(config_path):
                 with open(config_path, 'r', encoding='utf-8') as f:
                     config = json.load(f)

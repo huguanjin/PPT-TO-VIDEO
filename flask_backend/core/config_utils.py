@@ -50,7 +50,7 @@ def load_key(key: str) -> Dict[str, Any]:
         # 尝试多个可能的路径
         fish_config_paths = [
             Path(__file__).parent.parent / "config_data" / "fish_tts_config.json",  # 首选路径
-            Path("flask_backend/config_data/fish_tts_config.json"),  # 从项目根目录运行时
+            Path("config_data/fish_tts_config.json"),  # 从项目根目录运行时
             Path("config_data/fish_tts_config.json")  # 从flask_backend目录运行时（兼容性）
         ]
         
@@ -64,12 +64,12 @@ def load_key(key: str) -> Dict[str, Any]:
                     print(f"加载Fish TTS配置文件失败 ({fish_config_file}): {e}")
                     continue
     
-    # 优先从app_config.json加载配置
+    # 优先从backend_app_config.json加载配置
     # 尝试多个可能的路径
     possible_paths = [
-        Path(__file__).parent.parent / "config_data" / "app_config.json",  # 首选路径
-        Path("flask_backend/config_data/app_config.json"),  # 从项目根目录运行时
-        Path("config_data/app_config.json")  # 从flask_backend目录运行时（兼容性）
+        Path(__file__).parent.parent / "config_data" / "backend_app_config.json",  # 首选路径
+        Path("config_data/backend_app_config.json"),  # 从项目根目录运行时
+        Path("config_data/backend_app_config.json")  # 从flask_backend目录运行时（兼容性）
     ]
     
     for app_config_file in possible_paths:
@@ -99,7 +99,7 @@ def load_key(key: str) -> Dict[str, Any]:
                             "voice": tts_config.get("azure_voice", "zh-CN-XiaoxiaoNeural")
                         }
             except Exception as e:
-                print(f"加载app_config.json配置文件失败 ({app_config_file}): {e}")
+                print(f"加载backend_app_config.json配置文件失败 ({app_config_file}): {e}")
                 continue  # 尝试下一个路径
     
     # 尝试从tts_config.json加载其他配置（向后兼容）
