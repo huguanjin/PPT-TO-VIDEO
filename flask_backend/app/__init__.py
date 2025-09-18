@@ -43,6 +43,9 @@ def create_app(config_class=None):
     # 创建必要的目录
     create_directories(app)
     
+    # 初始化Netflix监控系统 (Phase 2)
+    initialize_netflix_monitoring(app)
+    
     return app
 
 def setup_logging(app):
@@ -133,7 +136,7 @@ def register_blueprints(app):
     # 导入智能字幕API
     smart_subtitle_bp = None
     try:
-        from api.smart_subtitle_api import smart_subtitle_bp
+        from app.api.smart_subtitle_api import smart_subtitle_bp
         print("✅ smart_subtitle_api模块导入成功")
     except ImportError as e:
         print(f"❌ smart_subtitle_api模块导入失败: {e}")
@@ -143,7 +146,7 @@ def register_blueprints(app):
     # 导入AI配置API
     ai_config_api = None
     try:
-        from api.ai_config_api import ai_config_api
+        from app.api.ai_config_api import ai_config_api
         print("✅ ai_config_api模块导入成功")
     except ImportError as e:
         print(f"❌ ai_config_api模块导入失败: {e}")
@@ -153,7 +156,7 @@ def register_blueprints(app):
     # 导入AI连接测试API
     ai_test_bp = None
     try:
-        from api.ai_config_test_api import ai_test_bp
+        from app.api.ai_config_test_api import ai_test_bp
         print("✅ ai_config_test_api模块导入成功")
     except ImportError as e:
         print(f"❌ ai_config_test_api模块导入失败: {e}")
@@ -163,7 +166,7 @@ def register_blueprints(app):
     # 导入提示词管理API
     prompt_api = None
     try:
-        from api.prompt_api import prompt_api
+        from app.api.prompt_api import prompt_api
         print("✅ prompt_api模块导入成功")
     except ImportError as e:
         print(f"❌ prompt_api模块导入失败: {e}")
@@ -173,12 +176,22 @@ def register_blueprints(app):
     # 导入自定义AI模型管理API
     custom_ai_api = None
     try:
-        from api.custom_ai_api import custom_ai_api
+        from app.api.custom_ai_api import custom_ai_api
         print("✅ custom_ai_api模块导入成功")
     except ImportError as e:
         print(f"❌ custom_ai_api模块导入失败: {e}")
     except Exception as e:
         print(f"❌ custom_ai_api模块加载错误: {e}")
+    
+    # 导入Netflix字幕API (Phase 2)
+    netflix_subtitle_bp = None
+    try:
+        from app.api.netflix_subtitle_api import bp as netflix_subtitle_bp
+        print("✅ netflix_subtitle_api模块导入成功")
+    except ImportError as e:
+        print(f"❌ netflix_subtitle_api模块导入失败: {e}")
+    except Exception as e:
+        print(f"❌ netflix_subtitle_api模块加载错误: {e}")
     
     # 注册原有蓝图
     app.register_blueprint(common_bp)
@@ -251,6 +264,14 @@ def register_blueprints(app):
             print("✅ custom_ai_api蓝图注册成功: /api/custom-ai/*")
         except Exception as e:
             print(f"❌ custom_ai_api蓝图注册失败: {e}")
+    
+    # 注册Netflix字幕API (Phase 2)
+    if netflix_subtitle_bp is not None:
+        try:
+            app.register_blueprint(netflix_subtitle_bp)
+            print("✅ netflix_subtitle_api蓝图注册成功: /api/netflix-subtitle/*")
+        except Exception as e:
+            print(f"❌ netflix_subtitle_api蓝图注册失败: {e}")
     
     # 注册增强的API蓝图（只注册成功导入的）
     enhanced_count = 0
@@ -335,3 +356,34 @@ def create_directories(app):
     for dir_path, desc in directories.items():
         Path(dir_path).mkdir(parents=True, exist_ok=True)
         print(f"   ✓ 创建目录: {dir_path} ({desc})")
+
+def initialize_netflix_monitoring(app):
+    """初始化Netflix监控系统"""
+    try:
+        # 导入监控管理器
+        import sys
+        from pathlib import Path
+        
+        # 添加项目根目录到路径
+        project_root = Path(__file__).parent.parent.parent
+        if str(project_root) not in sys.path:
+            sys.path.insert(0, str(project_root))
+        
+        from ..utils.netflix_monitoring_manager import init_flask_monitoring
+        
+        # 初始化监控
+        success = init_flask_monitoring(app, project_root)
+        
+        if success:
+            app.logger.info("✅ Netflix监控系统初始化成功")
+        else:
+            app.logger.warning("⚠️ Netflix监控系统初始化失败，但应用将继续运行")
+        
+        return success
+        
+    except ImportError as e:
+        app.logger.warning(f"Netflix监控模块不可用: {e}")
+        return False
+    except Exception as e:
+        app.logger.error(f"Netflix监控系统初始化错误: {e}")
+        return False

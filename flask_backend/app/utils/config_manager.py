@@ -66,6 +66,17 @@ class ConfigManager:
                 "include_subtitles": True,
                 "resolution": "1920x1080",
                 "video_bitrate": "5000k"
+            },
+            "ai": {
+                "default_model": "gpt-3.5-turbo",
+                "temperature": 0.7,
+                "max_tokens": 2000,
+                "timeout": 30
+            },
+            "api": {
+                "base_url": "http://localhost:5000",
+                "timeout": 30,
+                "retry_attempts": 3
             }
         }
         
@@ -127,6 +138,69 @@ class ConfigManager:
     def get_video_config(self) -> Dict[str, Any]:
         """获取视频配置"""
         return self.get_section('video')
+    
+    def get_default_base_url(self) -> str:
+        """获取默认的API基础URL"""
+        config = self.load_config()
+        return config.get('api', {}).get('base_url', 'http://localhost:5000')
+    
+    def get_default_model(self) -> str:
+        """获取默认的AI模型"""
+        config = self.load_config()
+        return config.get('ai', {}).get('default_model', 'gpt-3.5-turbo')
+    
+    def load_key(self, key: str, default: Any = None) -> Any:
+        """加载指定键的配置值"""
+        config = self.load_config()
+        
+        # 支持点分隔的嵌套键
+        keys = key.split('.')
+        value = config
+        
+        try:
+            for k in keys:
+                value = value[k]
+            return value
+        except (KeyError, TypeError):
+            return default
+    
+    def save_key(self, key: str, value: Any) -> bool:
+        """保存指定键的配置值"""
+        config = self.load_config()
+        keys = key.split('.')
+        
+        # 创建嵌套结构
+        current = config
+        for k in keys[:-1]:
+            if k not in current:
+                current[k] = {}
+            current = current[k]
+        
+        # 设置最终值
+        current[keys[-1]] = value
+        return self.save_config(config)
+    
+    def get_ai_config(self) -> Dict[str, Any]:
+        """获取AI配置"""
+        return self.get_section('ai')
+    
+    def get_api_config(self) -> Dict[str, Any]:
+        """获取API配置"""
+        return self.get_section('api')
+    
+    def reset_to_defaults(self) -> bool:
+        """重置为默认配置"""
+        try:
+            if self.config_file.exists():
+                # 备份当前配置
+                backup_file = self.config_file.with_suffix('.backup.json')
+                self.config_file.rename(backup_file)
+            
+            self._create_default_config()
+            return True
+        except Exception as e:
+            print(f"重置配置失败: {e}")
+            return False
 
 # 全局配置管理器实例
 config_manager = ConfigManager()

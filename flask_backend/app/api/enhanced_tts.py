@@ -1,4 +1,4 @@
-"""
+﻿"""
 增强的TTS试听API - 合并FastAPI的多引擎支持到Flask
 """
 import os
@@ -16,7 +16,7 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
 
 try:
-    from utils.logger import get_logger  # type: ignore
+    from app.utils.logger import get_logger  # type: ignore
 except ImportError:
     import logging
     def get_logger(name):
@@ -71,7 +71,7 @@ def enhanced_tts_preview():
         try:
             # 使用集成的TTS管理器（如果可用）
             try:
-                from utils.integrated_tts_manager import IntegratedTTSManager, TTSConfig, TTSEngine
+                from app.utils.integrated_tts_manager import IntegratedTTSManager, TTSConfig, TTSEngine
                 
                 # 如果是Fish TTS，需要获取角色ID
                 fish_character_id = ""
@@ -118,8 +118,8 @@ def enhanced_tts_preview():
                 result = run_async_in_flask(
                     tts_manager.synthesize_speech(
                         text,
-                        audio_path,
-                        preferred_engine=preferred_engine
+                        preferred_engine=preferred_engine,
+                        output_path=audio_path
                     )
                 )
                 
@@ -311,3 +311,4 @@ def simple_fish_tts(text, output_path, api_key, character="雷军"):
     except Exception as e:
         logger.error(f"Fish TTS失败: {e}")
         return False
+

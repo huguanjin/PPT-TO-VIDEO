@@ -1,4 +1,4 @@
-"""
+﻿"""
 工作流API接口
 处理视频生成工作流
 """
@@ -23,8 +23,8 @@ try:
     from core.step05_final_merger import FFmpegFinalMerger  # type: ignore
     from core.enhanced_workflow_executor import EnhancedWorkflowExecutor, WorkflowExecution  # type: ignore
     from core.workflow_persistence import StepStatus  # type: ignore
-    from utils.task_manager import TaskManager  # type: ignore
-    from utils.logger import get_logger  # type: ignore
+    from app.utils.task_manager import TaskManager  # type: ignore
+    from app.utils.logger import get_logger  # type: ignore
 except ImportError as e:
     print(f"Warning: Could not import core modules: {e}")
     # 提供模拟类
@@ -720,3 +720,4 @@ def update_task_status(task_id, status, message, progress, result=None, project_
 
 # 启动时加载任务状态
 load_task_statuses()
+

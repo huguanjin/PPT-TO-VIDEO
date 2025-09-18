@@ -14,9 +14,9 @@
       "emoji": 1.5
     },
     "line_control_rules": {
-      "max_lines_strict": 2,
-      "max_chars_per_line_chinese": 30,
-      "max_chars_per_line_netflix": 42,
+      "max_lines_strict": 1,
+      "max_chars_per_line_chinese": 18,
+      "max_chars_per_line_netflix": 18,
       "enforce_line_limit": true,
       "prefer_length_over_semantic": false,
       "netflix_standard_enabled": true

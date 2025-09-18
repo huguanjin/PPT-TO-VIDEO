@@ -1,4 +1,4 @@
-"""
+﻿"""
 PPTist数据导入模块
 接收PPTist导出的JSON数据和图片，转换为标准格式
 """
@@ -12,8 +12,8 @@ import asyncio
 import aiofiles
 from datetime import datetime
 
-from utils.logger import get_logger
-from utils.file_manager import FileManager
+from app.utils.logger import get_logger
+from app.utils.file_manager import FileManager
 
 logger = get_logger(__name__)
 
@@ -318,3 +318,4 @@ class PPTistImporter:
                 return {"status": "incomplete", "message": "元数据加载失败"}
         
         return {"status": "incomplete", "message": "导入未完成"}
+

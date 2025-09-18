@@ -1,4 +1,4 @@
-"""
+﻿"""
 工作流持久化和断点续传系统
 """
 import json
@@ -10,8 +10,8 @@ from dataclasses import dataclass, asdict, field
 from enum import Enum
 import asyncio
 
-from utils.logger import get_logger
-from utils.file_manager import FileManager
+from app.utils.logger import get_logger
+from app.utils.file_manager import FileManager
 
 class StepStatus(Enum):
     PENDING = "pending"
@@ -304,3 +304,4 @@ class WorkflowPersistenceManager:
         # 按开始时间排序
         executions.sort(key=lambda x: x.start_time, reverse=True)
         return executions
+

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Phase 3智能对齐系统API端点
 提供智能对齐功能的HTTP接口
 """
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 try:
     from core.intelligent_alignment_system import IntelligentAlignmentSystem, IntelligentAlignmentConfig
     from core.audio_feature_extractor import AudioFeatureExtractor, AudioConfig
-    from utils.logger import get_logger
+    from app.utils.logger import get_logger
     PHASE3_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: Phase 3智能对齐系统不可用: {e}")
@@ -32,7 +32,20 @@ except ImportError as e:
 
 # 创建蓝图
 bp = Blueprint('phase3_alignment', __name__, url_prefix='/api/phase3')
-logger = get_logger(__name__) if PHASE3_AVAILABLE else None
+
+# 确保logger始终可用
+if PHASE3_AVAILABLE:
+    logger = get_logger(__name__)
+else:
+    # 创建一个简单的日志记录器作为备用
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
 @bp.route('/status', methods=['GET'])
 def get_phase3_status():

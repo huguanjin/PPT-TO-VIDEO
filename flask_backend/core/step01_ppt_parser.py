@@ -14,8 +14,8 @@ from pptx.slide import Slide
 from PIL import Image, ImageDraw, ImageFont
 import io
 
-from utils.logger import get_logger
-from utils.file_manager import FileManager
+from app.utils.logger import get_logger
+from app.utils.file_manager import FileManager
 
 # 尝试导入Windows COM接口
 try:

@@ -1,4 +1,4 @@
-"""
+﻿"""
 步骤5: 最终视频合并器 - 基于FFmpeg
 使用FFmpeg合并视频片段、音频文件和字幕，生成最终视频
 """
@@ -22,8 +22,8 @@ try:
 except ImportError:
     cv2 = None
 
-from utils.file_manager import FileManager
-from utils.logger import get_logger
+from app.utils.file_manager import FileManager
+from app.utils.logger import get_logger
 
 class FFmpegFinalMerger:
     """基于FFmpeg的最终视频合并器"""
@@ -78,7 +78,7 @@ class FFmpegFinalMerger:
                 # 构建FFmpeg兼容的配置
                 ffmpeg_config = {
                     "font_family": smart_processing.get('font_name', 'Microsoft YaHei'),
-                    "font_size": smart_processing.get('font_size', 24),
+                    "font_size": smart_processing.get('font_size', 16),  # 使用优化后的字体大小
                     "font_color": smart_processing.get('font_color', '#FFFFFF'),
                     "background_color": "rgba(0,0,0,0.8)",
                     "position": "bottom"
@@ -202,13 +202,6 @@ class FFmpegFinalMerger:
             progress_callback=adapted_progress_callback
         )
     
-    def merge_video(self, *args, **kwargs) -> Dict[str, Any]:
-        """
-        merge_videos方法的别名 - 兼容性接口
-        提供单数形式的方法名以保持向后兼容
-        """
-        return self.merge_videos(*args, **kwargs)
-
     def merge_video(self, *args, **kwargs) -> Dict[str, Any]:
         """
         merge_videos方法的别名 - 兼容性接口
@@ -345,10 +338,10 @@ class FFmpegFinalMerger:
                     
                     if subtitle_config is None:
                         try:
-                            # 备选：尝试使用新的配置管理器
-                            from flask_backend.app.utils.config_manager import config_manager
+                            # 备选：尝试使用统一的配置管理器
+                            from app.utils.config_manager import config_manager
                             subtitle_config = config_manager.get_subtitle_config_for_ffmpeg()
-                            self.logger.info(f"使用新配置管理器获取字幕配置: {subtitle_config}")
+                            self.logger.info(f"使用统一配置管理器获取字幕配置: {subtitle_config}")
                         except ImportError:
                             # 备选：使用传统配置系统
                             from config.settings import load_app_config
@@ -359,7 +352,7 @@ class FFmpegFinalMerger:
                                 subtitle_section = app_config['subtitle']
                                 subtitle_config = {
                                     "font_family": subtitle_section.get("font_family", "Microsoft YaHei"),
-                                    "font_size": subtitle_section.get("font_size", 24),  # 修改为24px，与Netflix标准一致
+                                    "font_size": subtitle_section.get("font_size", 16),  # 使用优化后的字体大小
                                     "font_color": subtitle_section.get("font_color", "#FFFFFF"),
                                     "background_color": subtitle_section.get("background_color", "rgba(0,0,0,0.8)"),
                                     "position": subtitle_section.get("position", "bottom")
@@ -369,7 +362,7 @@ class FFmpegFinalMerger:
                                 # 老的扁平化格式
                                 subtitle_config = {
                                     "font_family": app_config.get("subtitle_font_family", "Microsoft YaHei"),
-                                    "font_size": app_config.get("subtitle_font_size", 24),  # 修改为24px，与Netflix标准一致
+                                    "font_size": app_config.get("subtitle_font_size", 16),  # 使用优化后的字体大小
                                     "font_color": app_config.get("subtitle_font_color", "#FFFFFF"),
                                     "background_color": app_config.get("subtitle_background_color", "rgba(0,0,0,0.8)"),
                                     "position": app_config.get("subtitle_position", "bottom")
@@ -381,7 +374,7 @@ class FFmpegFinalMerger:
                     # 使用默认配置
                     subtitle_config = {
                         "font_family": "Microsoft YaHei",
-                        "font_size": 24,  # 修改为24px，与Netflix标准一致
+                        "font_size": 16,  # 使用优化后的字体大小
                         "font_color": "#FFFFFF",
                         "background_color": "rgba(0,0,0,0.8)",
                         "position": "bottom"
@@ -626,35 +619,45 @@ class FFmpegFinalMerger:
             # 应用用户配置的字幕样式
             if subtitle_config:
                 user_font_family = subtitle_config.get("font_family", "微软雅黑")
-                base_font_size = subtitle_config.get("font_size", 18)  # 使用新的默认值
+                base_font_size = subtitle_config.get("font_size", 16)  # 使用优化后的默认值
                 user_font_color = subtitle_config.get("font_color", "#FFFFFF")
                 
                 # 使用用户配置的字体（如果可用）
                 if user_font_family and user_font_family != "微软雅黑":
                     font_name = user_font_family
                 
-                # 🎯 集成分辨率自适应字体大小计算
+                # 🎯 集成自适应字体大小计算器
                 try:
-                    from .subtitle_multiline_fixer import get_fixed_font_size
-                    adaptive_font_size = get_fixed_font_size((target_width, target_height), base_font_size)
+                    from .adaptive_font_calculator import AdaptiveFontSizeCalculator
+                    calculator = AdaptiveFontSizeCalculator()
+                    adaptive_font_size = calculator.calculate_adaptive_font_size(
+                        text="示例文本",  # 用于计算的示例文本
+                        line_count=1,
+                        resolution=(target_width, target_height)
+                    )
                     user_font_size = adaptive_font_size
-                    self.logger.info(f"分辨率自适应字体: {base_font_size}px → {adaptive_font_size}px (分辨率: {target_width}x{target_height})")
+                    self.logger.info(f"自适应字体计算: {base_font_size}px → {adaptive_font_size}px (分辨率: {target_width}x{target_height})")
                 except Exception as e:
                     # 如果自适应计算失败，使用基础字体大小
                     user_font_size = base_font_size
-                    self.logger.warning(f"分辨率自适应计算失败，使用基础字体大小 {base_font_size}px: {e}")
+                    self.logger.warning(f"自适应字体计算失败，使用基础字体大小 {base_font_size}px: {e}")
                 
                 # 转换CSS颜色为FFmpeg格式
                 ffmpeg_color = self._css_color_to_ffmpeg(user_font_color)
                 
                 self.logger.info(f"应用用户字幕样式: 字体={font_name}, 大小={user_font_size}px, 颜色={user_font_color}")
             else:
-                # 默认配置也应用分辨率自适应
-                base_font_size = 18
+                # 默认配置也应用自适应字体计算
+                base_font_size = 16  # 使用优化后的默认值
                 try:
-                    from .subtitle_multiline_fixer import get_fixed_font_size
-                    user_font_size = get_fixed_font_size((target_width, target_height), base_font_size)
-                    self.logger.info(f"使用默认分辨率自适应字体: {base_font_size}px → {user_font_size}px")
+                    from .adaptive_font_calculator import AdaptiveFontSizeCalculator
+                    calculator = AdaptiveFontSizeCalculator()
+                    user_font_size = calculator.calculate_adaptive_font_size(
+                        text="示例文本",
+                        line_count=1,
+                        resolution=(target_width, target_height)
+                    )
+                    self.logger.info(f"使用默认自适应字体: {base_font_size}px → {user_font_size}px")
                 except Exception:
                     user_font_size = base_font_size
                 ffmpeg_color = "&HFFFFFF"  # 默认白色
@@ -668,14 +671,15 @@ class FFmpegFinalMerger:
                 # 如果无法获取相对路径，使用绝对路径
                 subtitle_path_fixed = str(subtitle_path_obj).replace('\\', '/')
             
-            # 强制单行显示的关键配置
+            # 强制单行显示的关键配置 - 增强版
             vf_filter = (
                 f"scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,"
                 f"pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2,"
                 f"subtitles={subtitle_path_fixed}:force_style='"
                 f"FontSize={user_font_size},FontName={font_name},"
                 f"PrimaryColour={ffmpeg_color},OutlineColour=&H000000,OutlineWidth=1,"
-                f"ShadowColour=&H80000000,BorderStyle=1,WrapStyle=2,MaxLines=1'"
+                f"ShadowColour=&H80000000,BorderStyle=1,WrapStyle=0,MaxLines=1,"
+                f"Alignment=2,MarginV=40'"  # 添加底部对齐和边距
             )
             
             # 构造 FFmpeg 命令 - 借鉴 testfile 方式
@@ -1105,3 +1109,4 @@ class FFmpegFinalMerger:
 
 # 为了向后兼容，创建一个别名
 FinalMerger = FFmpegFinalMerger
+

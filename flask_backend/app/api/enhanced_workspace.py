@@ -1,4 +1,4 @@
-"""
+﻿"""
 增强的工作空间持久化API
 实现PPTist项目的完整保存、加载和更新功能
 """
@@ -16,7 +16,7 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
 
 try:
-    from utils.logger import get_logger  # type: ignore
+    from app.utils.logger import get_logger  # type: ignore
 except ImportError:
     import logging
     def get_logger(name):
@@ -428,3 +428,4 @@ def cleanup_workspace():
             'success': False,
             'message': f'清理失败: {str(e)}'
         }), 500
+

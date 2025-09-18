@@ -1,4 +1,4 @@
-"""
+﻿"""
 项目管理系统 - PPT项目和工作流的统一管理
 """
 import json
@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, asdict
 
-from utils.logger import get_logger
-from utils.file_manager import FileManager
+from app.utils.logger import get_logger
+from app.utils.file_manager import FileManager
 from core.workflow_persistence import WorkflowPersistenceManager
 
 @dataclass
@@ -402,3 +402,4 @@ class ProjectManager:
                 filtered_projects.append(project)
         
         return filtered_projects
+

@@ -1,4 +1,4 @@
-"""
+﻿"""
 AI提示词管理模块
 基于otherprojedt项目的设计模式，为PPT转视频项目提供结构化的提示词管理
 """
@@ -14,12 +14,12 @@ utils_dir = current_dir / 'utils'
 sys.path.insert(0, str(utils_dir))
 
 try:
-    from utils.config_manager import ConfigManager  # type: ignore
+    from app.utils.config_manager import ConfigManager  # type: ignore
 except ImportError:
     try:
         # 备用导入方式
         sys.path.insert(0, str(current_dir))
-        from utils.config_manager import ConfigManager  # type: ignore
+        from app.utils.config_manager import ConfigManager  # type: ignore
     except ImportError:
         ConfigManager = None
 
@@ -490,3 +490,4 @@ if __name__ == "__main__":
     print("PPT总结提示词生成成功")
     
     print(f"\\n可用提示词类型: {prompt_manager.get_available_prompts()}")
+

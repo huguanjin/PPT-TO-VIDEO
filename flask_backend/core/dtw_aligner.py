@@ -8,15 +8,20 @@ from typing import List, Tuple, Dict, Optional, Any, Callable
 from dataclasses import dataclass, field
 import logging
 
+def fastdtw_fallback(x, y, dist=None):
+    """Fallback DTW implementation"""
+    # 简单的DTW fallback实现
+    print("Using fallback DTW implementation")
+    return 0.0, []
+
 try:
-    from fastdtw import fastdtw
+    from fastdtw import fastdtw as _fastdtw  # type: ignore  # pylint: disable=import-error
+    FASTDTW_AVAILABLE = True
+    fastdtw = _fastdtw
 except ImportError:
     print("Warning: fastdtw not installed. Install with: pip install fastdtw")
-    def fastdtw(x, y, dist=None):
-        """Fallback DTW implementation"""
-        # 简单的DTW fallback实现
-        print("Using fallback DTW implementation")
-        return 0.0, []
+    FASTDTW_AVAILABLE = False
+    fastdtw = fastdtw_fallback  # type: ignore
 
 from scipy.spatial.distance import euclidean, cosine
 from sklearn.preprocessing import StandardScaler
@@ -255,8 +260,8 @@ class DTWAligner:
         
         # 执行DTW对齐
         try:
-            # 使用正确的fastdtw参数
-            distance, path = fastdtw(
+            # fastdtw现在总是可调用的（要么是真实的fastdtw，要么是fallback）
+            distance, path = fastdtw(  # type: ignore[misc]
                 audio_features, 
                 text_features,
                 dist=distance_func

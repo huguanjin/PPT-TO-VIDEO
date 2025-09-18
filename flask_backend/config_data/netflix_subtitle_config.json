@@ -7,7 +7,7 @@
       "netflix_standard": {
         "name": "Netflix标准样式",
         "font_family": "Arial",
-        "font_size": 18,
+        "font_size": 16,
         "font_color": "#FFFFFF",
         "font_weight": "bold",
         "background_color": "rgba(0,0,0,0.75)",
@@ -35,7 +35,7 @@
       "netflix_accessibility": {
         "name": "Netflix无障碍样式",
         "font_family": "Arial",
-        "font_size": 20,
+        "font_size": 18,
         "font_color": "#FFFF00",
         "font_weight": "bold",
         "background_color": "rgba(0,0,0,0.9)",
@@ -55,9 +55,9 @@
       "subtitle_overlap_tolerance": 0.1
     },
     "layout_rules": {
-      "max_chars_per_line": 30,
+      "max_chars_per_line": 26,
       "max_lines": 2,
-      "preferred_chars_per_line": 28,
+      "preferred_chars_per_line": 24,
       "line_spacing": 1.2,
       "paragraph_spacing": 1.5,
       "margin_bottom": 60,

@@ -1,4 +1,4 @@
-"""
+﻿"""
 增强版字幕生成器 - Netflix级字幕处理机制
 基于精确时间对齐和智能间隙填充算法
 集成多行显示修复功能
@@ -13,8 +13,8 @@ from datetime import datetime
 import logging
 import dataclasses
 
-from utils.logger import get_logger
-from utils.file_manager import FileManager
+from app.utils.logger import get_logger
+from app.utils.file_manager import FileManager
 from .subtitle_multiline_fixer import SubtitleMultilineFixer
 
 
@@ -34,8 +34,8 @@ class EnhancedSubtitleGenerator:
         
         # 增强的字幕配置
         self.subtitle_config = {
-            "max_chars_per_line": 30,           # 每行最大字符数 (优化后)
-            "max_lines": 2,                     # 最大行数
+            "max_chars_per_line": 18,           # 每行最大字符数 (减少到18确保绝对单行)
+            "max_lines": 1,                     # 强制单行显示
             "min_display_time": 1.0,            # 最小显示时间(秒)
             "max_display_time": 8.0,            # 最大显示时间(秒)
             "words_per_second": 3.5,            # 每秒字数(用于时长估算)
@@ -733,3 +733,4 @@ class EnhancedSubtitleGenerator:
         """更新字幕配置"""
         self.subtitle_config.update(new_config)
         self.logger.info(f"字幕配置已更新: {new_config}")
+

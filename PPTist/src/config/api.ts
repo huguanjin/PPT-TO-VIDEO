@@ -75,7 +75,12 @@ export const API_ENDPOINTS = {
     TEST_SPLIT: '/api/smart-subtitle/test-split',
     AI_CONFIG: '/api/smart-subtitle/ai-config',
     STATUS: '/api/smart-subtitle/status',
-    WEIGHT_CALC: '/api/smart-subtitle/weight-calculator'
+    WEIGHT_CALC: '/api/smart-subtitle/weight-calculator',
+    // 新增优化API端点
+    ADAPTIVE_FONT: '/api/smart-subtitle/adaptive-font',
+    ENHANCED_SPLIT: '/api/smart-subtitle/enhanced-split', 
+    AI_OPTIMIZE: '/api/smart-subtitle/ai-optimize',
+    BATCH_OPTIMIZE: '/api/smart-subtitle/batch-optimize'
   },
 
   // AI配置API

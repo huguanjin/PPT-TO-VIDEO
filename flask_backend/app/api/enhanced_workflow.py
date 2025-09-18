@@ -1,4 +1,4 @@
-"""
+﻿"""
 增强的工作流API接口 - 合并FastAPI功能到Flask
 处理完整的PPT到视频工作流，包含项目导入、配置管理、执行监控等
 """
@@ -28,9 +28,9 @@ try:
     from core.step03_video_generator import VideoGenerator  # type: ignore
     from core.step04_subtitle_generator import SubtitleGenerator  # type: ignore
     from core.step05_final_merger import FFmpegFinalMerger  # type: ignore
-    from utils.task_manager import TaskManager  # type: ignore
-    from utils.file_manager import FileManager  # type: ignore
-    from utils.logger import get_logger  # type: ignore
+    from app.utils.task_manager import TaskManager  # type: ignore
+    from app.utils.file_manager import FileManager  # type: ignore
+    from app.utils.logger import get_logger  # type: ignore
     from config.settings import load_app_config  # type: ignore
     
     # save_app_config 可能不存在，提供安全的导入
@@ -118,11 +118,16 @@ class WorkflowConfig:
         subtitle_config = data.get('subtitle', {})
         self.subtitle = {
             'font_family': subtitle_config.get('font_family', '微软雅黑'),
-            'font_size': subtitle_config.get('font_size', 24),
+            'font_size': subtitle_config.get('font_size', 16),  # 优化后的字体大小
             'font_color': subtitle_config.get('font_color', '#FFFFFF'),
             'background_color': subtitle_config.get('background_color', '#000000'),
             'position': subtitle_config.get('position', 'bottom'),
-            'enabled': subtitle_config.get('enabled', True)
+            'enabled': subtitle_config.get('enabled', True),
+            # 新增优化配置
+            'max_chars_per_line': subtitle_config.get('max_chars_per_line', 26),  # 优化后的字符限制
+            'enable_adaptive_font': subtitle_config.get('enable_adaptive_font', True),
+            'enable_semantic_split': subtitle_config.get('enable_semantic_split', True),
+            'enable_ai_optimization': subtitle_config.get('enable_ai_optimization', False)
         }
         
         # Phase 3智能对齐配置
@@ -178,11 +183,16 @@ def get_enhanced_config():
             "tts": tts_config,
             "subtitle": {
                 "font_family": app_config.get("subtitle_font_family", "微软雅黑"),
-                "font_size": app_config.get("subtitle_font_size", 24),
+                "font_size": app_config.get("subtitle_font_size", 16),  # 优化后的字体大小
                 "font_color": app_config.get("subtitle_font_color", "#FFFFFF"),
                 "background_color": app_config.get("subtitle_background_color", "#000000"),
                 "position": app_config.get("subtitle_position", "bottom"),
-                "enabled": app_config.get("subtitle_enabled", True)
+                "enabled": app_config.get("subtitle_enabled", True),
+                # 新增优化配置
+                "max_chars_per_line": app_config.get("max_chars_per_line", 26),  # 优化后的字符限制
+                "enable_adaptive_font": app_config.get("enable_adaptive_font", True),
+                "enable_semantic_split": app_config.get("enable_semantic_split", True),
+                "enable_ai_optimization": app_config.get("enable_ai_optimization", False)
             }
         }
         
@@ -218,6 +228,14 @@ def update_enhanced_config():
             "subtitle_font_family": config.subtitle['font_family'],
             "subtitle_font_size": config.subtitle['font_size'],
             "subtitle_font_color": config.subtitle['font_color'],
+            "subtitle_background_color": config.subtitle['background_color'],
+            "subtitle_position": config.subtitle['position'],
+            "subtitle_enabled": config.subtitle['enabled'],
+            # 新增优化配置
+            "max_chars_per_line": config.subtitle.get('max_chars_per_line', 26),
+            "enable_adaptive_font": config.subtitle.get('enable_adaptive_font', True),
+            "enable_semantic_split": config.subtitle.get('enable_semantic_split', True),
+            "enable_ai_optimization": config.subtitle.get('enable_ai_optimization', False),
             "subtitle_background_color": config.subtitle['background_color'],
             "subtitle_position": config.subtitle['position'],
             "subtitle_enabled": config.subtitle['enabled']
@@ -623,7 +641,12 @@ async def update_config_internal(config: WorkflowConfig):
             "subtitle_font_color": config.subtitle['font_color'],
             "subtitle_background_color": config.subtitle['background_color'],
             "subtitle_position": config.subtitle['position'],
-            "subtitle_enabled": config.subtitle['enabled']
+            "subtitle_enabled": config.subtitle['enabled'],
+            # 新增优化配置
+            "max_chars_per_line": config.subtitle.get('max_chars_per_line', 26),
+            "enable_adaptive_font": config.subtitle.get('enable_adaptive_font', True),
+            "enable_semantic_split": config.subtitle.get('enable_semantic_split', True),
+            "enable_ai_optimization": config.subtitle.get('enable_ai_optimization', False)
         })
         
         save_app_config(app_config)
@@ -728,3 +751,4 @@ def download_video(project_name, filename):
     except Exception as e:
         logger.error(f"下载失败: {e}")
         return jsonify({"success": False, "message": f"下载失败: {str(e)}"}), 500
+
