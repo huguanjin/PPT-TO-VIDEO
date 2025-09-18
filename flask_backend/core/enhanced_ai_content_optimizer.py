@@ -196,7 +196,14 @@ class EnhancedAIContentOptimizer(AIContentOptimizer):
             
             # 备用：使用父类的方法
             self.logger.info("使用备用分割方案")
-            return await self._fallback_segmentation(content)
+            fallback_result = await self._fallback_segmentation(content)
+            # 提取文本内容，因为父类返回的是 List[Dict[str, Any]]
+            if isinstance(fallback_result, list) and fallback_result:
+                if isinstance(fallback_result[0], dict):
+                    return [segment.get('text', segment.get('content', str(segment))) for segment in fallback_result]
+                else:
+                    return [str(segment) for segment in fallback_result]
+            return [content]  # 保底返回
             
         except Exception as e:
             self.logger.error(f"语义分割失败: {e}")

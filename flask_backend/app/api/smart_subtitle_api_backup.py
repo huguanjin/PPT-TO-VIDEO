@@ -1,5 +1,5 @@
 """
-智能字幕API模块
+智能字幕API模块 - 重构版本
 提供智能字幕生成和处理功能，集成了优化模块
 """
 from flask import Blueprint, jsonify, request
@@ -7,6 +7,7 @@ import logging
 import os
 import sys
 import json
+import asyncio
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 from datetime import datetime
@@ -16,17 +17,16 @@ core_path = os.path.join(os.path.dirname(__file__), '..', '..', 'core')
 if core_path not in sys.path:
     sys.path.append(core_path)
 
-# 导入优化模块 - 使用条件导入避免类型错误
-AdaptiveFontSizeCalculator = None
-EnhancedSemanticSplitter = None
-EnhancedAIContentOptimizer = None
-
+# 导入优化模块
 try:
     from adaptive_font_calculator import AdaptiveFontSizeCalculator
     from enhanced_semantic_splitter import EnhancedSemanticSplitter
     from enhanced_ai_content_optimizer import EnhancedAIContentOptimizer
 except ImportError as e:
     logging.error(f"优化模块导入失败: {e}")
+    AdaptiveFontSizeCalculator = None
+    EnhancedSemanticSplitter = None
+    EnhancedAIContentOptimizer = None
 
 # 创建蓝图
 smart_subtitle_bp = Blueprint('smart_subtitle', __name__, url_prefix='/api/smart-subtitle')
@@ -182,10 +182,8 @@ def test_split():
                 import asyncio
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                try:
-                    result = loop.run_until_complete(semantic_splitter.split_with_semantic_awareness(text))
-                finally:
-                    loop.close()
+                result = loop.run_until_complete(semantic_splitter.split_with_semantic_awareness(text))
+                loop.close()
             else:
                 # 使用fallback方法
                 result = [text]  # 简单返回原文
@@ -348,10 +346,8 @@ def enhanced_split():
                 import asyncio
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                try:
-                    result = loop.run_until_complete(semantic_splitter.split_with_semantic_awareness(text))
-                finally:
-                    loop.close()
+                result = loop.run_until_complete(semantic_splitter.split_with_semantic_awareness(text))
+                loop.close()
             else:
                 # 简单分割
                 result = [text[i:i+max_chars_per_line] for i in range(0, len(text), max_chars_per_line)]
@@ -416,12 +412,10 @@ def ai_optimize():
                 import asyncio
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                try:
-                    optimized_result = loop.run_until_complete(
-                        ai_optimizer.optimize_scripts_content_enhanced(scripts_data)
-                    )
-                finally:
-                    loop.close()
+                optimized_result = loop.run_until_complete(
+                    ai_optimizer.optimize_scripts_content_enhanced(scripts_data)
+                )
+                loop.close()
             else:
                 # fallback
                 optimized_result = content

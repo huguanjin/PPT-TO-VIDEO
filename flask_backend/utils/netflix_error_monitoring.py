@@ -606,7 +606,7 @@ class NetflixHealthChecker:
         }
 
 # 性能装饰器
-def monitor_performance(component: str, operation: str = None):
+def monitor_performance(component: str, operation: Optional[str] = None):
     """性能监控装饰器"""
     def decorator(func):
         def wrapper(*args, **kwargs):
@@ -639,7 +639,7 @@ def monitor_performance(component: str, operation: str = None):
     return decorator
 
 # 错误处理装饰器
-def handle_errors(component: str, operation: str = None, 
+def handle_errors(component: str, operation: Optional[str] = None, 
                  severity: ErrorSeverity = ErrorSeverity.MEDIUM):
     """错误处理装饰器"""
     def decorator(func):

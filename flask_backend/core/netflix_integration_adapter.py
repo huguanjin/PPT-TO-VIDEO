@@ -6,24 +6,39 @@ Netflix语义分割器集成适配器 - Phase 2系统集成
 import asyncio
 import logging
 import time
-from typing import Dict, List, Any, Optional, Callable, Union
+from typing import Dict, List, Any, Optional, Callable, Union, TYPE_CHECKING
 from pathlib import Path
 from dataclasses import dataclass
 import json
 
+# 类型检查时的导入
+if TYPE_CHECKING:
+    from .netflix_semantic_splitter import NetflixStyleSemanticSplitter as NetflixSplitterType
+else:
+    NetflixSplitterType = Any
+
 # Phase 2核心组件
+NETFLIX_SPLITTER_AVAILABLE = False
+
+# 创建模拟类
+class MockNetflixStyleSemanticSplitter:
+    def __init__(self, config_loader=None, ai_manager=None, quality_metrics=None, **kwargs):
+        self.config_loader = config_loader
+        self.ai_manager = ai_manager
+        self.quality_metrics = quality_metrics
+        
+    async def netflix_style_split(self, text, target_lines=2):
+        return {"segments": [text], "quality_score": 0.5}
+        
+    async def semantic_split(self, text, target_compliance='netflix'):
+        return {"segments": [text], "quality_score": 0.5}
+
 try:
     from .netflix_semantic_splitter import NetflixStyleSemanticSplitter
     NETFLIX_SPLITTER_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: Netflix语义分割器导入失败: {e}")
-    NETFLIX_SPLITTER_AVAILABLE = False
-    # 创建模拟类
-    class NetflixStyleSemanticSplitter:
-        def __init__(self, config_path=None):
-            pass
-        async def semantic_split(self, text, target_compliance='netflix'):
-            return {"segments": [text], "quality_score": 0.5}
+    NetflixStyleSemanticSplitter = MockNetflixStyleSemanticSplitter
 from .netflix_sequence_validator import NetflixSequenceValidator, ValidationResult
 from .netflix_prompt_templates import NetflixPromptTemplateManager, PromptContext
 from ..utils.netflix_config_loader import NetflixConfigLoader
@@ -31,9 +46,11 @@ from ..utils.netflix_quality_metrics import NetflixQualityMetrics
 
 # 现有系统组件
 try:
-    from utils.ai_model_manager import CustomAIModelManager
+    # 注意：ai_model_manager 模块目前不可用
+    # from ..utils.ai_model_manager import CustomAIModelManager
     from flask_backend.core.multiline_api_enhancement import MultilineFixEnhancementMiddleware
     from flask_backend.core.subtitle_multiline_fixer import SubtitleMultilineFixer
+    CustomAIModelManager = None  # 暂时设为None
 except ImportError:
     # 处理导入失败的情况
     CustomAIModelManager = None

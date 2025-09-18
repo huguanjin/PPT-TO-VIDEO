@@ -19,9 +19,10 @@ os.environ['NPY_DISABLE_NUMPY_1_WARNINGS'] = '1'
 
 # 尝试在导入numpy之前设置
 try:
+    import warnings
     import numpy as np
     # 抑制numpy的二进制不兼容性警告
-    np.warnings.filterwarnings('ignore')
+    warnings.filterwarnings('ignore')
 except ImportError:
     pass
 

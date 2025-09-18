@@ -24,7 +24,9 @@ from ..utils.netflix_quality_metrics import NetflixQualityMetrics
 
 # 现有AI管理器（假设存在）
 try:
-    from ..utils.ai_model_manager import CustomAIModelManager, AIAnalysisRequest
+    # 注意：ai_model_manager 模块目前不可用
+    # from ..utils.ai_model_manager import CustomAIModelManager, AIAnalysisRequest
+    raise ImportError("ai_model_manager module not available")
 except ImportError:
     # 如果不存在，创建模拟版本
     class CustomAIModelManager:
@@ -101,7 +103,7 @@ class NetflixStyleSemanticSplitter:
         try:
             # 缓存检查
             cache_key = f"{hash(text)}_{target_lines}"
-            if self.enable_caching and cache_key in self.cache:
+            if self.enable_caching and self.cache is not None and cache_key in self.cache:
                 self.logger.debug(f"从缓存返回结果: {text[:20]}...")
                 return self.cache[cache_key]
             
@@ -147,7 +149,8 @@ class NetflixStyleSemanticSplitter:
                 )
             else:
                 # AI失败，回退到NLP分割
-                result = self._create_nlp_fallback_result(text, preprocessed_segments, start_time, ai_result.get('error'))
+                ai_error = ai_result.get('error') or 'Unknown AI error'
+                result = self._create_nlp_fallback_result(text, preprocessed_segments, start_time, ai_error)
             
             # 缓存结果
             self._cache_result(cache_key, result)
