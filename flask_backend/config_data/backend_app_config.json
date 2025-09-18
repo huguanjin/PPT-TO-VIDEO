@@ -1,0 +1,53 @@
+{
+  "subtitle": {
+    "auto_punctuation_removal": true,
+    "background_color": "rgba(0,0,0,0.8)",
+    "enable_gap_filling": true,
+    "enable_precise_alignment": true,
+    "enabled": true,
+    "font_color": "#FFFFFF",
+    "font_family": "Microsoft YaHei",
+    "font_size": 40,
+    "max_chars_per_line": 20,
+    "position": "bottom",
+    "use_enhanced_mode": true
+  },
+  "tts": {
+    "preferred_engine": "edge_tts",
+    "edge_voice": "zh-CN-XiaoxiaoNeural",
+    "edge_rate": "+0%",
+    "edge_pitch": "+0Hz",
+    "fish_api_key": "",
+    "fish_character": "雷军",
+    "fish_character_id": "",
+    "fish_character_name": "",
+    "openai_api_key": "",
+    "openai_voice": "alloy",
+    "openai_model": "tts-1",
+    "azure_api_key": "",
+    "azure_region": "",
+    "azure_voice": "zh-CN-XiaoxiaoNeural",
+    "sample_rate": 22050,
+    "max_retries": 3,
+    "timeout": 30
+  },
+  "video": {
+    "background_color": "#000000",
+    "fps": 30,
+    "include_subtitles": true,
+    "resolution": "1920x1080",
+    "video_bitrate": "5000k"
+  },
+  "ai": {
+    "default_model": "gpt-3.5-turbo",
+    "temperature": 0.7,
+    "max_tokens": 2000,
+    "timeout": 30
+  },
+  "api": {
+    "base_url": "http://localhost:5000",
+    "timeout": 30,
+    "retry_attempts": 3
+  },
+  "_updated_at": "2025-09-18T10:51:50.088748"
+}

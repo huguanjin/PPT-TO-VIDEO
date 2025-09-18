@@ -1,0 +1,155 @@
+{
+  "audio_intelligent_sync_config": {
+    "enabled": true,
+    "precision_level": "intelligent",
+    "description": "音频智能同步增强配置 - 基于音频内容的智能同步优化"
+  },
+  "audio_analysis_settings": {
+    "sample_rate": 22050,
+    "hop_length": 512,
+    "n_mels": 128,
+    "enable_beat_tracking": true,
+    "enable_pitch_analysis": true,
+    "enable_energy_analysis": true,
+    "enable_emotion_detection": true,
+    "min_speech_duration": 0.2,
+    "speech_threshold": 0.1,
+    "pause_threshold": 0.05,
+    "emphasis_threshold": 0.7
+  },
+  "sync_optimization_rules": {
+    "enable_beat_alignment": true,
+    "enable_emotion_sync": true,
+    "enable_speech_rate_adapt": true,
+    "enable_pause_detection": true,
+    "min_sync_confidence": 0.7,
+    "beat_alignment_tolerance_ms": 50,
+    "emotion_weight": 0.3,
+    "speech_rate_weight": 0.4,
+    "pause_weight": 0.3,
+    "max_offset_ms": 200,
+    "preferred_lead_time_ms": 100,
+    "min_display_duration_ms": 800,
+    "max_display_duration_ms": 8000
+  },
+  "precision_levels": {
+    "basic": {
+      "target_accuracy": "±50ms",
+      "features": [
+        "basic_audio_sync"
+      ],
+      "performance": "high_speed"
+    },
+    "enhanced": {
+      "target_accuracy": "±25ms",
+      "features": [
+        "beat_alignment",
+        "basic_emotion_sync"
+      ],
+      "performance": "balanced"
+    },
+    "intelligent": {
+      "target_accuracy": "±10ms",
+      "features": [
+        "beat_alignment",
+        "emotion_sync",
+        "speech_rate_adapt",
+        "pause_detection"
+      ],
+      "performance": "high_quality"
+    },
+    "perfect": {
+      "target_accuracy": "±5ms",
+      "features": [
+        "all_features",
+        "advanced_ai_analysis",
+        "machine_learning"
+      ],
+      "performance": "maximum_quality"
+    }
+  },
+  "audio_processing_optimization": {
+    "use_gpu_acceleration": false,
+    "parallel_processing": true,
+    "chunk_size": 1024,
+    "overlap_size": 256,
+    "cache_audio_analysis": true,
+    "max_cache_size_mb": 100,
+    "enable_real_time_analysis": false
+  },
+  "speech_emotion_mapping": {
+    "neutral": {
+      "sync_adjustment": 0,
+      "duration_multiplier": 1.0,
+      "confidence_bonus": 0.0
+    },
+    "excited": {
+      "sync_adjustment": -50,
+      "duration_multiplier": 0.95,
+      "confidence_bonus": 0.1
+    },
+    "calm": {
+      "sync_adjustment": 0,
+      "duration_multiplier": 1.05,
+      "confidence_bonus": 0.05
+    },
+    "emphasized": {
+      "sync_adjustment": -30,
+      "duration_multiplier": 1.1,
+      "confidence_bonus": 0.15
+    },
+    "questioning": {
+      "sync_adjustment": -20,
+      "duration_multiplier": 1.0,
+      "confidence_bonus": 0.08
+    },
+    "narrative": {
+      "sync_adjustment": 0,
+      "duration_multiplier": 1.02,
+      "confidence_bonus": 0.05
+    }
+  },
+  "beat_detection_config": {
+    "algorithm": "onset_detection",
+    "onset_method": "default",
+    "hop_length": 512,
+    "backtrack": true,
+    "normalize": true,
+    "units": "time",
+    "strong_beat_threshold": 0.7,
+    "weak_beat_threshold": 0.4,
+    "speech_beat_detection": true,
+    "music_beat_detection": false
+  },
+  "quality_assurance": {
+    "min_confidence_threshold": 0.6,
+    "max_consecutive_failures": 3,
+    "fallback_to_original": true,
+    "enable_quality_scoring": true,
+    "quality_metrics": [
+      "sync_accuracy",
+      "beat_alignment_rate",
+      "emotion_enhancement_rate",
+      "speech_match_rate"
+    ]
+  },
+  "performance_monitoring": {
+    "enable_detailed_logging": true,
+    "log_sync_decisions": true,
+    "track_processing_times": true,
+    "measure_accuracy_metrics": true,
+    "export_performance_reports": true,
+    "max_log_file_size_mb": 10
+  },
+  "intelligent_alignment_system": {
+    "enabled": true,
+    "use_phase3_features": true,
+    "enable_dtw_algorithm": true,
+    "enable_audio_feature_extraction": true
+  },
+  "audio_processing": {
+    "enabled": true,
+    "use_librosa": true,
+    "enable_advanced_analysis": true
+  }
+}

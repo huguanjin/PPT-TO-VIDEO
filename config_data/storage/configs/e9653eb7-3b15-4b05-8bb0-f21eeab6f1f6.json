@@ -1,0 +1,14 @@
+{
+  "id": "e9653eb7-3b15-4b05-8bb0-f21eeab6f1f6",
+  "name": "subtitle_preset_商业演示",
+  "preset_key": "subtitle_preset_商业演示",
+  "config_data": {
+    "font_size": 18,
+    "font_weight": "bold",
+    "business_mode": true
+  },
+  "description": "商业演示专用配置",
+  "tags": [],
+  "created_at": "2025-09-18T11:09:48.974502",
+  "version": "3.0.0"
+}

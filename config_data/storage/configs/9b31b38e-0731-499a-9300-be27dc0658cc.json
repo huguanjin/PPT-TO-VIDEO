@@ -1,0 +1,55 @@
+{
+  "id": "9b31b38e-0731-499a-9300-be27dc0658cc",
+  "name": "FFmpeg质量预设",
+  "preset_key": "ffmpeg_quality_presets",
+  "config_data": {
+    "ultra_high": {
+      "name": "超高质量",
+      "preset": "veryslow",
+      "crf": "16",
+      "video_bitrate": "6000k",
+      "audio_bitrate": "256k",
+      "description": "最高质量输出，适合专业用途，编码时间较长"
+    },
+    "high": {
+      "name": "高质量",
+      "preset": "slow",
+      "crf": "18",
+      "video_bitrate": "4000k",
+      "audio_bitrate": "192k",
+      "description": "高质量输出，适合重要演示，编码时间中等"
+    },
+    "medium": {
+      "name": "标准质量",
+      "preset": "medium",
+      "crf": "23",
+      "video_bitrate": "2000k",
+      "audio_bitrate": "128k",
+      "description": "平衡质量和速度，日常使用推荐"
+    },
+    "fast": {
+      "name": "快速编码",
+      "preset": "fast",
+      "crf": "26",
+      "video_bitrate": "1000k",
+      "audio_bitrate": "96k",
+      "description": "快速编码，适合预览和测试"
+    },
+    "ultra_fast": {
+      "name": "极速编码",
+      "preset": "ultrafast",
+      "crf": "28",
+      "video_bitrate": "800k",
+      "audio_bitrate": "64k",
+      "description": "最快编码速度，质量较低，仅用于快速测试"
+    }
+  },
+  "description": "FFmpeg编码质量预设配置",
+  "tags": [
+    "ffmpeg",
+    "quality",
+    "presets"
+  ],
+  "created_at": "2025-09-18T10:44:27.667892",
+  "version": "3.0.0"
+}

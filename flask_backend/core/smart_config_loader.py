@@ -16,6 +16,15 @@ try:
 except ImportError:
     from config_presets import ConfigPresets
 
+# 导入统一配置管理器
+try:
+    from .unified_config_manager import UnifiedConfigManager
+except ImportError:
+    try:
+        from unified_config_manager import UnifiedConfigManager
+    except ImportError:
+        UnifiedConfigManager = None
+
 # 导入VideoLingo算法
 try:
     from .algorithms.dp_sentence_splitter import DynamicProgrammingSplitter
@@ -61,7 +70,7 @@ class SmartSubtitleConfigLoader:
         # 初始化默认配置路径
         self.config_paths = {
             'user_config': os.path.join(self.project_dir, 'config_data', 'subtitle_config.json'),
-            'app_config': os.path.join(self.project_dir, 'config_data', 'app_config.json'),
+            'app_config': os.path.join(self.project_dir, 'config_data', 'backend_app_config.json'),
             'presets_config': os.path.join(self.project_dir, 'config_data', 'config_presets.json')
         }
     
@@ -392,8 +401,39 @@ def create_smart_config(preset_name: str = "standard",
             use_spacy=False
         )
     """
-    loader = SmartSubtitleConfigLoader(project_dir)
-    return loader.load_smart_config(preset_name, overrides)
+    if UnifiedConfigManager is None:
+        # 如果UnifiedConfigManager不可用，返回基础配置
+        return {
+            "preset_name": preset_name,
+            "project_dir": project_dir,
+            **overrides
+        }
+    
+    try:
+        from pathlib import Path
+        config_root = Path(project_dir) if project_dir else None
+        loader = UnifiedConfigManager(config_root=config_root)
+        
+        # 使用UnifiedConfigManager的实际API
+        from .unified_config_manager import ConfigContext, ConfigModuleType, ConfigComplexityLevel
+        context = ConfigContext(
+            module_type=ConfigModuleType.SUBTITLE,
+            complexity_level=ConfigComplexityLevel.STANDARD,
+            preset_name=preset_name
+        )
+        config = loader.get_config(context)
+        
+        # 应用覆盖参数
+        config.update(overrides)
+        return config
+        
+    except Exception as e:
+        logger.warning(f"UnifiedConfigManager创建失败: {e}，使用默认配置")
+        return {
+            "preset_name": preset_name,
+            "project_dir": project_dir,
+            **overrides
+        }
 
 
 def create_videolingo_config(project_dir: Optional[str] = None, **overrides) -> Dict[str, Any]:
@@ -410,9 +450,54 @@ def auto_config(project_type: Optional[str] = None,
     """
     自动选择最佳配置（便捷函数）
     """
-    loader = SmartSubtitleConfigLoader(project_dir)
-    preset_name = loader.auto_select_preset(project_type, performance, user_level)
-    return loader.load_smart_config(preset_name)
+    if UnifiedConfigManager is None:
+        # 如果UnifiedConfigManager不可用，返回基础配置
+        return {
+            "project_type": project_type,
+            "performance": performance,
+            "user_level": user_level,
+            "project_dir": project_dir
+        }
+    
+    try:
+        from pathlib import Path
+        config_root = Path(project_dir) if project_dir else None
+        loader = UnifiedConfigManager(config_root=config_root)
+        
+        # 根据用户级别选择配置复杂度
+        from .unified_config_manager import ConfigContext, ConfigModuleType, ConfigComplexityLevel
+        
+        if user_level == 'beginner':
+            complexity = ConfigComplexityLevel.SIMPLE
+        elif user_level == 'advanced':
+            complexity = ConfigComplexityLevel.PROFESSIONAL
+        else:
+            complexity = ConfigComplexityLevel.STANDARD
+        
+        # 根据项目类型选择模块类型
+        if project_type == 'subtitle':
+            module_type = ConfigModuleType.SUBTITLE
+        elif project_type == 'video':
+            module_type = ConfigModuleType.VIDEO
+        else:
+            module_type = ConfigModuleType.GENERAL
+        
+        context = ConfigContext(
+            module_type=module_type,
+            complexity_level=complexity,
+            preset_name=f"{performance}_{user_level}"
+        )
+        
+        return loader.get_config(context)
+        
+    except Exception as e:
+        logger.warning(f"自动配置创建失败: {e}，使用默认配置")
+        return {
+            "project_type": project_type,
+            "performance": performance,
+            "user_level": user_level,
+            "project_dir": project_dir
+        }
 
 
 if __name__ == "__main__":

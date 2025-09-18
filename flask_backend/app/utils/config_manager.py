@@ -19,7 +19,7 @@ class ConfigManager:
             self.config_dir = Path(config_dir)
         
         self.config_dir.mkdir(exist_ok=True)
-        self.config_file = self.config_dir / "app_config.json"
+        self.config_file = self.config_dir / "backend_app_config.json"
         
         # 确保配置文件存在
         if not self.config_file.exists():

@@ -68,5 +68,144 @@
     "resolution": "1920x1080",
     "fps": 30,
     "background_color": "#000000"
+  },
+  "project_name": "ppt_video_project",
+  "output_format": "MP4 (推荐)",
+  "tts_voice": "zh-CN-XiaoxiaoNeural",
+  "speech_rate": "medium",
+  "speech_pitch": "medium",
+  "video_resolution": "1920x1080 (Full HD)",
+  "video_fps": 24,
+  "video_bitrate": 2000,
+  "video_codec": "libx264",
+  "include_subtitles": true,
+  "subtitle_fontsize": 18,
+  "subtitle_color": "white",
+  "subtitle_position": "bottom",
+  "last_updated": null,
+  "auto_save": true,
+  "ai": {
+    "openai": {
+      "api_key": "",
+      "base_url": "https://api.openai.com",
+      "model": "gpt-3.5-turbo",
+      "timeout": 300,
+      "max_retries": 3,
+      "support_json": true
+    },
+    "anthropic": {
+      "api_key": "",
+      "base_url": "https://api.anthropic.com",
+      "model": "claude-3-sonnet-20240229",
+      "timeout": 300,
+      "max_retries": 3
+    },
+    "custom": {
+      "api_key": "",
+      "base_url": "",
+      "model": "",
+      "timeout": 300,
+      "max_retries": 3,
+      "support_json": true
+    },
+    "default_service": "openai",
+    "source_language": "中文",
+    "target_language": "中文",
+    "max_workers": 4,
+    "prompts": {
+      "subtitle_split": {
+        "max_weight": 75,
+        "num_parts": 2,
+        "style": "netflix"
+      },
+      "ppt_summary": {
+        "max_terms": 15,
+        "include_definitions": true,
+        "extract_key_topics": true
+      },
+      "tts_optimization": {
+        "default_style": "natural",
+        "target_wpm": 150,
+        "include_pauses": true
+      },
+      "ppt_narration": {
+        "default_style": "educational",
+        "include_transitions": true,
+        "speaking_notes": true
+      },
+      "text_cleanup": {
+        "normalize_numbers": true,
+        "remove_special_chars": true,
+        "preserve_meaning": true
+      }
+    },
+    "services_config": {
+      "openai": {
+        "name": "OpenAI",
+        "description": "OpenAI GPT模型服务",
+        "default_base_url": "https://api.openai.com",
+        "supports_json": true,
+        "models": [
+          {
+            "value": "gpt-3.5-turbo",
+            "label": "GPT-3.5 Turbo",
+            "description": "快速高效的对话模型",
+            "is_default": true
+          },
+          {
+            "value": "gpt-4o-mini",
+            "label": "GPT-4o Mini",
+            "description": "轻量版GPT-4模型"
+          },
+          {
+            "value": "gpt-4o",
+            "label": "GPT-4o",
+            "description": "最新的多模态模型"
+          },
+          {
+            "value": "gpt-4",
+            "label": "GPT-4",
+            "description": "高质量语言理解模型"
+          },
+          {
+            "value": "gpt-4-turbo",
+            "label": "GPT-4 Turbo",
+            "description": "更快的GPT-4版本"
+          }
+        ]
+      },
+      "anthropic": {
+        "name": "Anthropic",
+        "description": "Anthropic Claude模型服务",
+        "default_base_url": "https://api.anthropic.com",
+        "supports_json": false,
+        "models": [
+          {
+            "value": "claude-3-haiku-20240307",
+            "label": "Claude 3 Haiku",
+            "description": "快速响应的轻量模型"
+          },
+          {
+            "value": "claude-3-sonnet-20240229",
+            "label": "Claude 3 Sonnet",
+            "description": "平衡性能的推荐模型",
+            "is_default": true
+          },
+          {
+            "value": "claude-3-opus-20240229",
+            "label": "Claude 3 Opus",
+            "description": "最高质量的复杂任务模型"
+          }
+        ]
+      },
+      "custom": {
+        "name": "自定义API",
+        "description": "兼容OpenAI格式的自定义API服务",
+        "default_base_url": "",
+        "supports_json": true,
+        "models": [],
+        "note": "请确保API服务兼容OpenAI接口格式，模型名称需要手动输入"
+      }
+    }
   }
 }

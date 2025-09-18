@@ -1,0 +1,34 @@
+{
+    "video_frame_sync_config": {
+        "sync_precision_level": "high",
+        "enable_frame_alignment": true,
+        "enable_audio_cue_sync": true,
+        "enable_scene_change_sync": true,
+        "max_sync_offset_ms": 50,
+        "min_subtitle_duration_frames": 36,
+        "subtitle_fade_duration_frames": 2,
+        "enable_subframe_precision": false,
+        "aggressive_optimization": true,
+        "preserve_original_timing": false,
+        "sync_tolerance_ms": 16.67,
+        "subtitle_gap_frames": 2
+    },
+    "performance_optimization": {
+        "enable_parallel_processing": true,
+        "max_concurrent_segments": 50,
+        "enable_memory_optimization": true,
+        "cache_video_metadata": true
+    },
+    "quality_settings": {
+        "target_frame_alignment_rate": 90.0,
+        "minimum_sync_quality_score": 0.7,
+        "enable_quality_validation": true,
+        "auto_fallback_on_low_quality": false
+    },
+    "export_options": {
+        "default_format": "srt",
+        "include_sync_metadata": true,
+        "generate_sync_report": true,
+        "backup_original_subtitles": true
+    }
+}

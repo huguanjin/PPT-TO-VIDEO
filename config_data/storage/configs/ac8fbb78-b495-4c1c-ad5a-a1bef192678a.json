@@ -1,0 +1,14 @@
+{
+  "id": "ac8fbb78-b495-4c1c-ad5a-a1bef192678a",
+  "name": "subtitle_preset_test_preset",
+  "preset_key": "subtitle_preset_test_preset",
+  "config_data": {
+    "font_size": 22,
+    "font_family": "Microsoft YaHei",
+    "test_feature": true
+  },
+  "description": "测试预设",
+  "tags": [],
+  "created_at": "2025-09-18T11:09:04.909015",
+  "version": "3.0.0"
+}

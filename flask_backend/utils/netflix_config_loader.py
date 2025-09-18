@@ -328,4 +328,4 @@ class NetflixConfigLoader:
         return self._config.copy()
     
     def __repr__(self) -> str:
-        return f"NetflixConfigLoader(config_path='{self.config_path}')"
+        return f"UnifiedConfigManager(config_path='{self.config_path}')"

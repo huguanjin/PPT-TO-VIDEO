@@ -80,7 +80,7 @@ class SubtitleGenerator:
         # 根据配置和依赖可用性决定是否启用AI功能
         try:
             # 尝试加载应用配置
-            app_config_path = self.project_dir / "config_data" / "app_config.json"
+            app_config_path = self.project_dir / "config_data" / "backend_app_config.json"
             if app_config_path.exists():
                 import json
                 with open(app_config_path, 'r', encoding='utf-8') as f:

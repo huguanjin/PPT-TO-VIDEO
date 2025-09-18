@@ -6,6 +6,7 @@ VideoLingo技术融合集成器
 
 import os
 import logging
+from pathlib import Path
 from typing import Dict, Any, List, Optional, Union
 from dataclasses import dataclass
 import time
@@ -28,12 +29,13 @@ except ImportError:
         SpacyProcessor = None
 
 try:
-    from .smart_config_loader import SmartSubtitleConfigLoader, ConfigContext
+    from flask_backend.core.unified_config_manager import UnifiedConfigManager, ConfigContext, ConfigModuleType, ConfigComplexityLevel
 except ImportError:
     try:
-        from smart_config_loader import SmartSubtitleConfigLoader, ConfigContext
+        from flask_backend.core.unified_config_manager import UnifiedConfigManager, ConfigContext, ConfigModuleType, ConfigComplexityLevel
     except ImportError:
         SmartSubtitleConfigLoader = None
+        UnifiedConfigManager = None
         ConfigContext = None
 
 try:
@@ -89,12 +91,12 @@ class VideoLingoIntegrator:
     def _init_components(self):
         """初始化各个组件"""
         # 1. 智能配置加载器
-        if SmartSubtitleConfigLoader:
-            self.config_loader = SmartSubtitleConfigLoader(self.project_dir)
-            self.logger.info("智能配置加载器初始化成功")
+        if UnifiedConfigManager:
+            self.config_loader = UnifiedConfigManager(Path(self.project_dir))
+            self.logger.info("统一配置管理器初始化成功")
         else:
             self.config_loader = None
-            self.logger.warning("智能配置加载器不可用")
+            self.logger.warning("统一配置管理器不可用")
         
         # 2. 动态规划分割器
         if DynamicProgrammingSplitter:
@@ -189,22 +191,15 @@ class VideoLingoIntegrator:
                           custom_config: Optional[Dict[str, Any]] = None,
                           context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """加载智能配置"""
-        if self.config_loader:
+        if self.config_loader and ConfigContext:
             # 创建配置上下文
-            config_context = None
-            if context and ConfigContext:
-                config_context = ConfigContext(
-                    preset_name=preset_name,
-                    user_overrides=custom_config or {},
-                    project_type=context.get('project_type', 'general'),
-                    performance_level=context.get('performance_level', 'balanced'),
-                    language=context.get('language', 'auto'),
-                    target_audience=context.get('target_audience', 'general')
-                )
-            
-            config = self.config_loader.load_smart_config(
-                preset_name, custom_config, config_context
+            config_context = ConfigContext(
+                module_type=ConfigModuleType.GENERAL,
+                complexity_level=ConfigComplexityLevel.STANDARD,
+                preset_name=preset_name
             )
+            
+            config = self.config_loader.get_config(config_context)
         else:
             # 降级配置
             config = self._get_fallback_config(preset_name)
@@ -561,7 +556,7 @@ class VideoLingoIntegrator:
     def get_available_presets(self) -> List[Dict[str, Any]]:
         """获取可用配置预设"""
         if self.config_loader:
-            return self.config_loader.get_available_presets()
+            return self.config_loader.get_available_presets(ConfigModuleType.GENERAL)
         else:
             return [
                 {"key": "simple", "name": "简化模式", "description": "快速处理"},
