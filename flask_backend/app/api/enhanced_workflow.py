@@ -130,6 +130,38 @@ class WorkflowConfig:
             'enable_ai_optimization': subtitle_config.get('enable_ai_optimization', False)
         }
         
+        # Netflix V2配置
+        netflix_v2_config = data.get('netflix_v2', {})
+        self.netflix_v2 = {
+            'enabled': netflix_v2_config.get('enabled', False),
+            'style_preset': netflix_v2_config.get('style_preset', 'videolingo_netflix'),
+            'max_chars_per_line': netflix_v2_config.get('max_chars_per_line', 36),
+            'validation_level': netflix_v2_config.get('validation_level', 'netflix'),
+            'chinese_weight': netflix_v2_config.get('chinese_weight', 1.75),
+            'english_weight': netflix_v2_config.get('english_weight', 1.0),
+            'enable_semantic_splitting': netflix_v2_config.get('enable_semantic_splitting', True),
+            'max_optimization_rounds': netflix_v2_config.get('max_optimization_rounds', 5),
+            'quality_threshold': netflix_v2_config.get('quality_threshold', 0.7),
+            'font_color': netflix_v2_config.get('font_color', '&H00FFFF'),
+            'font_size': netflix_v2_config.get('font_size', 17),
+            'outline_color': netflix_v2_config.get('outline_color', '&H000000'),
+            'outline_width': netflix_v2_config.get('outline_width', 1),
+            'enable_quality_validation': netflix_v2_config.get('enable_quality_validation', True),
+            'strict_netflix_compliance': netflix_v2_config.get('strict_netflix_compliance', True)
+        }
+        
+        # 智能字幕配置 (更新以支持Netflix V2)
+        smart_subtitle_config = data.get('smart_subtitle', {})
+        self.smart_subtitle = {
+            'enabled': smart_subtitle_config.get('enabled', True),
+            'netflix_v2_enabled': smart_subtitle_config.get('netflix_v2_enabled', False),
+            'use_enhanced_generator': smart_subtitle_config.get('use_enhanced_generator', False),
+            'splitter_type': smart_subtitle_config.get('splitter_type', 'ai_semantic'),
+            'max_chars_per_line': smart_subtitle_config.get('max_chars_per_line', 36),
+            'max_lines': smart_subtitle_config.get('max_lines', 2),
+            'netflix_style': smart_subtitle_config.get('netflix_style', True)
+        }
+        
         # Phase 3智能对齐配置
         phase3_config = data.get('phase3_intelligent_alignment', {})
         self.phase3_alignment = {
@@ -534,15 +566,37 @@ async def run_complete_workflow(project_name: str, workflow_id: str, config: Wor
             # 步骤4：生成字幕
             update_step_progress(4, "running", 0.0, "正在生成字幕...")
             
-            # 获取Phase 3配置
+            # 获取配置
             app_config = load_app_config()
             phase3_config = app_config.get('phase3_intelligent_alignment', {})
-            enable_phase3_alignment = phase3_config.get('enabled', False)
+            netflix_v2_config = app_config.get('netflix_v2', {})
+            smart_subtitle_config = app_config.get('smart_subtitle', {})
             
-            subtitle_generator = SubtitleGenerator(
-                project_dir,
-                enable_phase3_alignment=enable_phase3_alignment
-            )
+            enable_phase3_alignment = phase3_config.get('enabled', False)
+            enable_netflix_v2 = netflix_v2_config.get('enabled', False)
+            use_enhanced_generator = smart_subtitle_config.get('use_enhanced_generator', False) or smart_subtitle_config.get('netflix_v2_enabled', False)
+            
+            # 根据配置选择字幕生成器
+            if enable_netflix_v2 and use_enhanced_generator:
+                logger.info("🎬 使用Netflix V2增强字幕生成器")
+                try:
+                    from flask_backend.core.step04_subtitle_generator_enhanced import EnhancedSubtitleGenerator
+                    subtitle_generator = EnhancedSubtitleGenerator(project_dir, netflix_v2_config=netflix_v2_config)
+                except ImportError:
+                    logger.warning("Netflix V2增强字幕生成器不可用，回退到增强字幕生成器")
+                    from flask_backend.core.step04_subtitle_generator_enhanced import EnhancedSubtitleGenerator
+                    subtitle_generator = EnhancedSubtitleGenerator(project_dir, netflix_v2_config=netflix_v2_config)
+            elif use_enhanced_generator:
+                logger.info("🎨 使用增强字幕生成器")
+                from flask_backend.core.step04_subtitle_generator_enhanced import EnhancedSubtitleGenerator
+                subtitle_generator = EnhancedSubtitleGenerator(project_dir)
+            else:
+                logger.info("📝 使用标准字幕生成器")
+                subtitle_generator = SubtitleGenerator(
+                    project_dir,
+                    use_enhanced=False,
+                    enable_phase3_alignment=enable_phase3_alignment
+                )
             
             def subtitle_progress_callback(progress: int):
                 update_step_progress(4, "running", progress / 100.0, f"正在生成字幕 {progress}%")

@@ -590,9 +590,19 @@ def execute_workflow_task(project_name: str, task_id: str, project_dir: Path):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
         
+        # 加载应用配置
+        import json
+        config_path = os.path.join(project_dir, 'config_data', 'app_config.json')
+        app_config = {}
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                app_config = json.load(f)
+        except Exception as e:
+            logger.warning(f"无法加载应用配置: {e}")
+        
         # 执行完整工作流
         result_execution = loop.run_until_complete(
-            executor.start_workflow(project_name, config={}, progress_callback=progress_callback)
+            executor.start_workflow(project_name, config=app_config, progress_callback=progress_callback)
         )
         
         if result_execution.workflow_status.value != 'completed':

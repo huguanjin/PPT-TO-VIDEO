@@ -44,6 +44,20 @@
     "max_tokens": 2000,
     "timeout": 30
   },
+  "netflix_v2": {
+    "enabled": true,
+    "max_chars_per_line": 48,
+    "font_color": "#FFFF00",
+    "char_weight_calculation": true,
+    "intelligent_wrapping": true,
+    "optimization_level": "high"
+  },
+  "advanced_features": {
+    "enhanced_subtitles": true,
+    "ai_content_understanding": true,
+    "intelligent_sync": true,
+    "adaptive_timing": true
+  },
   "api": {
     "base_url": "http://localhost:5000",
     "timeout": 30,

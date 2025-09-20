@@ -432,19 +432,124 @@ class EnhancedWorkflowExecutor:
         
         # 从配置中获取高级功能设置
         config = execution.config or {}
+        
+        # 🎯 确保从配置文件加载Netflix V2设置
+        try:
+            from config.settings import load_app_config
+            app_config = load_app_config()
+            # 合并配置，优先使用app_config中的Netflix V2设置
+            if 'netflix_v2' not in config and 'netflix_v2' in app_config:
+                config['netflix_v2'] = app_config['netflix_v2']
+                self.logger.info("✅ 从配置文件加载Netflix V2设置")
+            if 'advanced_features' not in config and 'advanced_features' in app_config:
+                config['advanced_features'] = app_config['advanced_features']
+        except Exception as e:
+            self.logger.warning(f"配置文件加载失败: {e}")
+        
         advanced_features = config.get("advanced_features", {})
+        
+        # 获取Netflix V2和智能字幕配置
+        netflix_v2_config = config.get("netflix_v2", {})
+        smart_subtitle_config = config.get("smart_subtitle", {})
+        
+        enable_netflix_v2 = netflix_v2_config.get("enabled", False)
+        netflix_v2_enabled_in_smart = smart_subtitle_config.get("netflix_v2_enabled", False)
+        use_enhanced_generator = smart_subtitle_config.get("use_enhanced_generator", False)
+        
+        # 记录Netflix V2配置状态
+        self.logger.info(f"🎬 Netflix V2配置检查: enabled={enable_netflix_v2}, config={netflix_v2_config}")
+        self.logger.info(f"🎬 Smart Subtitle配置: {smart_subtitle_config}")
+        self.logger.info(f"🎬 Enhanced Generator标志: {use_enhanced_generator}")
+        if enable_netflix_v2:
+            self.logger.info(f"📺 Netflix V2已启用 - 字符限制: {netflix_v2_config.get('max_chars_per_line', 36)}, 颜色: {netflix_v2_config.get('font_color', '#FFFF00')}")
         
         # 创建字幕生成器，支持增强模式和帧同步
         use_enhanced = advanced_features.get("enhanced_subtitles", False)
         enable_frame_sync = advanced_features.get("frame_sync_optimization", True)
         
-        subtitle_generator = SubtitleGenerator(
-            self.project_dir, 
-            use_enhanced=use_enhanced,
-            enable_frame_sync=enable_frame_sync
-        )
+        self.logger.info(f"🎬 Advanced Features - enhanced_subtitles: {use_enhanced}")
         
-        self.logger.info(f"字幕生成配置: 增强模式={use_enhanced}, 帧同步={enable_frame_sync}")
+        # 修复的根据配置选择生成器逻辑
+        # 只要启用Netflix V2并且启用增强字幕，就使用Netflix V2增强生成器
+        if enable_netflix_v2 and use_enhanced:
+            self.logger.info("🎬 使用Netflix V2增强字幕生成器（修复版）")
+            try:
+                from flask_backend.core.step04_subtitle_generator_enhanced import EnhancedSubtitleGenerator
+                subtitle_generator = EnhancedSubtitleGenerator(self.project_dir, netflix_v2_config=netflix_v2_config)
+            except ImportError as e:
+                self.logger.warning(f"Netflix V2增强字幕生成器导入失败: {e}")
+                self.logger.info("🎬 回退到Netflix V2传统字幕生成器")
+                from flask_backend.core.step04_subtitle_generator import SubtitleGenerator
+                # 创建Netflix V2配置的传统生成器
+                subtitle_generator = SubtitleGenerator(
+                    self.project_dir, 
+                    use_enhanced=use_enhanced,
+                    enable_frame_sync=enable_frame_sync
+                )
+                # 设置Netflix V2字符限制
+                if hasattr(subtitle_generator, 'subtitle_config'):
+                    subtitle_generator.subtitle_config["max_chars_per_line"] = netflix_v2_config.get("max_chars_per_line", 48)
+                    subtitle_generator.subtitle_config["netflix_v2"] = netflix_v2_config  # 关键：传递完整的Netflix V2配置
+                    subtitle_generator.subtitle_config["netflix_v2_enabled"] = True
+                    self.logger.info(f"📺 Netflix V2增强字幕生成器配置: 字符限制={netflix_v2_config.get('max_chars_per_line', 48)}")
+            except Exception as e:
+                self.logger.warning(f"Netflix V2增强字幕生成器初始化失败: {e}")
+                self.logger.info("🎬 回退到Netflix V2传统字幕生成器")
+                from flask_backend.core.step04_subtitle_generator import SubtitleGenerator
+                subtitle_generator = SubtitleGenerator(
+                    self.project_dir, 
+                    use_enhanced=use_enhanced,
+                    enable_frame_sync=enable_frame_sync
+                )
+                # 设置Netflix V2字符限制
+                if hasattr(subtitle_generator, 'subtitle_config'):
+                    subtitle_generator.subtitle_config["max_chars_per_line"] = netflix_v2_config.get("max_chars_per_line", 48)
+                    subtitle_generator.subtitle_config["netflix_v2"] = netflix_v2_config  # 关键：传递完整的Netflix V2配置
+                    subtitle_generator.subtitle_config["netflix_v2_enabled"] = True
+                    self.logger.info(f"📺 Netflix V2回退生成器配置: 字符限制={netflix_v2_config.get('max_chars_per_line', 48)}")
+        elif enable_netflix_v2:
+            # 如果启用Netflix V2但不使用增强生成器，使用Netflix V2配置的传统生成器
+            self.logger.info("🎬 使用Netflix V2传统字幕生成器")
+            from flask_backend.core.step04_subtitle_generator import SubtitleGenerator
+            subtitle_generator = SubtitleGenerator(
+                self.project_dir, 
+                use_enhanced=use_enhanced,
+                enable_frame_sync=enable_frame_sync
+            )
+            # 设置Netflix V2配置
+            if hasattr(subtitle_generator, 'subtitle_config'):
+                subtitle_generator.subtitle_config["max_chars_per_line"] = netflix_v2_config.get("max_chars_per_line", 48)
+                subtitle_generator.subtitle_config["netflix_v2"] = netflix_v2_config  # 关键：传递完整的Netflix V2配置
+                subtitle_generator.subtitle_config["netflix_v2_enabled"] = True
+                self.logger.info(f"📺 Netflix V2传统生成器配置: 字符限制={netflix_v2_config.get('max_chars_per_line', 48)}")
+        elif use_enhanced:
+            self.logger.info("🎨 使用增强字幕生成器")
+            try:
+                from flask_backend.core.step04_subtitle_generator_enhanced import EnhancedSubtitleGenerator
+                # 如果有Netflix V2配置，传递给增强生成器
+                if netflix_v2_config and enable_netflix_v2:
+                    subtitle_generator = EnhancedSubtitleGenerator(self.project_dir, netflix_v2_config=netflix_v2_config)
+                    self.logger.info(f"🎬 增强生成器启用Netflix V2配置: {netflix_v2_config}")
+                else:
+                    subtitle_generator = EnhancedSubtitleGenerator(self.project_dir)
+            except ImportError:
+                self.logger.warning("增强字幕生成器不可用，回退到传统生成器")
+                from flask_backend.core.step04_subtitle_generator import SubtitleGenerator
+                subtitle_generator = SubtitleGenerator(
+                    self.project_dir, 
+                    use_enhanced=use_enhanced,
+                    enable_frame_sync=enable_frame_sync
+                )
+        else:
+            self.logger.info("📝 使用传统字幕生成器")
+            from flask_backend.core.step04_subtitle_generator import SubtitleGenerator
+            subtitle_generator = SubtitleGenerator(
+                self.project_dir, 
+                use_enhanced=use_enhanced,
+                enable_frame_sync=enable_frame_sync
+            )
+        
+        self.logger.info(f"字幕生成配置: 增强模式={use_enhanced}, 帧同步={enable_frame_sync}, Netflix V2={enable_netflix_v2}")
         
         # 执行字幕生成
         result = await subtitle_generator.generate_subtitles(

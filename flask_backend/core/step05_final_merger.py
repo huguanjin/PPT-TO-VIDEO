@@ -366,10 +366,30 @@ class FFmpegFinalMerger:
                             from app.utils.config_manager import config_manager
                             subtitle_config = config_manager.get_subtitle_config_for_ffmpeg()
                             self.logger.info(f"使用统一配置管理器获取字幕配置: {subtitle_config}")
+                            
+                            # 重要：检查Netflix V2配置并覆盖颜色设置
+                            try:
+                                from config.settings import load_app_config
+                                app_config = load_app_config()
+                                netflix_v2_config = app_config.get('netflix_v2', {})
+                                if netflix_v2_config.get('enabled', False):
+                                    # 覆盖字体颜色为Netflix V2黄色
+                                    subtitle_config['font_color'] = netflix_v2_config.get('font_color', '#FFFF00')
+                                    self.logger.info(f"✅ Final Merger: Netflix V2字幕模式已启用，字体颜色覆盖为: {subtitle_config['font_color']}")
+                            except Exception as netflix_check_error:
+                                self.logger.warning(f"Netflix V2配置检查失败: {netflix_check_error}")
+                                
                         except ImportError:
                             # 备选：使用传统配置系统
                             from config.settings import load_app_config
                             app_config = load_app_config()
+                            
+                            # 检查Netflix V2配置
+                            netflix_v2_enabled = False
+                            netflix_v2_config = app_config.get('netflix_v2', {})
+                            if netflix_v2_config.get('enabled', False):
+                                netflix_v2_enabled = True
+                                self.logger.info("✅ Final Merger: Netflix V2字幕模式已启用")
                             
                             # 检查是否为新的嵌套格式
                             if 'subtitle' in app_config and isinstance(app_config['subtitle'], dict):
@@ -377,32 +397,53 @@ class FFmpegFinalMerger:
                                 subtitle_config = {
                                     "font_family": subtitle_section.get("font_family", "Microsoft YaHei"),
                                     "font_size": subtitle_section.get("font_size", 16),  # 使用优化后的字体大小
-                                    "font_color": subtitle_section.get("font_color", "#FFFFFF"),
+                                    "font_color": subtitle_section.get("font_color", "#FFFF00" if netflix_v2_enabled else "#FFFFFF"),  # Netflix V2使用黄色
                                     "background_color": subtitle_section.get("background_color", "rgba(0,0,0,0.8)"),
                                     "position": subtitle_section.get("position", "bottom")
                                 }
                                 self.logger.info(f"使用新格式配置: {subtitle_config}")
                             else:
                                 # 老的扁平化格式
+                                default_color = "#FFFF00" if netflix_v2_enabled else "#FFFFFF"  # Netflix V2使用黄色
                                 subtitle_config = {
                                     "font_family": app_config.get("subtitle_font_family", "Microsoft YaHei"),
                                     "font_size": app_config.get("subtitle_font_size", 16),  # 使用优化后的字体大小
-                                    "font_color": app_config.get("subtitle_font_color", "#FFFFFF"),
+                                    "font_color": app_config.get("subtitle_font_color", default_color),
                                     "background_color": app_config.get("subtitle_background_color", "rgba(0,0,0,0.8)"),
                                     "position": app_config.get("subtitle_position", "bottom")
                                 }
                                 self.logger.info(f"使用传统格式配置: {subtitle_config}")
+                            
+                            # 如果启用Netflix V2，记录颜色配置
+                            if netflix_v2_enabled:
+                                self.logger.info(f"📺 Netflix V2字幕颜色配置: {subtitle_config['font_color']}")
                         
                 except Exception as e:
                     self.logger.warning(f"获取字幕配置失败，使用默认配置: {e}")
+                    # 检查是否有Netflix V2配置
+                    netflix_v2_enabled = False
+                    try:
+                        from config.settings import load_app_config
+                        default_app_config = load_app_config()
+                        netflix_v2_config = default_app_config.get('netflix_v2', {})
+                        if netflix_v2_config.get('enabled', False):
+                            netflix_v2_enabled = True
+                            self.logger.info("✅ Final Merger (默认配置): Netflix V2字幕模式已启用")
+                    except Exception:
+                        pass
+                    
                     # 使用默认配置
+                    default_color = "#FFFF00" if netflix_v2_enabled else "#FFFFFF"  # Netflix V2使用黄色
                     subtitle_config = {
                         "font_family": "Microsoft YaHei",
                         "font_size": 16,  # 使用优化后的字体大小
-                        "font_color": "#FFFFFF",
+                        "font_color": default_color,
                         "background_color": "rgba(0,0,0,0.8)",
                         "position": "bottom"
                     }
+                    
+                    if netflix_v2_enabled:
+                        self.logger.info(f"📺 Netflix V2默认字幕颜色: {default_color}")
                 
                 success = self._add_subtitles(av_merge_path, params["subtitle_file"], final_output_path, subtitle_config)
                 if not success:

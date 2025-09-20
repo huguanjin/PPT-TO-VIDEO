@@ -5,7 +5,7 @@
 """
 import os
 import re
-import pandas as pd
+# import pandas as pd  # 暂时注释掉pandas以避免NumPy兼容性问题
 import pysrt
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Callable, Tuple
@@ -19,12 +19,19 @@ from .subtitle_multiline_fixer import SubtitleMultilineFixer
 
 
 class EnhancedSubtitleGenerator:
-    """增强版字幕生成器 - 实现Netflix级字幕处理"""
+    """增强版字幕生成器 - 实现Netflix V2级字幕处理"""
     
-    def __init__(self, project_dir: Path):
+    def __init__(self, project_dir: Path, netflix_v2_config: Optional[dict] = None):
         self.project_dir = Path(project_dir)
         self.file_manager = FileManager(project_dir)
         self.logger = get_logger(__name__, self.project_dir / "logs")
+        
+        # Netflix V2配置
+        self.netflix_v2_config = netflix_v2_config if netflix_v2_config is not None else {}
+        self.netflix_v2_enabled = self.netflix_v2_config.get('enabled', False)
+        
+        if self.netflix_v2_enabled:
+            self.logger.info("🎬 Netflix V2模式已启用")
         
         # 初始化多行修复器
         self.multiline_fixer = SubtitleMultilineFixer()
@@ -489,12 +496,23 @@ class EnhancedSubtitleGenerator:
     
     def _split_text_to_segments(self, text: str) -> List[str]:
         """
-        智能文本分割 - 优化观看体验
+        智能文本分割 - 优化观看体验，支持Netflix V2智能分割
         """
         text = text.strip()
         if not text:
             return []
         
+        # 🎯 Netflix V2模式优先使用智能分割算法
+        if self.netflix_v2_enabled:
+            self.logger.info(f"🎬 Enhanced Generator: 使用Netflix V2智能分割算法 - 文本长度: {len(text)}")
+            segments = self._netflix_v2_smart_split(text)
+            self.logger.info(f"🎬 Enhanced Generator: Netflix V2分割完成 - {len(segments)} 个片段")
+            for i, seg in enumerate(segments):
+                width = self._calculate_display_width(seg)
+                self.logger.info(f"🎬 Enhanced Generator: 片段{i+1}: '{seg}' (显示宽度: {width:.1f})")
+            return segments
+        
+        # 传统分割模式
         segments = []
         current_segment = ""
         max_chars = self.subtitle_config["max_chars_per_line"]
@@ -733,4 +751,158 @@ class EnhancedSubtitleGenerator:
         """更新字幕配置"""
         self.subtitle_config.update(new_config)
         self.logger.info(f"字幕配置已更新: {new_config}")
+
+    async def generate_subtitles(
+        self, 
+        scripts_data: Dict[str, Any], 
+        audio_data: Dict[str, Any],
+        progress_callback: Optional[Callable[[int], None]] = None
+    ) -> Dict[str, Any]:
+        """
+        兼容接口 - 统一字幕生成入口
+        委托给增强字幕生成方法
+        """
+        self.logger.info("🎬 使用增强字幕生成器接口")
+        return await self.generate_enhanced_subtitles(
+            scripts_data=scripts_data,
+            audio_data=audio_data,
+            word_level_data=None,
+            progress_callback=progress_callback
+        )
+
+    def _calculate_display_width(self, text: str) -> float:
+        """
+        计算文本的显示宽度
+        中文字符算作2个单位，英文字符算作1个单位
+        """
+        width = 0
+        for char in text:
+            if '\u4e00' <= char <= '\u9fff':  # 中文字符范围
+                width += 2
+            else:
+                width += 1
+        return width
+
+    def _netflix_v2_smart_split(self, text: str) -> List[str]:
+        """
+        Netflix V2智能分割算法
+        考虑中英文字符宽度差异和英文单词完整性
+        """
+        if not text.strip():
+            return []
+        
+        max_chars = self.netflix_v2_config.get('max_chars_per_line', 48)
+        # 对于Netflix V2，使用显示宽度计算
+        max_display_width = max_chars * 1.0  # 严格按照显示宽度限制
+        
+        self.logger.info(f"🎬 Netflix V2分割 - 输入文本: '{text}' (长度: {len(text)})")
+        self.logger.info(f"🎬 Netflix V2分割 - 字符限制: {max_chars}, 显示宽度限制: {max_display_width}")
+        
+        # 首先检查整个文本是否超过限制
+        if self._calculate_display_width(text) <= max_display_width:
+            self.logger.info(f"🎬 Netflix V2分割 - 文本未超过限制，直接返回")
+            return [text.strip()]
+        
+        segments = []
+        
+        # 按逗号和句号分割成短语
+        phrase_pattern = r'([，,。！？；.!?;])'
+        parts = re.split(phrase_pattern, text)
+        
+        current_segment = ""
+        
+        for part in parts:
+            if not part.strip():
+                continue
+                
+            # 如果是标点符号，直接添加
+            if part in '，,。！？；.!?;':
+                current_segment += part
+                continue
+            
+            # 处理文本内容
+            test_segment = current_segment + part
+            test_width = self._calculate_display_width(test_segment)
+            
+            if test_width <= max_display_width:
+                current_segment = test_segment
+            else:
+                # 需要分割当前片段
+                if current_segment.strip():
+                    segments.append(current_segment.strip())
+                    current_segment = ""
+                
+                # 如果单个部分就超过限制，需要进一步分割
+                if self._calculate_display_width(part) > max_display_width:
+                    sub_segments = self._split_long_text_smart(part, max_display_width)
+                    if len(sub_segments) > 1:
+                        segments.extend(sub_segments[:-1])  # 添加除最后一个外的所有片段
+                        current_segment = sub_segments[-1] if sub_segments else ""
+                    else:
+                        current_segment = part
+                else:
+                    current_segment = part
+        
+        # 添加最后的片段
+        if current_segment.strip():
+            segments.append(current_segment.strip())
+        
+        # 如果还是没有分割（极端情况），强制按空格分割
+        if len(segments) == 1 and self._calculate_display_width(segments[0]) > max_display_width:
+            return self._split_long_text_smart(segments[0], max_display_width)
+        
+        # 确保至少有一个片段
+        if not segments and text.strip():
+            segments = [text.strip()]
+        
+        self.logger.info(f"🎬 Netflix V2分割完成 - {len(segments)} 个片段")
+        return segments
+
+    def _split_long_text_smart(self, text: str, max_display_width: float) -> List[str]:
+        """
+        智能分割过长的文本，保持英文单词完整性
+        """
+        segments = []
+        current_segment = ""
+        
+        # 按空格分割，保持单词完整
+        words = text.split()
+        
+        for word in words:
+            test_segment = current_segment + (" " if current_segment else "") + word
+            test_width = self._calculate_display_width(test_segment)
+            
+            if test_width <= max_display_width:
+                current_segment = test_segment
+            else:
+                # 添加当前片段
+                if current_segment:
+                    segments.append(current_segment)
+                    current_segment = word
+                else:
+                    # 单个单词就超过限制，按字符强制分割
+                    while word:
+                        char_count = 0
+                        temp_word = ""
+                        for char in word:
+                            temp_test = temp_word + char
+                            if self._calculate_display_width(temp_test) <= max_display_width:
+                                temp_word = temp_test
+                                char_count += 1
+                            else:
+                                break
+                        
+                        if temp_word:
+                            segments.append(temp_word)
+                            word = word[char_count:]
+                        else:
+                            # 极端情况：单个字符就超过限制
+                            segments.append(word[:1])
+                            word = word[1:]
+        
+        # 添加最后的片段
+        if current_segment:
+            segments.append(current_segment)
+        
+        return segments
 
