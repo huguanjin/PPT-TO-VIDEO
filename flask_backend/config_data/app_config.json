@@ -31,7 +31,7 @@
       "max_retries": 3
     },
     "custom": {
-      "api_key": "sk-U5qHXmNVAOwMb3k1ITTQwSs67wR77ptgAcQLucrgiai5e6Aq",
+      "api_key": "填写你的APIkey",
       "base_url": "https://fast.yourapi.cn",
       "model": "gemini-2.0-flash",
       "timeout": 300,
@@ -204,7 +204,7 @@
       "edge_voice": "zh-CN-YunxiNeural",
       "edge_rate": "medium",
       "edge_pitch": "medium",
-      "fish_api_key": "f9515b8c22e74f49a8ac8b7a487b42e9",
+      "fish_api_key": "填写你的APIkey",
       "fish_character": "雷军",
       "fish_character_id": "54a5170264694bfc8e9ad98df7bd89c3",
       "fish_character_name": "丁真",
@@ -235,7 +235,7 @@
         "timeout": 300
       },
       "custom": {
-        "api_key": "sk-pFC9K8PnUEPg9MSSeAF0L1rKQVDFe8ntgxGBkoDWV0EqE1OY",
+        "api_key": "填写你的apikey",
         "base_url": "https://www.mnapi.com",
         "max_retries": 3,
         "model": "gemini-2.5-pro-nothinking",
