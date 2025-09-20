@@ -25,7 +25,7 @@ class NetflixConfigLoader:
             self.config_path = Path(config_path)
         else:
             # 默认配置文件路径
-            self.config_path = Path("config_data/netflix_subtitle_config.json")
+            self.config_path = Path(__file__).parent.parent / "config_data" / "netflix_subtitle_config.json"
         
         self._config = self._load_config()
         self._validate_config()

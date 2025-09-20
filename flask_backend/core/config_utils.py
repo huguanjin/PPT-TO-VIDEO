@@ -45,25 +45,6 @@ def load_key(key: str) -> Dict[str, Any]:
         }
     }
     
-    # 特殊处理fish_tts配置，优先从fish_tts_config.json读取
-    if key == "fish_tts":
-        # 尝试多个可能的路径
-        fish_config_paths = [
-            Path(__file__).parent.parent / "config_data" / "fish_tts_config.json",  # 首选路径
-            Path("flask_backend/config_data/fish_tts_config.json"),  # 从项目根目录运行时
-            Path("config_data/fish_tts_config.json")  # 从flask_backend目录运行时（兼容性）
-        ]
-        
-        for fish_config_file in fish_config_paths:
-            if fish_config_file.exists():
-                try:
-                    with open(fish_config_file, 'r', encoding='utf-8') as f:
-                        fish_config = json.load(f)
-                        return fish_config
-                except Exception as e:
-                    print(f"加载Fish TTS配置文件失败 ({fish_config_file}): {e}")
-                    continue
-    
     # 优先从app_config.json加载配置
     # 尝试多个可能的路径
     possible_paths = [

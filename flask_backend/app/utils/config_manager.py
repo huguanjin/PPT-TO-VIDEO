@@ -13,7 +13,7 @@ class ConfigManager:
     
     def __init__(self, config_dir: Optional[Path] = None):
         if config_dir is None:
-            # 使用项目根目录下的config_data
+            # 使用Flask后端本地的config_data目录
             self.config_dir = Path(__file__).parent.parent.parent / "config_data"
         else:
             self.config_dir = Path(config_dir)
@@ -119,17 +119,48 @@ class ConfigManager:
         return self.save_config(config)
     
     def get_subtitle_config_for_ffmpeg(self) -> Dict[str, Any]:
-        """获取适用于FFmpeg字幕处理的配置格式"""
-        subtitle_config = self.get_section('subtitle')
+        """获取适用于FFmpeg字幕处理的配置格式，统一使用Netflix配置"""
+        config = self.load_config()
         
-        # 转换为FFmpeg期望的扁平化格式
+        # 🎯 统一使用Netflix配置作为字幕标准
+        netflix_v2 = config.get('netflix_v2', {})
+        
+        # 转换Netflix配置为FFmpeg格式
+        # Netflix使用ASS/SSA格式的颜色代码，需要转换为十六进制
+        netflix_font_color = netflix_v2.get('font_color', '&H00FFFF')
+        if netflix_font_color.startswith('&H'):
+            # 转换 &H00FFFF 为 #FFFF00 (BGR -> RGB)
+            bgr_hex = netflix_font_color[2:]  # 去掉 &H
+            if len(bgr_hex) == 6:
+                # BGR转RGB: FFFF00 -> 00FFFF
+                b, g, r = bgr_hex[0:2], bgr_hex[2:4], bgr_hex[4:6]
+                rgb_color = f"#{r}{g}{b}"
+            else:
+                rgb_color = "#00FFFF"  # 默认青色
+        else:
+            rgb_color = netflix_font_color
+        
         return {
-            "font_family": subtitle_config.get("font_family", "Microsoft YaHei"),
-            "font_size": subtitle_config.get("font_size", 40),
-            "font_color": subtitle_config.get("font_color", "#FFFFFF"),
-            "background_color": subtitle_config.get("background_color", "rgba(0,0,0,0.8)"),
-            "position": subtitle_config.get("position", "bottom")
+            "font_family": "Arial",  # Netflix标准字体
+            "font_size": netflix_v2.get('font_size', 17),
+            "font_color": rgb_color,
+            "background_color": f"rgba(0,0,0,{netflix_v2.get('background_alpha', 0.8)})",
+            "position": "bottom",
+            "outline_color": "#000000",
+            "outline_width": netflix_v2.get('outline_width', 1),
+            "enabled": netflix_v2.get('enabled', True),
+            # 从Netflix配置中提取其他字幕相关设置
+            "max_chars_per_line": netflix_v2.get('max_chars_per_line', 36),
+            "max_lines": 2,
+            "use_enhanced_mode": True,
+            "enable_precise_alignment": True,
+            "netflix_compliance": netflix_v2.get('strict_netflix_compliance', True)
         }
+    
+    def get_subtitle_config(self) -> Dict[str, Any]:
+        """获取字幕配置，统一返回Netflix配置格式"""
+        # 重用FFmpeg配置方法，保持一致性
+        return self.get_subtitle_config_for_ffmpeg()
     
     def get_tts_config(self) -> Dict[str, Any]:
         """获取TTS配置"""

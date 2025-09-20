@@ -80,7 +80,7 @@ class SubtitleGenerator:
         # 根据配置和依赖可用性决定是否启用AI功能
         try:
             # 尝试加载应用配置
-            app_config_path = self.project_dir / "config_data" / "app_config.json"
+            app_config_path = self.project_dir / "flask_backend" / "config_data" / "app_config.json"
             if app_config_path.exists():
                 import json
                 with open(app_config_path, 'r', encoding='utf-8') as f:
@@ -158,7 +158,7 @@ class SubtitleGenerator:
         # 智能断句系统启用逻辑 - 根据配置决定
         try:
             # 检查配置是否禁用Flask重载问题规避
-            subtitle_config_path = self.project_dir / "config_data" / "subtitle_multiline_fix_config.json"
+            subtitle_config_path = self.project_dir / "flask_backend" / "config_data" / "subtitle_multiline_fix_config.json"
             disable_for_flask = True  # 默认禁用
             
             if subtitle_config_path.exists():
@@ -211,7 +211,7 @@ class SubtitleGenerator:
         # 初始化视频帧同步优化器
         if self.enable_frame_sync:
             try:
-                config_path = self.project_dir / "config_data" / "video_frame_sync_config.json"
+                config_path = self.project_dir / "flask_backend" / "config_data" / "video_frame_sync_config.json"
                 self.frame_sync_optimizer = VideoFrameSyncOptimizer(str(config_path) if config_path.exists() else None)
                 self.logger.info("🎨 视频帧级同步优化器已启用")
             except Exception as e:
@@ -226,7 +226,7 @@ class SubtitleGenerator:
         # 初始化音频智能同步优化器
         if self.enable_audio_sync:
             try:
-                config_path = self.project_dir / "config_data" / "audio_intelligent_sync_config.json"
+                config_path = self.project_dir / "flask_backend" / "config_data" / "audio_intelligent_sync_config.json"
                 self.audio_sync_optimizer = AudioIntelligentSyncOptimizer(str(config_path) if config_path.exists() else None)
                 self.logger.info("🎵 音频智能同步优化器已启用")
             except Exception as e:
@@ -241,7 +241,7 @@ class SubtitleGenerator:
         # 初始化AI内容理解增强系统
         if self.enable_ai_content_understanding:
             try:
-                config_path = self.project_dir / "config_data" / "ai_content_understanding_config.json"
+                config_path = self.project_dir / "flask_backend" / "config_data" / "ai_content_understanding_config.json"
                 self.semantic_alignment_optimizer = SemanticAlignmentOptimizer(str(config_path) if config_path.exists() else None)
                 self.logger.info("🤖 AI内容理解增强系统已启用")
             except Exception as e:

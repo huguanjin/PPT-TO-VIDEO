@@ -343,40 +343,30 @@ class FFmpegFinalMerger:
                             subtitle_config = config_manager.get_subtitle_config_for_ffmpeg()
                             self.logger.info(f"使用统一配置管理器获取字幕配置: {subtitle_config}")
                         except ImportError:
-                            # 备选：使用传统配置系统
-                            from config.settings import load_app_config
-                            app_config = load_app_config()
-                            
-                            # 检查是否为新的嵌套格式
-                            if 'subtitle' in app_config and isinstance(app_config['subtitle'], dict):
-                                subtitle_section = app_config['subtitle']
+                            # 备选：使用Netflix配置作为统一标准
+                            try:
+                                from app.utils.config_manager import get_subtitle_config_for_merger
+                                subtitle_config = get_subtitle_config_for_merger()
+                                self.logger.info(f"使用Netflix统一配置: {subtitle_config}")
+                            except Exception as netflix_error:
+                                self.logger.warning(f"获取Netflix配置失败: {netflix_error}")
+                                # 最终备选：使用Netflix标准的默认配置
                                 subtitle_config = {
-                                    "font_family": subtitle_section.get("font_family", "Microsoft YaHei"),
-                                    "font_size": subtitle_section.get("font_size", 16),  # 使用优化后的字体大小
-                                    "font_color": subtitle_section.get("font_color", "#FFFFFF"),
-                                    "background_color": subtitle_section.get("background_color", "rgba(0,0,0,0.8)"),
-                                    "position": subtitle_section.get("position", "bottom")
+                                    "font_family": "Arial",
+                                    "font_size": 17,  # Netflix标准字体大小
+                                    "font_color": "#FFFF00",  # 转换后的Netflix黄色
+                                    "background_color": "rgba(0,0,0,0.5)",
+                                    "position": "bottom"
                                 }
-                                self.logger.info(f"使用新格式配置: {subtitle_config}")
-                            else:
-                                # 老的扁平化格式
-                                subtitle_config = {
-                                    "font_family": app_config.get("subtitle_font_family", "Microsoft YaHei"),
-                                    "font_size": app_config.get("subtitle_font_size", 16),  # 使用优化后的字体大小
-                                    "font_color": app_config.get("subtitle_font_color", "#FFFFFF"),
-                                    "background_color": app_config.get("subtitle_background_color", "rgba(0,0,0,0.8)"),
-                                    "position": app_config.get("subtitle_position", "bottom")
-                                }
-                                self.logger.info(f"使用传统格式配置: {subtitle_config}")
                         
                 except Exception as e:
-                    self.logger.warning(f"获取字幕配置失败，使用默认配置: {e}")
-                    # 使用默认配置
+                    self.logger.warning(f"获取字幕配置失败，使用Netflix默认配置: {e}")
+                    # 使用Netflix标准的默认配置
                     subtitle_config = {
-                        "font_family": "Microsoft YaHei",
-                        "font_size": 16,  # 使用优化后的字体大小
-                        "font_color": "#FFFFFF",
-                        "background_color": "rgba(0,0,0,0.8)",
+                        "font_family": "Arial",
+                        "font_size": 17,  # Netflix标准字体大小
+                        "font_color": "#FFFF00",  # Netflix黄色
+                        "background_color": "rgba(0,0,0,0.5)",
                         "position": "bottom"
                     }
                 

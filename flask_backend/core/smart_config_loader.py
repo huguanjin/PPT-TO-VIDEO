@@ -60,9 +60,9 @@ class SmartSubtitleConfigLoader:
         
         # 初始化默认配置路径
         self.config_paths = {
-            'user_config': os.path.join(self.project_dir, 'config_data', 'subtitle_config.json'),
-            'app_config': os.path.join(self.project_dir, 'config_data', 'app_config.json'),
-            'presets_config': os.path.join(self.project_dir, 'config_data', 'config_presets.json')
+            'user_config': os.path.join(self.project_dir, 'flask_backend', 'config_data', 'subtitle_config.json'),
+            'app_config': os.path.join(self.project_dir, 'flask_backend', 'config_data', 'app_config.json'),
+            'presets_config': os.path.join(self.project_dir, 'flask_backend', 'config_data', 'config_presets.json')
         }
     
     def load_smart_config(self, 
