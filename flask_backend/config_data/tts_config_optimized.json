@@ -32,7 +32,7 @@
     "timeout": 30
   },
   "credentials": {
-    "fish_api_key": "f9515b8c22e74f49a8ac8b7a487b42e9",
+    "fish_api_key": "填写你的apikey",
     "openai_api_key": "",
     "azure_api_key": "",
     "azure_region": ""
