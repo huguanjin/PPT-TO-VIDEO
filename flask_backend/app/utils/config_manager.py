@@ -21,6 +21,9 @@ class ConfigManager:
         self.config_dir.mkdir(exist_ok=True)
         self.config_file = self.config_dir / "app_config.json"
         
+        # 手动分割配置文件路径
+        self.manual_split_config_file = Path(__file__).parent.parent.parent.parent / "config" / "manual_split_config.json"
+        
         # 确保配置文件存在
         if not self.config_file.exists():
             self._create_default_config()
@@ -231,6 +234,81 @@ class ConfigManager:
             return True
         except Exception as e:
             print(f"重置配置失败: {e}")
+            return False
+    
+    def load_manual_split_config(self) -> Dict[str, Any]:
+        """加载手动分割配置"""
+        try:
+            if self.manual_split_config_file.exists():
+                with open(self.manual_split_config_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            else:
+                print(f"手动分割配置文件不存在: {self.manual_split_config_file}")
+                return self._get_default_manual_split_config()
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"加载手动分割配置失败: {e}")
+            return self._get_default_manual_split_config()
+    
+    def _get_default_manual_split_config(self) -> Dict[str, Any]:
+        """获取默认的手动分割配置"""
+        return {
+            "manual_split_config": {
+                "enabled": False,  # 默认关闭，避免影响现有功能
+                "split_strategy": {
+                    "method": "newline_split",
+                    "fallback_to_auto": True
+                },
+                "newline_split": {
+                    "enabled": True,
+                    "audio_processing": {
+                        "strategy": "separate_generation",
+                        "normalize_volume": True,
+                        "add_segment_gap": 0.1
+                    }
+                },
+                "quality_control": {
+                    "min_segment_length": 5,
+                    "max_segments_per_slide": 8,
+                    "min_segment_duration": 1.0,
+                    "validate_split_points": True
+                }
+            }
+        }
+    
+    def get_manual_split_config(self) -> Dict[str, Any]:
+        """获取手动分割配置"""
+        config = self.load_manual_split_config()
+        return config.get('manual_split_config', {})
+    
+    def is_manual_split_enabled(self) -> bool:
+        """检查手动分割功能是否启用"""
+        config = self.get_manual_split_config()
+        return config.get('enabled', False)
+    
+    def update_manual_split_config(self, updates: Dict[str, Any]) -> bool:
+        """更新手动分割配置"""
+        try:
+            config = self.load_manual_split_config()
+            if 'manual_split_config' not in config:
+                config['manual_split_config'] = self._get_default_manual_split_config()['manual_split_config']
+            
+            # 深度更新配置
+            def deep_update(base_dict: Dict, update_dict: Dict):
+                for key, value in update_dict.items():
+                    if isinstance(value, dict) and key in base_dict and isinstance(base_dict[key], dict):
+                        deep_update(base_dict[key], value)
+                    else:
+                        base_dict[key] = value
+            
+            deep_update(config['manual_split_config'], updates)
+            
+            # 保存回文件
+            with open(self.manual_split_config_file, 'w', encoding='utf-8') as f:
+                json.dump(config, f, ensure_ascii=False, indent=2)
+            
+            return True
+        except Exception as e:
+            print(f"更新手动分割配置失败: {e}")
             return False
 
 # 全局配置管理器实例

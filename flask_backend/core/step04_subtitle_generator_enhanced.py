@@ -15,7 +15,9 @@ import dataclasses
 
 from app.utils.logger import get_logger
 from app.utils.file_manager import FileManager
+from app.utils.config_manager import ConfigManager
 from .subtitle_multiline_fixer import SubtitleMultilineFixer
+from .manual_split_processor import ManualSplitManager, NewlineSplitProcessor
 
 
 class EnhancedSubtitleGenerator:
@@ -26,8 +28,15 @@ class EnhancedSubtitleGenerator:
         self.file_manager = FileManager(project_dir)
         self.logger = get_logger(__name__, self.project_dir / "logs")
         
+        # 初始化配置管理器
+        self.config_manager = ConfigManager(project_dir)
+        
         # 初始化多行修复器
         self.multiline_fixer = SubtitleMultilineFixer()
+        
+        # 初始化手动分割管理器
+        manual_split_config = self.config_manager.get_manual_split_config()
+        self.manual_split_manager = ManualSplitManager(manual_split_config)
         
         # 🎯 加载多行修复强化配置
         self._load_multiline_enhancement_config()
@@ -489,12 +498,40 @@ class EnhancedSubtitleGenerator:
     
     def _split_text_to_segments(self, text: str) -> List[str]:
         """
-        智能文本分割 - 优化观看体验
+        智能文本分割 - 支持手动分割和自动分割
         """
         text = text.strip()
         if not text:
             return []
         
+        # 检查是否启用手动分割且文本包含换行符
+        manual_config = self.config_manager.get_manual_split_config()
+        manual_enabled = manual_config.get("enabled", False)
+        
+        if manual_enabled and '\n' in text:
+            # 使用手动分割处理器
+            self.logger.info("检测到换行符，使用手动分割模式")
+            try:
+                # 使用手动分割处理器处理内容
+                split_result = self.manual_split_manager.process_slide_content("temp", text)
+                
+                # 检查分割结果是否成功
+                if "segments" in split_result and split_result.get("segment_count", 0) > 0:
+                    segments_data = split_result.get("segments", [])
+                    segments = [seg.get("content", "").strip() for seg in segments_data if seg.get("content", "").strip()]
+                    
+                    if segments:
+                        self.logger.info(f"手动分割完成: {len(segments)} 个片段")
+                        return segments
+                    else:
+                        self.logger.warning("手动分割未产生有效片段，回退到自动分割")
+                else:
+                    error_msg = split_result.get("error", "未知错误")
+                    self.logger.warning(f"手动分割失败: {error_msg}，回退到自动分割")
+            except Exception as e:
+                self.logger.error(f"手动分割处理异常: {e}，回退到自动分割")
+        
+        # 自动分割模式（原始逻辑）
         segments = []
         current_segment = ""
         max_chars = self.subtitle_config["max_chars_per_line"]

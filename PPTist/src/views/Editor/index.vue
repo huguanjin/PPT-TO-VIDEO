@@ -153,7 +153,7 @@ const { dialogForExport, showSelectPanel, showSearchPanel, showNotesPanel, showM
 const closeExportDialog = () => mainStore.setDialogForExport('')
 const closeAIPPTDialog = () => mainStore.setAIPPTDialogState(false)
 
-const remarkHeight = ref(120) // 增加初始高度以适应新的增强UI
+const remarkHeight = ref(240) // 增加默认高度到240px，提供更好的编辑体验
 
 // 工作空间管理
 const workspace = useWorkspaceManager()
