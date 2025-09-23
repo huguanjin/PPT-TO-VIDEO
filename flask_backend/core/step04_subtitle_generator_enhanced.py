@@ -18,6 +18,7 @@ from app.utils.file_manager import FileManager
 from app.utils.config_manager import ConfigManager
 from .subtitle_multiline_fixer import SubtitleMultilineFixer
 from .manual_split_processor import ManualSplitManager, NewlineSplitProcessor
+from .html_remark_processor import HtmlRemarkProcessor
 
 
 class EnhancedSubtitleGenerator:
@@ -37,6 +38,11 @@ class EnhancedSubtitleGenerator:
         # 初始化手动分割管理器
         manual_split_config = self.config_manager.get_manual_split_config()
         self.manual_split_manager = ManualSplitManager(manual_split_config)
+        
+        # 初始化HTML备注处理器
+        subtitle_config = self.config_manager.get_subtitle_config()
+        char_limit = subtitle_config.get("max_chars_per_line", 20)
+        self.html_remark_processor = HtmlRemarkProcessor(char_limit=char_limit)
         
         # 🎯 加载多行修复强化配置
         self._load_multiline_enhancement_config()
@@ -498,17 +504,51 @@ class EnhancedSubtitleGenerator:
     
     def _split_text_to_segments(self, text: str) -> List[str]:
         """
-        智能文本分割 - 支持手动分割和自动分割
+        智能文本分割 - 支持HTML备注解析和自动分割
         """
         text = text.strip()
         if not text:
             return []
         
-        # 检查是否启用手动分割且文本包含换行符
-        manual_config = self.config_manager.get_manual_split_config()
-        manual_enabled = manual_config.get("enabled", False)
+        # 检查文本是否为HTML格式（包含<p>标签）
+        if '<p' in text and '</p>' in text:
+            self.logger.info("检测到HTML格式备注，使用HTML解析器")
+            try:
+                # 使用HTML备注处理器解析
+                result = self.html_remark_processor.process_remark_html(text)
+                
+                if result["success"] and result.get("segment_count", 0) > 0:
+                    segments = [seg["content"] for seg in result["segments"] if seg["content"].strip()]
+                    
+                    if segments:
+                        self.logger.info(f"HTML解析完成: {len(segments)} 个片段")
+                        
+                        # 记录超限警告
+                        if result.get("over_limit_count", 0) > 0:
+                            self.logger.warning(f"有 {result['over_limit_count']} 个片段超出字符限制")
+                        
+                        return segments
+                    else:
+                        self.logger.warning("HTML解析未产生有效片段，回退到纯文本处理")
+                        # 提取纯文本内容继续处理
+                        text = self.html_remark_processor.extract_script_for_tts(text)
+                else:
+                    self.logger.warning(f"HTML解析失败: {result.get('error', '未知错误')}，回退到纯文本处理")
+                    # 提取纯文本内容继续处理
+                    text = self.html_remark_processor.extract_script_for_tts(text)
+                    
+            except Exception as e:
+                self.logger.error(f"HTML解析异常: {e}，回退到纯文本处理")
+                # 尝试提取纯文本内容
+                try:
+                    text = self.html_remark_processor.extract_script_for_tts(text)
+                except:
+                    # 如果HTML提取失败，使用简单的标签清理
+                    import re
+                    text = re.sub(r'<[^>]+>', '', text).strip()
         
-        if manual_enabled and '\n' in text:
+        # 检查纯文本是否包含换行符（旧版手动分割逻辑）
+        elif '\n' in text:
             # 使用手动分割处理器
             self.logger.info("检测到换行符，使用手动分割模式")
             try:
@@ -532,6 +572,7 @@ class EnhancedSubtitleGenerator:
                 self.logger.error(f"手动分割处理异常: {e}，回退到自动分割")
         
         # 自动分割模式（原始逻辑）
+        self.logger.info("使用自动分割模式")
         segments = []
         current_segment = ""
         max_chars = self.subtitle_config["max_chars_per_line"]

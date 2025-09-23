@@ -65,20 +65,22 @@
             :value="remark"
             ref="editorRef"
             @update="value => handleInput(value)"
+            @keydown="forceRefresh"
+            @keyup="forceRefresh"
+            @input="forceRefresh"
           />
           
           <!-- 实时字符长度overlay -->
           <div class="char-count-overlay" v-if="manualSplitEnabled && hasContent">
-            <div class="overlay-title">每行字符统计</div>
+            <div class="overlay-title">字符统计</div>
             <div 
               class="line-counter"
               v-for="(line, index) in reactiveCurrentLines" 
               :key="index"
               :class="{ 'warning': line.isOverLimit }"
             >
-              <span class="line-number">{{ index + 1 }}:</span>
+              <span class="line-number">第{{ index + 1 }}行:</span>
               <span class="count">{{ line.length }}/{{ subtitleConfig.max_chars_per_line }}</span>
-              <span v-if="line.isOverLimit" class="warning-icon">⚠</span>
             </div>
           </div>
         </div>
@@ -110,9 +112,8 @@
               :class="{ 'warning': segment.hasWarning }"
             >
               <div class="line-meta">
-                <span class="line-number">第{{ segment.index }}行</span>
-                <span class="char-ratio" :class="{ 'warning': segment.hasWarning }">{{ segment.ratio }}</span>
-                <span class="percentage">({{ segment.percentage }}%)</span>
+                <span class="line-number">第{{ index + 1 }}行</span>
+                <span class="char-ratio">{{ segment.charCount }}/{{ subtitleConfig.max_chars_per_line }}</span>
               </div>
               <div class="line-content">{{ segment.content.substring(0, 30) }}{{ segment.content.length > 30 ? '...' : '' }}</div>
               <div class="warning-text" v-if="segment.hasWarning">{{ segment.warning }}</div>
@@ -133,15 +134,11 @@ import axios from 'axios'
 import Editor from './Editor.vue'
 
 interface SegmentPreview {
-  index: number
   content: string
   duration: number
   charCount: number
-  maxChars: number
-  ratio: string
   hasWarning: boolean
   warning?: string
-  percentage: number
 }
 
 interface SubtitleConfig {
@@ -177,6 +174,13 @@ const manualSplitEnabled = ref(true) // 默认开启换行分割模式
 // 强制刷新字符统计的响应式变量
 const refreshTrigger = ref(0)
 
+// 强制刷新函数
+const forceRefresh = () => {
+  nextTick(() => {
+    refreshTrigger.value++
+  })
+}
+
 // 最大字符数限制
 const maxCharacters = 2000
 
@@ -211,10 +215,10 @@ watch(() => currentSlide.value?.id, () => {
 
 const remark = computed(() => currentSlide.value?.remark || '')
 
-// 监听remark变化，立即刷新字符统计
+// 监听remark变化，强制刷新字符统计
 watch(() => remark.value, () => {
   refreshTrigger.value++
-}, { immediate: true, flush: 'sync' })
+}, { flush: 'post' })
 
 // 字符统计
 const characterCount = computed(() => {
@@ -258,14 +262,15 @@ const segmentCount = computed(() => {
 
 // 修改后的currentLines，确保及时响应变化
 const reactiveCurrentLines = computed(() => {
-  // 通过访问refreshTrigger和subtitleConfig来强制重新计算
+  // 通过访问refreshTrigger来强制重新计算
   refreshTrigger.value
-  const maxChars = subtitleConfig.value.max_chars_per_line
   
   // 直接使用remark.value获取内容
   const htmlContent = remark.value
   
   if (!manualSplitEnabled.value || !htmlContent || !htmlContent.trim()) return []
+  
+  const maxChars = subtitleConfig.value.max_chars_per_line
   
   // 尝试多种方式解析行内容
   let lines: string[] = []
@@ -338,24 +343,39 @@ const previewSegments = computed<SegmentPreview[]>(() => {
   const plainText = remark.value.replace(/<[^>]*>/g, '')
   const segments = plainText.split('\n').filter(line => line.trim())
   
-  return segments.map((content, index) => {
+  return segments.map((content) => {
     const charCount = content.trim().length
     const duration = Math.max(1, Math.round(charCount / 4.2)) // 4.2字/秒的语速
     const maxChars = subtitleConfig.value.max_chars_per_line
-    const hasWarning = charCount > maxChars
-    const ratio = `${charCount}/${maxChars}`
-    const percentage = maxChars > 0 ? Math.round((charCount / maxChars) * 100) : 0
+    
+    // 检查各种警告条件
+    let hasWarning = false
+    let warning = ''
+    
+    // 优先检查字符长度限制
+    if (charCount > maxChars) {
+      hasWarning = true
+      warning = `字符数超出限制 (${charCount}/${maxChars})`
+    }
+    else if (charCount < 5) {
+      hasWarning = true
+      warning = '片段过短，可能影响语音效果'
+    }
+    else if (charCount > 50) {
+      hasWarning = true
+      warning = '片段过长，建议进一步分割'
+    }
+    else if (duration > 10) {
+      hasWarning = true
+      warning = '预计时长过长，建议缩短'
+    }
     
     return {
-      index: index + 1,
       content: content.trim(),
       duration,
       charCount,
-      maxChars,
-      ratio,
       hasWarning,
-      warning: hasWarning ? `超出 ${charCount - maxChars} 字符` : undefined,
-      percentage
+      warning
     }
   })
 })
@@ -383,7 +403,10 @@ const handleInput = (content: string) => {
   
   slidesStore.updateSlide({ remark: content })
   
-  // 移除手动刷新 - watch会自动处理响应式更新
+  // 强制刷新字符统计
+  nextTick(() => {
+    forceRefresh()
+  })
 }
 
 // 预览音频
@@ -929,12 +952,36 @@ kbd {
 // 响应式适配
 @media (max-height: 900px) {
   .remark-info-bar { padding: 8px 16px; min-height: 44px; font-size: 12px; }
+  .remark-info-bar .remark-title { font-size: 13px; }
+  .remark-info-bar .split-mode-controls { gap: 8px; }
+  .remark-info-bar .split-actions { gap: 4px; }
+  .remark-info-bar .split-actions .action-btn { width: 24px; height: 24px; }
+  .remark-info-bar .remark-stats { gap: 8px; }
   .remark-info-bar .preview-btn { padding: 5px 10px; font-size: 11px; }
+}
+
+@media (max-height: 700px) {
+  .remark-info-bar { padding: 6px 14px; min-height: 40px; }
+  .remark-info-bar .split-actions .action-btn { width: 22px; height: 22px; }
+  :deep(.prosemirror-editor) { font-size: 14px; line-height: 1.6; padding: 12px 16px; }
 }
 
 @media (max-width: 1200px) {
   .remark-info-bar { flex-wrap: wrap; gap: 8px; min-height: auto; }
-  .editor-container { flex-direction: column; }
-  .editor-sidebar { flex: none; height: 200px; border-left: none; border-top: 1px solid rgba(76, 175, 80, 0.2); }
+  .remark-info-bar .split-mode-controls { order: 3; flex-basis: 100%; justify-content: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.2); }
+  
+  // 小屏幕时将侧边栏移动到底部
+  .editor-container {
+    flex-direction: column;
+    
+    .editor-main { flex: 1; }
+    .editor-sidebar { 
+      flex: none; 
+      height: 200px; 
+      border-left: none; 
+      border-top: 1px solid rgba(76, 175, 80, 0.2); 
+      border-radius: 6px 6px 0 0;
+    }
+  }
 }
 </style>

@@ -273,6 +273,8 @@ def register_blueprints(app):
         except Exception as e:
             print(f"❌ netflix_subtitle_api蓝图注册失败: {e}")
     
+    # 手动分割API已通过直接路由注册
+    
     # 注册增强的API蓝图（只注册成功导入的）
     enhanced_count = 0
     

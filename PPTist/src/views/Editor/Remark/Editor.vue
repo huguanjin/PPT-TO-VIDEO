@@ -67,7 +67,17 @@ const hideMenuInstance = () => {
 
 const handleInput = debounce(function() {
   emit('update', editorView.dom.innerHTML)
-}, 300, { trailing: true })
+}, 100, { trailing: true }) // 减少延迟从300ms到100ms
+
+// 立即处理换行等重要操作
+const handleKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Enter') {
+    // 换行操作，立即触发更新
+    setTimeout(() => {
+      emit('update', editorView.dom.innerHTML)
+    }, 10) // 很短的延迟确保DOM更新完成
+  }
+}
 
 const handleFocus = () => {
   mainStore.setDisableHotkeysState(true)
@@ -173,7 +183,11 @@ onMounted(() => {
         window.getSelection()?.removeAllRanges()
         hideMenuInstance()
       },
-      keydown: hideMenuInstance,
+      keydown: (view, event) => {
+        hideMenuInstance()
+        handleKeydown(event)
+        return false // 继续默认处理
+      },
       input: handleInput,
     },
   }, {
