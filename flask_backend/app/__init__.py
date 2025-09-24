@@ -73,6 +73,7 @@ def register_blueprints(app):
     from app.api.project import bp as project_bp
     from app.api.config import bp as config_bp
     from app.api.tts import bp as tts_bp
+    from app.api.unified_tts import bp as unified_tts_bp
     from app.api.download import bp as download_bp
     from app.api.pptist_export import pptist_export_bp
     from app.api.workspace import workspace_bp
@@ -200,6 +201,7 @@ def register_blueprints(app):
     app.register_blueprint(project_bp, url_prefix='/api/project')  # 恢复为单数
     app.register_blueprint(config_bp, url_prefix='/api/config')
     app.register_blueprint(tts_bp, url_prefix='/api/tts')
+    app.register_blueprint(unified_tts_bp)  # unified_tts已在蓝图内定义url_prefix
     app.register_blueprint(download_bp, url_prefix='/api/download')
     app.register_blueprint(pptist_export_bp, url_prefix='/api/pptist_export')
     app.register_blueprint(workspace_bp, url_prefix='/api/workspace')
@@ -306,6 +308,65 @@ def register_blueprints(app):
         print(f"✅ 成功注册 {enhanced_count} 个增强API模块")
     else:
         print("⚠️  没有增强的API模块可用，使用原有的基础功能")
+    
+    # 添加静态文件服务支持
+    from flask import send_from_directory, Response
+    import mimetypes
+    
+    @app.route('/temp/<path:filename>')
+    def serve_temp_files(filename):
+        """提供临时文件访问，如音频预览文件"""
+        temp_dir = Path(app.root_path).parent / "temp"
+        file_path = temp_dir / filename
+        
+        # 检查文件是否存在
+        if not file_path.exists():
+            return {'success': False, 'message': '文件不存在'}, 404
+            
+        # 确定MIME类型
+        mime_type = None
+        if filename.lower().endswith('.wav'):
+            mime_type = 'audio/wav'
+        elif filename.lower().endswith('.mp3'):
+            mime_type = 'audio/mpeg'
+        elif filename.lower().endswith('.ogg'):
+            mime_type = 'audio/ogg'
+        else:
+            mime_type, _ = mimetypes.guess_type(str(file_path))
+            
+        # 发送文件并设置正确的MIME类型
+        response = send_from_directory(temp_dir, filename)
+        if mime_type:
+            response.headers['Content-Type'] = mime_type
+        
+        # 添加CORS头部以支持跨域访问
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        
+        return response
+    
+    # 添加音频测试页面
+    @app.route('/audio-test')
+    def audio_test():
+        """音频播放测试页面"""
+        test_html_path = Path(app.root_path).parent / "test_audio_player.html"
+        if test_html_path.exists():
+            return send_from_directory(Path(app.root_path).parent, "test_audio_player.html")
+        else:
+            return {'success': False, 'message': '测试页面不存在'}, 404
+    
+    # 添加调试页面
+    @app.route('/debug-audio')
+    def debug_audio():
+        """音频播放调试页面"""
+        debug_html_path = Path(app.root_path).parent / "debug_audio.html"
+        if debug_html_path.exists():
+            return send_from_directory(Path(app.root_path).parent, "debug_audio.html")
+        else:
+            return {'success': False, 'message': '调试页面不存在'}, 404
+    
+    print("✅ 静态文件服务已启用: /temp/*")
 
 def register_error_handlers(app):
     """注册错误处理器"""

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音频代理测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>音频代理测试页面</h1>
+    
+    <div>
+        <h3>测试步骤：</h3>
+        <button onclick="testTTSAPI()">1. 调用TTS API生成音频</button>
+        <button onclick="testAudioProxy()">2. 测试音频代理访问</button>
+        <button onclick="testAudioPlay()">3. 测试音频播放</button>
+        <button onclick="simulateVueFlow()">4. 模拟Vue组件流程</button>
+    </div>
+    
+    <div id="status"></div>
+    <audio id="testAudio" controls style="width: 100%; margin: 20px 0;"></audio>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const audio = document.getElementById('testAudio');
+        let currentAudioUrl = '';
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            statusDiv.appendChild(div);
+            console.log(message);
+        }
+        
+        async function testTTSAPI() {
+            log('🎤 开始调用TTS API...', 'info');
+            
+            try {
+                const response = await fetch('/api/tts/test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        engine_id: 'edge_tts',
+                        voice_id: 'zh-CN-XiaoxiaoNeural',
+                        text: '这是通过前端代理测试的TTS音频'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.data && data.data.audio_url) {
+                    currentAudioUrl = data.data.audio_url;
+                    log(`✅ TTS API成功! 音频URL: ${currentAudioUrl}`, 'success');
+                } else {
+                    log(`❌ TTS API失败: ${data.message || '未知错误'}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ TTS API异常: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testAudioProxy() {
+            if (!currentAudioUrl) {
+                log('⚠️ 请先调用TTS API生成音频', 'error');
+                return;
+            }
+            
+            log(`🔗 测试音频代理访问: ${currentAudioUrl}`, 'info');
+            
+            try {
+                const response = await fetch(currentAudioUrl);
+                log(`📊 代理响应状态: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                log(`📋 Content-Type: ${response.headers.get('content-type')}`, 'info');
+                log(`📏 Content-Length: ${response.headers.get('content-length')} bytes`, 'info');
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    log(`✅ 音频文件加载成功: ${blob.size} bytes`, 'success');
+                } else {
+                    log(`❌ 音频文件加载失败`, 'error');
+                }
+            } catch (error) {
+                log(`❌ 代理访问异常: ${error.message}`, 'error');
+            }
+        }
+        
+        function testAudioPlay() {
+            if (!currentAudioUrl) {
+                log('⚠️ 请先生成音频文件', 'error');
+                return;
+            }
+            
+            log(`🔊 设置音频源并尝试播放: ${currentAudioUrl}`, 'info');
+            
+            audio.src = currentAudioUrl;
+            
+            audio.onloadstart = () => log('📂 音频开始加载', 'info');
+            audio.onloadedmetadata = () => log(`⏱️ 音频元数据加载完成，时长: ${audio.duration}秒`, 'success');
+            audio.oncanplay = () => {
+                log('✅ 音频准备就绪，可以播放', 'success');
+                audio.play().then(() => {
+                    log('🎵 音频播放开始', 'success');
+                }).catch(error => {
+                    log(`❌ 音频播放失败: ${error.message}`, 'error');
+                });
+            };
+            audio.onerror = () => {
+                const error = audio.error;
+                let errorMsg = '未知错误';
+                if (error) {
+                    switch(error.code) {
+                        case MediaError.MEDIA_ERR_ABORTED: errorMsg = '播放被中止'; break;
+                        case MediaError.MEDIA_ERR_NETWORK: errorMsg = '网络错误'; break;
+                        case MediaError.MEDIA_ERR_DECODE: errorMsg = '解码错误'; break;
+                        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED: errorMsg = '不支持的音频格式'; break;
+                    }
+                }
+                log(`❌ 音频错误: ${errorMsg}`, 'error');
+            };
+        }
+        
+        async function simulateVueFlow() {
+            log('🔄 模拟完整的Vue组件音频预览流程', 'info');
+            
+            // 步骤1：调用TTS API
+            await testTTSAPI();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // 步骤2：测试代理
+            if (currentAudioUrl) {
+                await testAudioProxy();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // 步骤3：播放音频
+                testAudioPlay();
+            }
+        }
+        
+        // 页面加载时显示说明
+        window.addEventListener('load', () => {
+            log('🚀 音频代理测试页面加载完成', 'info');
+            log('💡 建议按顺序测试：1→2→3→4', 'info');
+        });
+    </script>
+</body>
+</html>

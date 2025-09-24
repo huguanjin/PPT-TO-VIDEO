@@ -1,0 +1,58 @@
+{
+  "engine_info": {
+    "name": "Fish TTS",
+    "id": "fish_tts",
+    "description": "Fish Speech语音合成服务，支持多种中文角色",
+    "type": "character_based"
+  },
+  "default_character": "雷军",
+  "characters": [
+    {
+      "character": "AD学姐",
+      "character_id": "7f92f8afb8ec43bf81429cc1c9199cb1",
+      "display_name": "AD学姐",
+      "gender": "female",
+      "description": "清甜女声，适合教学和解说场景",
+      "type": "character"
+    },
+    {
+      "character": "丁真",
+      "character_id": "54a5170264694bfc8e9ad98df7bd89c3",
+      "display_name": "丁真",
+      "gender": "male",
+      "description": "纯真男声，具有特色的音色",
+      "type": "character"
+    },
+    {
+      "character": "赛马娘",
+      "character_id": "0eb38bc974e1459facca38b359e13511",
+      "display_name": "赛马娘",
+      "gender": "female",
+      "description": "活泼女声，适合动漫风格内容",
+      "type": "character"
+    },
+    {
+      "character": "蔡徐坤",
+      "character_id": "e4642e5edccd4d9ab61a69e82d4f8a14",
+      "display_name": "蔡徐坤",
+      "gender": "male",
+      "description": "年轻男声，现代流行音色",
+      "type": "character"
+    },
+    {
+      "character": "雷军",
+      "character_id": "738d0cc1a3e9430a9de2b544a466a7fc",
+      "display_name": "雷军",
+      "gender": "male",
+      "description": "成熟男声，适合商务和科技内容",
+      "type": "character"
+    }
+  ],
+  "character_id_dict": {
+    "AD学姐": "7f92f8afb8ec43bf81429cc1c9199cb1",
+    "丁真": "54a5170264694bfc8e9ad98df7bd89c3",
+    "赛马娘": "0eb38bc974e1459facca38b359e13511",
+    "蔡徐坤": "e4642e5edccd4d9ab61a69e82d4f8a14",
+    "雷军": "738d0cc1a3e9430a9de2b544a466a7fc"
+  }
+}

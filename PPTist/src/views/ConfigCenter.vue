@@ -2,7 +2,7 @@
   <ResponsiveLayout>
     <template #header>
       <div class="config-header">
-        <h1>PPTist 配置中心</h1>
+        <h1>语音合成配置中心</h1>
         <div class="header-actions">
           <button 
             class="btn-save"
@@ -50,58 +50,6 @@
     <template #main>
       <AnimatedContainer :loading="loading">
         <div class="config-content">
-          <!-- AI配置 -->
-          <section 
-            v-if="activeSection === 'ai'"
-            class="config-section"
-          >
-            <div class="section-header">
-              <h2>AI配置</h2>
-              <p>配置AI服务提供商和相关参数</p>
-            </div>
-            
-            <div class="config-grid">
-              <div class="config-group">
-                <label>AI服务提供商</label>
-                <select v-model="configs.ai.provider">
-                  <option value="openai">OpenAI</option>
-                  <option value="anthropic">Anthropic</option>
-                  <option value="azure">Azure OpenAI</option>
-                </select>
-              </div>
-              
-              <div class="config-group">
-                <label>API Key</label>
-                <input 
-                  type="password"
-                  v-model="configs.ai.apiKey"
-                  placeholder="输入API密钥"
-                >
-              </div>
-              
-              <div class="config-group">
-                <label>模型</label>
-                <select v-model="configs.ai.model">
-                  <option value="gpt-4">GPT-4</option>
-                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                  <option value="claude-3">Claude 3</option>
-                </select>
-              </div>
-              
-              <div class="config-group">
-                <label>温度</label>
-                <input 
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.1"
-                  v-model="configs.ai.temperature"
-                >
-                <span>{{ configs.ai.temperature }}</span>
-              </div>
-            </div>
-          </section>
-
           <!-- TTS配置 -->
           <section 
             v-if="activeSection === 'tts'"
@@ -157,195 +105,24 @@
             </div>
           </section>
 
-          <!-- 视频配置 -->
-          <section 
-            v-if="activeSection === 'video'"
-            class="config-section"
+          <!-- 实时验证结果 -->
+          <div 
+            v-if="validationResults.length > 0"
+            class="validation-panel"
           >
-            <div class="section-header">
-              <h2>视频配置</h2>
-              <p>配置视频输出参数</p>
-            </div>
-            
-            <div class="config-grid">
-              <div class="config-group">
-                <label>视频分辨率</label>
-                <select v-model="configs.video.resolution">
-                  <option value="1920x1080">1920x1080 (Full HD)</option>
-                  <option value="1280x720">1280x720 (HD)</option>
-                  <option value="3840x2160">3840x2160 (4K)</option>
-                </select>
+            <h3>配置验证结果</h3>
+            <div class="validation-list">
+              <div 
+                v-for="result in validationResults" 
+                :key="result.field"
+                class="validation-item"
+                :class="result.status"
+              >
+                <Icon 
+                  :name="result.status === 'success' ? 'check' : 'alert-triangle'" 
+                />
+                <span>{{ result.message }}</span>
               </div>
-              
-              <div class="config-group">
-                <label>帧率</label>
-                <select v-model="configs.video.fps">
-                  <option value="24">24 FPS</option>
-                  <option value="30">30 FPS</option>
-                  <option value="60">60 FPS</option>
-                </select>
-              </div>
-              
-              <div class="config-group">
-                <label>视频格式</label>
-                <select v-model="configs.video.format">
-                  <option value="mp4">MP4</option>
-                  <option value="avi">AVI</option>
-                  <option value="mov">MOV</option>
-                </select>
-              </div>
-              
-              <div class="config-group">
-                <label>质量</label>
-                <select v-model="configs.video.quality">
-                  <option value="high">高质量</option>
-                  <option value="medium">中等质量</option>
-                  <option value="low">低质量</option>
-                </select>
-              </div>
-            </div>
-          </section>
-
-          <!-- 字幕配置 -->
-          <section 
-            v-if="activeSection === 'subtitle'"
-            class="config-section"
-          >
-            <div class="section-header">
-              <h2>字幕配置</h2>
-              <p>配置字幕样式和行为</p>
-            </div>
-            
-            <div class="config-grid">
-              <div class="config-group">
-                <label>字体</label>
-                <select v-model="configs.subtitle.font">
-                  <option value="Microsoft YaHei">微软雅黑</option>
-                  <option value="SimHei">黑体</option>
-                  <option value="SimSun">宋体</option>
-                </select>
-              </div>
-              
-              <div class="config-group">
-                <label>字体大小</label>
-                <input 
-                  type="range"
-                  min="12"
-                  max="48"
-                  v-model="configs.subtitle.fontSize"
-                >
-                <span>{{ configs.subtitle.fontSize }}px</span>
-              </div>
-              
-              <div class="config-group">
-                <label>字体颜色</label>
-                <input 
-                  type="color"
-                  v-model="configs.subtitle.color"
-                >
-              </div>
-              
-              <div class="config-group">
-                <label>背景颜色</label>
-                <input 
-                  type="color"
-                  v-model="configs.subtitle.backgroundColor"
-                >
-              </div>
-              
-              <div class="config-group full-width">
-                <label>
-                  <input 
-                    type="checkbox"
-                    v-model="configs.subtitle.outline"
-                  >
-                  启用字体描边
-                </label>
-              </div>
-            </div>
-          </section>
-
-          <!-- 高级配置 -->
-          <section 
-            v-if="activeSection === 'advanced'"
-            class="config-section"
-          >
-            <div class="section-header">
-              <h2>高级配置</h2>
-              <p>高级功能和性能调优</p>
-            </div>
-            
-            <div class="config-grid">
-              <div class="config-group">
-                <label>并发处理数</label>
-                <input 
-                  type="number"
-                  min="1"
-                  max="10"
-                  v-model="configs.advanced.concurrency"
-                >
-              </div>
-              
-              <div class="config-group">
-                <label>缓存大小 (MB)</label>
-                <input 
-                  type="number"
-                  min="100"
-                  max="2048"
-                  v-model="configs.advanced.cacheSize"
-                >
-              </div>
-              
-              <div class="config-group full-width">
-                <label>
-                  <input 
-                    type="checkbox"
-                    v-model="configs.advanced.enableGPU"
-                  >
-                  启用GPU加速
-                </label>
-              </div>
-              
-              <div class="config-group full-width">
-                <label>
-                  <input 
-                    type="checkbox"
-                    v-model="configs.advanced.enableCache"
-                  >
-                  启用智能缓存
-                </label>
-              </div>
-              
-              <div class="config-group full-width">
-                <label>
-                  <input 
-                    type="checkbox"
-                    v-model="configs.advanced.debugMode"
-                  >
-                  调试模式
-                </label>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <!-- 实时验证结果 -->
-        <div 
-          v-if="validationResults.length > 0"
-          class="validation-panel"
-        >
-          <h3>配置验证结果</h3>
-          <div class="validation-list">
-            <div 
-              v-for="result in validationResults" 
-              :key="result.field"
-              class="validation-item"
-              :class="result.status"
-            >
-              <Icon 
-                :name="result.status === 'success' ? 'check' : 'alert-triangle'" 
-              />
-              <span>{{ result.message }}</span>
             </div>
           </div>
         </div>
@@ -365,52 +142,22 @@ import ErrorHandler from '../components/ErrorHandler.vue'
 
 // 配置分类
 const configSections = [
-  { key: 'ai', title: 'AI配置', icon: 'brain' },
-  { key: 'tts', title: '语音合成', icon: 'volume-2' },
-  { key: 'video', title: '视频配置', icon: 'video' },
-  { key: 'subtitle', title: '字幕配置', icon: 'type' },
-  { key: 'advanced', title: '高级配置', icon: 'settings' }
+  { key: 'tts', title: '语音合成', icon: 'volume-2' }
 ]
 
 // 状态管理
-const activeSection = ref('ai')
+const activeSection = ref('tts')
 const loading = ref(false)
 const saving = ref(false)
 const testing = ref(false)
 
 // 配置数据
 const configs = reactive({
-  ai: {
-    provider: 'openai',
-    apiKey: '',
-    model: 'gpt-4',
-    temperature: 0.7
-  },
   tts: {
     service: 'edge',
     voice: 'zh-CN-XiaoxiaoNeural',
     rate: 1.0,
     pitch: 1.0
-  },
-  video: {
-    resolution: '1920x1080',
-    fps: 30,
-    format: 'mp4',
-    quality: 'high'
-  },
-  subtitle: {
-    font: 'Microsoft YaHei',
-    fontSize: 24,
-    color: '#ffffff',
-    backgroundColor: '#000000',
-    outline: true
-  },
-  advanced: {
-    concurrency: 4,
-    cacheSize: 512,
-    enableGPU: false,
-    enableCache: true,
-    debugMode: false
   }
 })
 
@@ -524,15 +271,6 @@ async function testAllConfigs() {
 function validateConfigs() {
   const results: typeof validationResults.value = []
   
-  // AI配置验证
-  if (!configs.ai.apiKey) {
-    results.push({
-      field: 'ai.apiKey',
-      status: 'error',
-      message: 'AI API密钥不能为空'
-    })
-  }
-  
   // TTS配置验证
   if (configs.tts.rate < 0.5 || configs.tts.rate > 2) {
     results.push({
@@ -542,12 +280,19 @@ function validateConfigs() {
     })
   }
   
-  // 视频配置验证
-  if (configs.video.resolution === '3840x2160' && configs.video.fps === 60) {
+  if (configs.tts.pitch < 0.5 || configs.tts.pitch > 2) {
     results.push({
-      field: 'video.performance',
+      field: 'tts.pitch',
       status: 'warning',
-      message: '4K 60FPS可能需要大量计算资源'
+      message: '音调建议在0.5-2倍之间'
+    })
+  }
+
+  if (!configs.tts.service) {
+    results.push({
+      field: 'tts.service',
+      status: 'error',
+      message: 'TTS服务不能为空'
     })
   }
   

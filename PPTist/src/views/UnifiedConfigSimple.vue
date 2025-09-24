@@ -1,127 +1,140 @@
 <template>
   <div class="unified-config">
-    <div class="config-header">
-      <div class="header-left">
-        <h2 class="title">
-          <Format class="title-icon" />
-          项目配置中心
-        </h2>
-        <p class="subtitle">统一管理所有导出配置，打造完美的视频内容</p>
-      </div>
-      <button class="close-btn" @click="$emit('close')">
-        <Close />
-      </button>
-    </div>
-    
-    <div class="config-content">
-      <div class="config-sidebar">
-        <div class="sidebar-nav">
-          <div 
-            v-for="tab in tabs" 
-            :key="tab.id"
-            :class="['nav-item', { active: activeTab === tab.id }]"
-            @click="activeTab = tab.id"
-          >
-            <component :is="tab.icon" class="nav-icon" />
-            <span class="nav-text">{{ tab.label }}</span>
-            <div class="nav-indicator" v-if="activeTab === tab.id"></div>
-          </div>
+    <div class="config-modal">
+      <div class="config-header">
+        <div class="header-left">
+          <h2 class="title">
+            <Format class="title-icon" />
+            语音合成配置中心
+          </h2>
+          <p class="subtitle">统一管理语音合成配置，打造完美的音频体验</p>
         </div>
+        <button class="close-btn" @click="$emit('close')">
+          <Close />
+        </button>
       </div>
       
-      <div class="config-main">
-        <div class="tab-content">
-          <!-- 视频设置 -->
-          <VideoConfigPanel 
-            v-if="activeTab === 'video'" 
-            :config="videoConfig"
-            @update:config="videoConfig = $event"
-          />
-          
-          <!-- 字幕设置 -->
-          <SubtitleConfigPanel 
-            v-else-if="activeTab === 'subtitle'" 
-            :config="subtitleConfig"
-            @update:config="subtitleConfig = $event"
-          />
-          
-          <!-- 语音合成设置 -->
-          <TTSConfigPanel 
-            v-else-if="activeTab === 'tts'" 
-            :config="ttsConfig"
-            @update:config="ttsConfig = $event"
-          />
-          
-          <!-- AI配置 -->
-          <AIConfigPanel 
-            v-else-if="activeTab === 'ai'" 
-            :config="aiConfig"
-            @update:config="aiConfig = $event"
-          />
-          
-          <!-- API测试 -->
-          <div v-else-if="activeTab === 'api-test'" class="api-test-panel">
-            <div class="panel-header">
-              <h3>🧪 API服务连接测试</h3>
-              <p>测试前端与后端API服务的连接状态</p>
-            </div>
-            
-            <div class="test-section">
-              <h4>📊 服务状态检查</h4>
-              <div class="status-grid">
-                <div class="status-card" :class="{ 'healthy': healthStatus.primary, 'unhealthy': !healthStatus.primary }">
-                  <div class="status-header">
-                    <span class="status-label">主API服务 (8004)</span>
-                    <span class="status-indicator">{{ healthStatus.primary ? '✅' : '❌' }}</span>
-                  </div>
-                  <div class="status-detail">
-                    {{ healthStatus.primary ? '服务正常运行' : '服务无法连接' }}
-                  </div>
-                </div>
-                
-                <div class="status-card" :class="{ 'healthy': healthStatus.fallback, 'unhealthy': !healthStatus.fallback }">
-                  <div class="status-header">
-                    <span class="status-label">备用API服务 (5000)</span>
-                    <span class="status-indicator">{{ healthStatus.fallback ? '✅' : '❌' }}</span>
-                  </div>
-                  <div class="status-detail">
-                    {{ healthStatus.fallback ? '服务正常运行' : '服务无法连接' }}
-                  </div>
-                </div>
-              </div>
-              
-              <div class="test-actions">
-                <button class="test-btn" @click="checkApiHealth" :disabled="isChecking">
-                  {{ isChecking ? '检查中...' : '重新检查' }}
-                </button>
-                <button class="test-btn" @click="testApiCalls" :disabled="isTesting">
-                  {{ isTesting ? '测试中...' : '测试API调用' }}
-                </button>
-              </div>
-            </div>
-            
-            <div class="test-results" v-if="testResults.length > 0">
-              <h4>📝 测试日志</h4>
-              <div class="results-container">
-                <div v-for="(result, index) in testResults.slice(0, 5)" :key="index" 
-                     :class="['result-item', result.type]">
-                  <div class="result-time">{{ result.time }}</div>
-                  <div class="result-title">{{ result.title }}</div>
-                  <div class="result-content">{{ result.content }}</div>
-                </div>
-              </div>
+      <div class="config-content">
+        <div class="config-sidebar">
+          <div class="sidebar-nav">
+            <div 
+              v-for="tab in tabs" 
+              :key="tab.id"
+              :class="['nav-item', { active: activeTab === tab.id }]"
+              @click="activeTab = tab.id"
+            >
+              <component :is="tab.icon" class="nav-icon" />
+              <span class="nav-text">{{ tab.label }}</span>
+              <div class="nav-indicator" v-if="activeTab === tab.id"></div>
             </div>
           </div>
         </div>
         
-        <div class="config-actions">
-          <button class="action-btn secondary" @click="$emit('close')">
-            取消
-          </button>
-          <button class="action-btn primary" @click="saveAndClose">
-            <CheckOne class="btn-icon" />
-            保存配置
-          </button>
+        <div class="config-main">
+          <div class="tab-content">
+            <!-- 语音合成设置 -->
+            <div v-if="activeTab === 'tts'" class="tts-config-section">
+              <div class="section-header">
+                <h3>
+                  <VolumeNotice class="section-icon" />
+                  语音合成设置
+                </h3>
+                <p class="section-desc">选择语音角色和调整音频参数</p>
+              </div>
+              
+              <div class="settings-grid">
+                <div class="setting-card">
+                  <label class="setting-label">语音服务</label>
+                  <select class="setting-select" v-model="ttsConfig.service" @change="onServiceChange" :disabled="isLoading">
+                    <option value="edge_tts">Edge TTS (免费)</option>
+                    <option value="fish_tts">Fish TTS (AI克隆)</option>
+                    <option value="openai_tts">OpenAI TTS (高级)</option>
+                  </select>
+                  <div class="form-hint">{{ getServiceDescription(ttsConfig.service) }}</div>
+                </div>
+                
+                <div class="setting-card">
+                  <label class="setting-label">语音角色</label>
+                  <select class="setting-select" v-model="ttsConfig.voice" :disabled="voicesLoading">
+                    <option v-if="voicesLoading" value="">🔄 加载中...</option>
+                    <option v-else-if="!voices.length" value="">⚠️ 暂无可用语音</option>
+                    <option 
+                      v-else 
+                      v-for="voice in voices" 
+                      :key="voice.id" 
+                      :value="voice.id"
+                    >
+                      {{ voice.display_name }}
+                    </option>
+                  </select>
+                  <div class="form-hint">
+                    <span v-if="voicesLoading">正在加载语音角色列表...</span>
+                    <span v-else-if="voices.length">共 {{ voices.length }} 个可选角色</span>
+                    <span v-else>请选择语音服务以加载角色</span>
+                  </div>
+                </div>
+                
+                <div class="setting-card">
+                  <label class="setting-label">配音试听</label>
+                  <div class="preview-container">
+                    <div class="preview-text-input">
+                      <input 
+                        type="text" 
+                        v-model="previewText"
+                        placeholder="输入试听文本，如：大家好，欢迎观看本期视频"
+                        class="preview-input"
+                        maxlength="100"
+                      />
+                    </div>
+                    <div class="preview-controls">
+                      <button 
+                        class="preview-btn"
+                        @click="previewVoice"
+                        :disabled="!ttsConfig.voice || previewLoading || voicesLoading"
+                      >
+                        <span v-if="previewLoading">🔄 生成中...</span>
+                        <span v-else>🎵 试听配音</span>
+                      </button>
+                      <button 
+                        v-if="previewAudioUrl"
+                        class="play-btn"
+                        @click="playPreview"
+                        :disabled="previewLoading"
+                      >
+                        🔊 播放
+                      </button>
+                    </div>
+                    <audio 
+                      ref="previewAudio"
+                      :src="previewAudioUrl"
+                      @ended="onPreviewEnded"
+                      @error="onAudioError"
+                      @loadstart="onAudioLoadStart"
+                      @canplay="onAudioCanPlay"
+                      preload="metadata"
+                      style="display: none;"
+                    >
+                      <!-- 添加多种格式支持 -->
+                      <source :src="previewAudioUrl" type="audio/mpeg" v-if="previewAudioUrl.endsWith('.mp3')">
+                      <source :src="previewAudioUrl" type="audio/wav" v-if="previewAudioUrl.endsWith('.wav')">
+                      您的浏览器不支持音频播放。
+                    </audio>
+                  </div>
+                  <div class="form-hint">选择语音角色后，输入文本进行配音试听</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="config-actions">
+            <button class="action-btn secondary" @click="$emit('close')">
+              取消
+            </button>
+            <button class="action-btn primary" @click="saveAndClose" :disabled="isLoading">
+              <CheckOne class="btn-icon" />
+              {{ isLoading ? '保存中...' : '保存配置' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -129,318 +142,359 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { 
   Format, 
   Close, 
-  VideoTwo, 
-  Text, 
   VolumeNotice, 
-  Magic,
-  CheckOne,
-  ApiApp
+  CheckOne
 } from '@icon-park/vue-next'
 
-// 导入组件
-import VideoConfigPanel from '@/components/VideoConfigPanel.vue'
-import SubtitleConfigPanel from '@/components/SubtitleConfigPanel.vue'
-import TTSConfigPanel from '@/components/TTSConfigPanel.vue'
-import AIConfigPanel from '@/components/AIConfigPanel.vue'
+// 基本状态
+const isLoading = ref(false)
+const voicesLoading = ref(false)
+const activeTab = ref('tts')
 
-// 导入API服务
-import { checkApiHealth as checkHealth, smartApiCall } from '@/api/index'
-import { aiService } from '@/api/services'
+// 配音试听相关
+const previewText = ref('大家好，欢迎观看本期视频！')
+const previewLoading = ref(false)
+const previewAudioUrl = ref('')
+const previewAudio = ref<HTMLAudioElement | null>(null)
 
+// 语音列表
+const voices = ref<any[]>([])
+
+// 发出事件给父组件
 const emit = defineEmits<{
   close: []
 }>()
 
-const activeTab = ref('video')
-
+// 标签页配置 - 只保留语音合成
 const tabs = [
-  { id: 'video', label: '视频设置', icon: VideoTwo },
-  { id: 'subtitle', label: '字幕设置', icon: Text },
-  { id: 'tts', label: '语音合成', icon: VolumeNotice },
-  { id: 'ai', label: 'AI配置', icon: Magic },
-  { id: 'api-test', label: 'API测试', icon: ApiApp }
+  { id: 'tts', label: '语音合成', icon: VolumeNotice }
 ]
 
-const videoConfig = ref({
-  resolution: '1920x1080',
-  fps: 30,
-  quality: 'high'
+// TTS配置
+const ttsConfig = reactive({
+  service: 'edge_tts',
+  voice: 'zh-CN-XiaoxiaoNeural'
 })
 
-const subtitleConfig = ref({
-  fontSize: 24,
-  color: '#ffffff',
-  position: 'bottom'
-})
-
-const ttsConfig = ref({
-  service: 'edge',
-  voice: 'zh-CN-XiaoxiaoNeural',
-  speed: 1.0
-})
-
-const aiConfig = ref({
-  openai: {
-    apiKey: '',
-    enabled: false
-  },
-  anthropic: {
-    apiKey: '',
-    enabled: false
-  },
-  custom: {
-    apiKey: '',
-    baseUrl: '',
-    model: '',
-    enabled: false
+// 获取服务描述
+const getServiceDescription = (service: string): string => {
+  const descriptions = {
+    'edge_tts': 'Microsoft Edge TTS - 免费高质量语音合成',
+    'fish_tts': 'Fish TTS - AI语音克隆技术，支持名人声音',
+    'openai_tts': 'OpenAI TTS - 先进的AI语音合成服务'
   }
-})
-
-// API测试相关状态
-const healthStatus = ref({
-  primary: false,
-  fallback: false
-})
-
-const isChecking = ref(false)
-const isTesting = ref(false)
-const testResults = ref<Array<{
-  title: string
-  content: string
-  type: 'success' | 'error' | 'info'
-  time: string
-}>>([])
-
-// 添加测试结果
-const addTestResult = (title: string, content: string, type: 'success' | 'error' | 'info' = 'info') => {
-  testResults.value.unshift({
-    title,
-    content,
-    type,
-    time: new Date().toLocaleTimeString()
-  })
-  
-  // 保持最多10条记录
-  if (testResults.value.length > 10) {
-    testResults.value.pop()
-  }
+  return descriptions[service as keyof typeof descriptions] || '未知服务'
 }
 
-// 检查API健康状态
-const checkApiHealth = async () => {
-  isChecking.value = true
-  addTestResult('健康检查', '开始检查API服务状态...', 'info')
+// 加载语音列表
+const loadVoices = async (engineId: string) => {
+  if (!engineId) return
   
   try {
-    // 使用API服务检查健康状态
-    const health = await checkHealth()
+    voicesLoading.value = true
+    const response = await fetch(`/api/tts/voices/${engineId}`)
+    const result = await response.json()
     
-    healthStatus.value.primary = health.primary
-    healthStatus.value.fallback = health.fallback
-    
-    if (health.primary) {
-      addTestResult('主API服务 (8004)', '状态正常', 'success')
+    if (result.success && result.data && result.data.voices) {
+      voices.value = result.data.voices
+      
+      // 如果当前选择的语音不在新列表中，选择第一个可用语音
+      if (voices.value.length > 0) {
+        const currentVoiceExists = voices.value.some(v => v.id === ttsConfig.voice)
+        if (!currentVoiceExists) {
+          ttsConfig.voice = voices.value[0].id
+        }
+      }
     }
     else {
-      addTestResult('主API服务 (8004)', '连接失败', 'error')
+      // 加载失败时重置语音列表
+      voices.value = []
     }
-    
-    if (health.fallback) {
-      addTestResult('备用API服务 (5000)', '状态正常', 'success')
-    }
-    else {
-      addTestResult('备用API服务 (5000)', '连接失败', 'error')
-    }
-    
   }
-  catch (error: any) {
-    addTestResult('健康检查失败', error.message, 'error')
+  catch (error) {
+    // 异常时重置语音列表
+    voices.value = []
   }
   finally {
-    isChecking.value = false
+    voicesLoading.value = false
   }
 }
 
-// 测试API调用
-const testApiCalls = async () => {
-  isTesting.value = true
-  addTestResult('API调用测试', '开始测试各个API端点...', 'info')
+// 服务切换事件
+const onServiceChange = async () => {
+  await loadVoices(ttsConfig.service)
+}
+
+// 配音试听功能
+const previewVoice = async () => {
+  if (!ttsConfig.service || !ttsConfig.voice || !previewText.value.trim()) {
+    return
+  }
   
   try {
-    // 测试配置API
-    try {
-      const configData = await smartApiCall(api => 
-        api.get('/api/config/presets')
-      )
-      addTestResult('配置API测试', `获取预设配置成功，共 ${Object.keys(configData.data || {}).length} 个预设`, 'success')
-    }
-    catch (error: any) {
-      addTestResult('配置API测试', `调用失败: ${error.message}`, 'error')
-    }
+    previewLoading.value = true
+    previewAudioUrl.value = ''
     
-    // 测试版本API
-    try {
-      const versionData = await smartApiCall(api => 
-        api.get('/api/version')
-      )
-      addTestResult('版本API测试', `服务版本: ${versionData.data?.version || '未知'}`, 'success')
-    }
-    catch (error: any) {
-      addTestResult('版本API测试', `调用失败: ${error.message}`, 'error')
-    }
+    const response = await fetch('/api/tts/test', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        engine_id: ttsConfig.service,
+        voice_id: ttsConfig.voice,
+        text: previewText.value.trim()
+      })
+    })
     
+    const result = await response.json()
+    if (result.success && result.data && result.data.audio_url) {
+      // 确保URL是完整的HTTP URL
+      const audioUrl = result.data.audio_url.startsWith('http') 
+        ? result.data.audio_url 
+        : `${window.location.protocol}//${window.location.host}${result.data.audio_url}`
+      
+      previewAudioUrl.value = audioUrl
+    }
+    else {
+      // 试听失败，可以在这里显示错误提示
+    }
   }
-  catch (error: any) {
-    addTestResult('API调用异常', `测试失败: ${error.message}`, 'error')
+  catch (error) {
+    // 试听异常处理
   }
   finally {
-    isTesting.value = false
+    previewLoading.value = false
   }
 }
 
-// 组件挂载时自动检查API健康状态
-onMounted(() => {
-  checkApiHealth()
+// 播放试听音频
+const playPreview = async () => {
+  if (!previewAudioUrl.value) {
+    return
+  }
+  
+  try {
+    // 创建新的Audio对象，避免复用问题
+    const audio = new Audio(previewAudioUrl.value)
+    
+    // 设置音频属性
+    audio.preload = 'metadata'
+    audio.volume = 0.8
+    
+    // 添加事件监听
+    audio.addEventListener('loadstart', () => {
+      // 开始加载
+    })
+    
+    audio.addEventListener('canplay', () => {
+      // 可以播放
+    })
+    
+    audio.addEventListener('error', () => {
+      // 播放错误
+    })
+    
+    // 等待音频加载并播放
+    await audio.play()
+  }
+  catch (error) {
+    // 播放失败处理
+    // 可以在这里显示用户友好的错误提示
+  }
+}
+
+// 试听音频播放结束
+const onPreviewEnded = () => {
+  // 可以在这里添加播放结束后的处理逻辑
+}
+
+// 音频加载开始
+const onAudioLoadStart = () => {
+  // 音频开始加载
+}
+
+// 音频可以播放
+const onAudioCanPlay = () => {
+  // 音频准备好可以播放
+}
+
+// 音频错误处理
+const onAudioError = (event: Event) => {
+  const audio = event.target as HTMLAudioElement
+  if (audio && audio.error) {
+    // 处理音频播放错误
+    // 可以显示用户友好的错误提示
+  }
+}
+
+// 加载当前配置
+const loadConfig = async () => {
+  try {
+    isLoading.value = true
+    const response = await fetch('/api/tts/config')
+    const result = await response.json()
+    
+    if (result.success && result.data) {
+      const config = result.data
+      ttsConfig.service = config.current_engine || 'edge_tts'
+      
+      if (config.edge_config) {
+        if (ttsConfig.service === 'edge_tts') {
+          ttsConfig.voice = config.edge_config.voice || 'zh-CN-XiaoxiaoNeural'
+        }
+      }
+      
+      if (config.fish_config) {
+        if (ttsConfig.service === 'fish_tts') {
+          ttsConfig.voice = config.fish_config.character || '雷军'
+        }
+      }
+    }
+  }
+  catch (error) {
+    // 加载配置失败
+  }
+  finally {
+    isLoading.value = false
+  }
+}
+
+// 保存配置
+const saveConfig = async () => {
+  try {
+    isLoading.value = true
+    
+    // 构建保存数据
+    const configData = {
+      preferred_engine: ttsConfig.service,
+      edge_voice: ttsConfig.service === 'edge_tts' ? ttsConfig.voice : 'zh-CN-XiaoxiaoNeural',
+      edge_rate: 'medium',
+      edge_pitch: 'medium',
+      fish_character_name: ttsConfig.service === 'fish_tts' ? ttsConfig.voice : '雷军'
+    }
+    
+    const response = await fetch('/api/tts/config', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(configData)
+    })
+    
+    const result = await response.json()
+    if (result.success) {
+      // 配置保存成功
+    }
+    else {
+      // 保存配置失败
+    }
+  }
+  catch (error) {
+    // 保存配置异常
+  }
+  finally {
+    isLoading.value = false
+  }
+}
+
+// 组件挂载时初始化
+onMounted(async () => {
+  await loadConfig()
+  await loadVoices(ttsConfig.service)
 })
 
+// 监听服务变化
+watch(() => ttsConfig.service, (newService) => {
+  if (newService) {
+    loadVoices(newService)
+  }
+})
+
+// 处理关闭
+const handleClose = () => {
+  emit('close')
+}
+
+// 保存并关闭
 const saveAndClose = async () => {
-  try {
-    // 保存到localStorage
-    localStorage.setItem('projectConfig', JSON.stringify({
-      video: videoConfig.value,
-      subtitle: subtitleConfig.value,
-      tts: ttsConfig.value,
-      ai: aiConfig.value
-    }))
-    
-    // 保存AI配置到后端
-    if (activeTab.value === 'ai') {
-      await saveAIConfigToBackend()
-    }
-    
-    // 关闭配置面板
-    emit('close')
-  }
-  catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('保存配置失败:', error)
-  }
-}
-
-const saveAIConfigToBackend = async () => {
-  try {
-    // 确定默认提供商
-    const defaultProvider = aiConfig.value.openai.enabled ? 'openai' as const :
-      aiConfig.value.anthropic.enabled ? 'anthropic' as const :
-        aiConfig.value.custom.enabled ? 'custom' as const : 'openai' as const
-    
-    // 使用AI服务更新配置
-    const apiConfig = {
-      openai: {
-        apiKey: aiConfig.value.openai.apiKey,
-        baseUrl: 'https://api.openai.com/v1',
-        model: 'gpt-3.5-turbo',
-        enabled: aiConfig.value.openai.enabled
-      },
-      anthropic: {
-        apiKey: aiConfig.value.anthropic.apiKey,
-        baseUrl: 'https://api.anthropic.com',
-        model: 'claude-3-haiku-20240307',
-        enabled: aiConfig.value.anthropic.enabled
-      },
-      custom: {
-        apiKey: aiConfig.value.custom.apiKey,
-        baseUrl: aiConfig.value.custom.baseUrl,
-        model: aiConfig.value.custom.model,
-        enabled: aiConfig.value.custom.enabled
-      },
-      defaultProvider
-    }
-    
-    await aiService.updateConfig(apiConfig)
-  }
-  catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('保存AI配置失败:', error)
-    throw new Error('保存AI配置到后端失败')
-  }
+  await saveConfig()
+  handleClose()
 }
 </script>
 
-<style lang="scss" scoped>
+<style scoped lang="scss">
 .unified-config {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.config-modal {
+  width: 80vw;
+  max-width: 1200px;
+  height: 80vh;
+  max-height: 800px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
 }
 
 .config-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  padding: 32px 40px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
-}
-
-.header-left {
-  flex: 1;
-}
-
-.title {
-  display: flex;
   align-items: center;
-  margin: 0 0 8px 0;
-  font-size: 28px;
-  font-weight: 700;
-  background: linear-gradient(45deg, #ffffff, #e0e7ff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.title-icon {
-  margin-right: 12px;
-  font-size: 32px;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-}
-
-.subtitle {
-  margin: 0;
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.8);
-  font-weight: 400;
-}
-
-.close-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 24px 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
 
-  &:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  .header-left {
+    .title {
+      display: flex;
+      align-items: center;
+      margin: 0 0 8px 0;
+      font-size: 24px;
+      font-weight: 600;
+
+      .title-icon {
+        margin-right: 12px;
+        font-size: 28px;
+      }
+    }
+
+    .subtitle {
+      margin: 0;
+      font-size: 14px;
+      opacity: 0.9;
+    }
   }
 
-  svg {
-    font-size: 20px;
+  .close-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 8px;
+    padding: 8px;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
   }
 }
 
@@ -452,58 +506,63 @@ const saveAIConfigToBackend = async () => {
 
 .config-sidebar {
   width: 280px;
-  background: rgba(0, 0, 0, 0.1);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 24px 0;
-  backdrop-filter: blur(10px);
-}
+  background: #f8fafc;
+  border-right: 1px solid #e2e8f0;
+  overflow-y: auto;
 
-.sidebar-nav {
-  padding: 0 16px;
-}
+  .sidebar-nav {
+    padding: 24px 16px;
 
-.nav-item {
-  display: flex;
-  align-items: center;
-  padding: 16px 20px;
-  margin-bottom: 8px;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
+    .nav-item {
+      display: flex;
+      align-items: center;
+      padding: 16px 20px;
+      margin-bottom: 8px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
 
-  &:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateX(4px);
-  }
+      .nav-icon {
+        margin-right: 12px;
+        font-size: 20px;
+        color: #64748b;
+      }
 
-  &.active {
-    background: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      .nav-text {
+        font-size: 15px;
+        font-weight: 500;
+        color: #334155;
+      }
 
-    .nav-indicator {
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      width: 4px;
-      background: linear-gradient(to bottom, #60a5fa, #3b82f6);
-      border-radius: 0 2px 2px 0;
+      .nav-indicator {
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 24px;
+        background: #667eea;
+        border-radius: 2px;
+      }
+
+      &:hover {
+        background: #e2e8f0;
+        transform: translateX(4px);
+      }
+
+      &.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        transform: translateX(8px);
+
+        .nav-icon,
+        .nav-text {
+          color: white;
+        }
+      }
     }
   }
-}
-
-.nav-icon {
-  font-size: 20px;
-  margin-right: 12px;
-  opacity: 0.9;
-}
-
-.nav-text {
-  font-size: 15px;
-  font-weight: 500;
-  opacity: 0.95;
 }
 
 .config-main {
@@ -516,229 +575,283 @@ const saveAIConfigToBackend = async () => {
 .tab-content {
   flex: 1;
   overflow-y: auto;
-  padding: 32px 40px;
-
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.4);
-    }
-  }
+  padding: 32px;
 }
 
 .config-actions {
-  padding: 24px 40px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.1);
   display: flex;
   justify-content: flex-end;
   gap: 16px;
-}
+  padding: 24px 32px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
 
-.action-btn {
-  padding: 12px 24px;
-  border-radius: 10px;
-  border: none;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.3s ease;
-
-  &.secondary {
-    background: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.2);
-      color: white;
-    }
-  }
-
-  &.primary {
-    background: linear-gradient(45deg, #3b82f6, #1d4ed8);
-    color: white;
-    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-
-    &:hover {
-      background: linear-gradient(45deg, #2563eb, #1e40af);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
-    }
-  }
-
-  .btn-icon {
-    font-size: 16px;
-  }
-}
-
-// API测试面板样式
-.api-test-panel {
-  .panel-header {
-    margin-bottom: 24px;
-    
-    h3 {
-      margin: 0 0 8px 0;
-      font-size: 20px;
-      font-weight: 600;
-    }
-    
-    p {
-      margin: 0;
-      opacity: 0.8;
-      font-size: 14px;
-    }
-  }
-  
-  .test-section {
-    margin-bottom: 24px;
-    
-    h4 {
-      margin: 0 0 16px 0;
-      font-size: 16px;
-      font-weight: 500;
-    }
-  }
-  
-  .status-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 20px;
-  }
-  
-  .status-card {
-    padding: 16px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
-    
-    &.healthy {
-      border-color: rgba(34, 197, 94, 0.5);
-      background: rgba(34, 197, 94, 0.1);
-    }
-    
-    &.unhealthy {
-      border-color: rgba(239, 68, 68, 0.5);
-      background: rgba(239, 68, 68, 0.1);
-    }
-  }
-  
-  .status-header {
+  .action-btn {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
-  }
-  
-  .status-label {
-    font-weight: 500;
-    font-size: 14px;
-  }
-  
-  .status-indicator {
-    font-size: 16px;
-  }
-  
-  .status-detail {
-    font-size: 12px;
-    opacity: 0.8;
-  }
-  
-  .test-actions {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  
-  .test-btn {
-    padding: 10px 20px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
+    gap: 8px;
+    padding: 12px 24px;
+    border: none;
     border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
+    transition: all 0.2s;
+
+    .btn-icon {
+      font-size: 16px;
+    }
+
+    &.secondary {
+      background: #e2e8f0;
+      color: #64748b;
+
+      &:hover {
+        background: #cbd5e1;
+      }
+    }
+
+    &.primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+    }
+  }
+}
+
+// TTS配置样式
+.tts-config-section {
+  .section-header {
+    margin-bottom: 32px;
     
-    &:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.2);
-      border-color: rgba(255, 255, 255, 0.5);
-      transform: translateY(-1px);
+    h3 {
+      display: flex;
+      align-items: center;
+      margin: 0 0 8px 0;
+      font-size: 20px;
+      font-weight: 600;
+      color: #1e293b;
+      
+      .section-icon {
+        margin-right: 12px;
+        font-size: 24px;
+        color: #667eea;
+      }
     }
     
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
+    .section-desc {
+      margin: 0;
+      font-size: 14px;
+      color: #64748b;
     }
   }
   
-  .test-results {
-    .results-container {
-      max-height: 300px;
-      overflow-y: auto;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 8px;
-      background: rgba(0, 0, 0, 0.2);
-    }
+  .settings-grid {
+    display: grid;
+    gap: 24px;
     
-    .result-item {
-      padding: 12px 16px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    .setting-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      transition: all 0.2s;
       
-      &:last-child {
-        border-bottom: none;
+      &:hover {
+        border-color: #667eea;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
       }
       
-      &.success {
-        border-left: 3px solid #22c55e;
+      .setting-label {
+        display: block;
+        margin-bottom: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #374151;
       }
       
-      &.error {
-        border-left: 3px solid #ef4444;
+      .setting-select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        background: white;
+        font-size: 14px;
+        color: #374151;
+        transition: border-color 0.2s;
+        
+        &:focus {
+          outline: none;
+          border-color: #667eea;
+          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
       }
       
-      &.info {
-        border-left: 3px solid #3b82f6;
+      .slider-container {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        
+        .setting-slider {
+          flex: 1;
+          height: 6px;
+          border-radius: 3px;
+          background: #e2e8f0;
+          outline: none;
+          appearance: none;
+          
+          &::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+          }
+          
+          &::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border: none;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+          }
+        }
+        
+        .slider-value {
+          font-size: 14px;
+          font-weight: 500;
+          color: #667eea;
+          min-width: 40px;
+          text-align: center;
+        }
+      }
+      
+      .form-hint {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #64748b;
+        line-height: 1.4;
+      }
+      
+      // 配音试听样式
+      .preview-container {
+        .preview-text-input {
+          margin-bottom: 16px;
+          
+          .preview-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            color: #374151;
+            transition: border-color 0.2s;
+            
+            &::placeholder {
+              color: #9ca3af;
+            }
+            
+            &:focus {
+              outline: none;
+              border-color: #667eea;
+              box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            }
+          }
+        }
+        
+        .preview-controls {
+          display: flex;
+          gap: 12px;
+          
+          .preview-btn,
+          .play-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            
+            &:disabled {
+              opacity: 0.5;
+              cursor: not-allowed;
+            }
+          }
+          
+          .preview-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            
+            &:hover:not(:disabled) {
+              transform: translateY(-1px);
+              box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            }
+          }
+          
+          .play-btn {
+            background: #10b981;
+            color: white;
+            
+            &:hover:not(:disabled) {
+              background: #059669;
+              transform: translateY(-1px);
+              box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            }
+          }
+        }
       }
     }
-    
-    .result-time {
-      font-size: 11px;
-      opacity: 0.6;
-      margin-bottom: 4px;
+  }
+}
+
+// 响应式设计
+@media (max-width: 768px) {
+  .config-modal {
+    width: 95vw;
+    height: 95vh;
+  }
+
+  .config-content {
+    flex-direction: column;
+  }
+
+  .config-sidebar {
+    width: 100%;
+    height: 120px;
+    overflow-x: auto;
+
+    .sidebar-nav {
+      display: flex;
+      padding: 16px;
+      gap: 8px;
+
+      .nav-item {
+        flex-shrink: 0;
+        margin-bottom: 0;
+        white-space: nowrap;
+      }
     }
-    
-    .result-title {
-      font-weight: 500;
-      font-size: 13px;
-      margin-bottom: 4px;
-    }
-    
-    .result-content {
-      font-size: 12px;
-      opacity: 0.8;
-      line-height: 1.4;
-    }
+  }
+
+  .tab-content {
+    padding: 16px;
   }
 }
 </style>

@@ -261,7 +261,7 @@ const openAIPPTDialog = () => {
   &:hover {
     background-color: #f1f1f1;
   }
-  
+
   // 视频配置按钮特殊样式
   &.video-config-btn {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

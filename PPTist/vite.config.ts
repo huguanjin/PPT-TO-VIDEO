@@ -67,6 +67,25 @@ export default defineConfig(({ mode }) => {
           }
         },
         
+        // 添加临时文件代理（音频预览文件）
+        '/temp': {
+          target: apiConfig.baseUrl,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/temp/, '/temp'),
+          configure: (proxy, options) => {
+            proxy.on('error', (err) => {
+              // eslint-disable-next-line no-console
+              console.error('🚫 音频文件代理错误:', err.message)
+            })
+            
+            proxy.on('proxyReq', (proxyReq, req) => {
+              // eslint-disable-next-line no-console
+              console.log(`🎵 音频文件代理: ${req.method} ${req.url} -> ${options.target}${req.url}`)
+            })
+          }
+        },
+        
         // WebSocket代理（如果需要）
         '/ws': {
           target: apiConfig.baseUrl.replace('http', 'ws'),
