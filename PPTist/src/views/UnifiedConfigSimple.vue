@@ -164,6 +164,15 @@ const previewAudio = ref<HTMLAudioElement | null>(null)
 // 语音列表
 const voices = ref<any[]>([])
 
+// Fish TTS元数据
+const fishTTSMeta = ref<{
+  default_voice: string
+  character_id_dict: Record<string, string>
+}>({
+  default_voice: '雷军',
+  character_id_dict: {}
+})
+
 // 发出事件给父组件
 const emit = defineEmits<{
   close: []
@@ -179,6 +188,15 @@ const ttsConfig = reactive({
   service: 'edge_tts',
   voice: 'zh-CN-XiaoxiaoNeural'
 })
+
+// 获取Fish TTS默认角色ID
+const getDefaultFishCharacterId = (): string => {
+  const defaultVoice = fishTTSMeta.value.default_voice
+  const characterIdDict = fishTTSMeta.value.character_id_dict
+  
+  // 从character_id_dict中获取默认角色的ID
+  return characterIdDict[defaultVoice] || '738d0cc1a3e9430a9de2b544a466a7fc'
+}
 
 // 获取服务描述
 const getServiceDescription = (service: string): string => {
@@ -201,6 +219,14 @@ const loadVoices = async (engineId: string) => {
     
     if (result.success && result.data && result.data.voices) {
       voices.value = result.data.voices
+      
+      // 如果是Fish TTS，存储元数据
+      if (engineId === 'fish_tts' && result.data) {
+        fishTTSMeta.value = {
+          default_voice: result.data.default_voice || '雷军',
+          character_id_dict: result.data.character_id_dict || {}
+        }
+      }
       
       // 如果当前选择的语音不在新列表中，选择第一个可用语音
       if (voices.value.length > 0) {
@@ -351,7 +377,7 @@ const loadConfig = async () => {
       
       if (config.fish_config) {
         if (ttsConfig.service === 'fish_tts') {
-          ttsConfig.voice = config.fish_config.character || '雷军'
+          ttsConfig.voice = config.fish_config.character || fishTTSMeta.value.default_voice
         }
       }
     }
@@ -369,15 +395,49 @@ const saveConfig = async () => {
   try {
     isLoading.value = true
     
-    // 构建保存数据
-    const configData = {
-      preferred_engine: ttsConfig.service,
-      edge_voice: ttsConfig.service === 'edge_tts' ? ttsConfig.voice : 'zh-CN-XiaoxiaoNeural',
-      edge_rate: 'medium',
-      edge_pitch: 'medium',
-      fish_character_name: ttsConfig.service === 'fish_tts' ? ttsConfig.voice : '雷军'
+    // 数据验证
+    if (!ttsConfig.service) {
+      throw new Error('请选择语音服务')
     }
     
+    if (!ttsConfig.voice) {
+      throw new Error('请选择语音角色')
+    }
+    
+    // 构建保存数据 - 使用后端期望的嵌套格式
+    const configData = {
+      preferred_engine: ttsConfig.service,
+      _updated_at: new Date().toISOString(),
+      
+      // Edge TTS配置
+      edge_config: {
+        voice: ttsConfig.service === 'edge_tts' ? ttsConfig.voice : 'zh-CN-XiaoxiaoNeural',
+        rate: '+0%', // 固定为默认值
+        pitch: '+0Hz' // 固定为默认值
+      },
+      
+      // Fish TTS配置
+      fish_config: {
+        character: ttsConfig.service === 'fish_tts' ? ttsConfig.voice : fishTTSMeta.value.default_voice,
+        // 获取当前选中voice的character_id - 使用character_id而不是id
+        character_id: ttsConfig.service === 'fish_tts' ? 
+          (voices.value.find(v => v.name === ttsConfig.voice)?.character_id || 
+           voices.value.find(v => v.display_name === ttsConfig.voice)?.character_id ||
+           getDefaultFishCharacterId()) : 
+          getDefaultFishCharacterId() // 使用动态获取的默认ID
+      }
+    }
+    
+    // 额外验证Fish TTS的character_id
+    if (ttsConfig.service === 'fish_tts') {
+      const characterId = configData.fish_config.character_id
+      // 验证character_id是否是有效的UUID格式
+      if (!characterId || characterId === ttsConfig.voice || characterId.length < 30) {
+        throw new Error(`无法获取Fish TTS角色ID，选中角色: ${ttsConfig.voice}，获取到ID: ${characterId}`)
+      }
+    }
+    
+    // 发送配置保存请求
     const response = await fetch('/api/tts/config', {
       method: 'POST',
       headers: {
@@ -386,16 +446,35 @@ const saveConfig = async () => {
       body: JSON.stringify(configData)
     })
     
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+    
     const result = await response.json()
     if (result.success) {
-      // 配置保存成功
-    }
+      // 显示成功提示
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ 
+          type: 'notification', 
+          message: 'TTS配置保存成功！',
+          level: 'success'
+        }, '*')
+      }
+    } 
     else {
-      // 保存配置失败
+      throw new Error(result.message || '配置保存失败')
     }
   }
   catch (error) {
-    // 保存配置异常
+    // 显示错误提示
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ 
+        type: 'notification', 
+        message: `保存失败: ${errorMessage}`,
+        level: 'error'
+      }, '*')
+    }
   }
   finally {
     isLoading.value = false

@@ -96,6 +96,14 @@ def load_fish_tts_config():
     except Exception as e:
         logger.error(f"加载Fish TTS配置失败: {e}")
     return None
+    try:
+        config_path = Path(__file__).parent.parent.parent / "config_data" / "fish_tts_voices.json"
+        if config_path.exists():
+            with open(config_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        logger.error(f"加载Fish TTS配置失败: {e}")
+    return None
 
 def load_app_config():
     """加载应用配置"""
@@ -314,6 +322,42 @@ def update_tts_config():
                 'message': '缺少配置数据'
             }), 400
         
+        # 数据验证
+        if 'preferred_engine' not in data:
+            return jsonify({
+                'success': False,
+                'message': '缺少required_engine参数'
+            }), 400
+        
+        preferred_engine = data['preferred_engine']
+        if preferred_engine not in ['edge_tts', 'fish_tts', 'openai_tts']:
+            return jsonify({
+                'success': False,
+                'message': f'不支持的TTS引擎: {preferred_engine}'
+            }), 400
+        
+        # 验证具体引擎配置
+        if preferred_engine == 'edge_tts' and 'edge_config' in data:
+            edge_config = data['edge_config']
+            if 'voice' not in edge_config or not edge_config['voice']:
+                return jsonify({
+                    'success': False,
+                    'message': 'Edge TTS缺少语音角色配置'
+                }), 400
+        
+        if preferred_engine == 'fish_tts' and 'fish_config' in data:
+            fish_config = data['fish_config']
+            if 'character' not in fish_config or not fish_config['character']:
+                return jsonify({
+                    'success': False,
+                    'message': 'Fish TTS缺少角色名称配置'
+                }), 400
+            if 'character_id' not in fish_config or not fish_config['character_id']:
+                return jsonify({
+                    'success': False,
+                    'message': 'Fish TTS缺少角色ID配置'
+                }), 400
+        
         # 加载当前应用配置
         app_config = load_app_config()
         if not app_config:
@@ -326,39 +370,105 @@ def update_tts_config():
         tts_config = app_config['tts']
         
         # 更新引擎选择
-        if 'preferred_engine' in data:
-            tts_config['preferred_engine'] = data['preferred_engine']
-        
-        # 更新Edge TTS配置
+        tts_config['preferred_engine'] = preferred_engine
+            
+        # 处理Edge TTS配置
         if 'edge_config' in data:
             edge_config = data['edge_config']
             if 'voice' in edge_config:
                 tts_config['edge_voice'] = edge_config['voice']
             if 'rate' in edge_config:
-                tts_config['edge_rate'] = edge_config['rate']
+                tts_config['edge_rate'] = edge_config['rate'] 
             if 'pitch' in edge_config:
                 tts_config['edge_pitch'] = edge_config['pitch']
         
-        # 更新Fish TTS配置
+        # 处理Fish TTS配置
         if 'fish_config' in data:
             fish_config = data['fish_config']
             if 'character' in fish_config:
                 tts_config['fish_character_name'] = fish_config['character']
+                # 同时更新旧版本的fish_character字段以保持兼容性
+                tts_config['fish_character'] = fish_config['character']
             if 'character_id' in fish_config:
-                tts_config['fish_character_id'] = fish_config['character_id']
+                # 验证character_id是否有效（应该是32位UUID格式）
+                character_id = fish_config['character_id']
+                if len(character_id) >= 30 and character_id != fish_config.get('character', ''):
+                    tts_config['fish_character_id'] = character_id
+                else:
+                    # 如果character_id无效，尝试从配置文件中获取正确的ID
+                    character_name = fish_config.get('character', '')
+                    try:
+                        # 加载Fish TTS配置文件获取正确的character_id
+                        voices_config_path = Path(__file__).parent.parent.parent / "config_data" / "fish_tts_voices.json"
+                        if voices_config_path.exists():
+                            with open(voices_config_path, 'r', encoding='utf-8') as f:
+                                voices_config = json.load(f)
+                            character_id_dict = voices_config.get('character_id_dict', {})
+                            default_character = voices_config.get('default_character', '雷军')
+                            
+                            # 从character_id_dict中获取正确的ID
+                            if character_name and character_name in character_id_dict:
+                                tts_config['fish_character_id'] = character_id_dict[character_name]
+                                logger.info(f"修正Fish TTS角色ID: {character_name} -> {character_id_dict[character_name]}")
+                            else:
+                                # 使用默认角色的ID
+                                tts_config['fish_character_id'] = character_id_dict.get(default_character, '738d0cc1a3e9430a9de2b544a466a7fc')
+                                logger.warning(f"使用默认Fish TTS角色ID: {default_character}")
+                        else:
+                            # 配置文件不存在，使用硬编码默认值
+                            tts_config['fish_character_id'] = '738d0cc1a3e9430a9de2b544a466a7fc'
+                            logger.warning("Fish TTS配置文件不存在，使用硬编码默认ID")
+                    except Exception as e:
+                        logger.error(f"获取Fish TTS配置失败: {e}")
+                        tts_config['fish_character_id'] = '738d0cc1a3e9430a9de2b544a466a7fc'
         
-        # 保存配置
-        app_config['_updated_at'] = (request.json or {}).get('_updated_at', '')
+        # 兼容旧格式数据处理 - 支持直接字段名
+        for old_field, new_location in {
+            'edge_voice': ('edge_voice',),
+            'edge_rate': ('edge_rate',),
+            'edge_pitch': ('edge_pitch',),
+            'fish_character_name': ('fish_character_name', 'fish_character'),
+            'fish_character_id': ('fish_character_id',)
+        }.items():
+            if old_field in data:
+                for field in new_location:
+                    tts_config[field] = data[old_field]
         
+        # 更新配置元数据
+        if '_updated_at' in data:
+            app_config['_updated_at'] = data['_updated_at']
+        else:
+            from datetime import datetime
+            app_config['_updated_at'] = datetime.now().isoformat()
+        
+        # 保存配置到文件
         config_path = Path(__file__).parent.parent.parent / "config_data" / "app_config.json"
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(app_config, f, ensure_ascii=False, indent=2)
+        
+        # 记录更新日志
+        logger.info(f"TTS配置更新成功 - 引擎: {tts_config.get('preferred_engine', 'N/A')}")
+        if tts_config.get('preferred_engine') == 'edge_tts':
+            logger.info(f"  Edge TTS语音: {tts_config.get('edge_voice', 'N/A')}")
+        elif tts_config.get('preferred_engine') == 'fish_tts':
+            logger.info(f"  Fish TTS角色: {tts_config.get('fish_character_name', 'N/A')} "
+                       f"(ID: {tts_config.get('fish_character_id', 'N/A')})")
         
         return jsonify({
             'success': True,
             'message': 'TTS配置更新成功',
             'data': {
-                'updated_config': tts_config
+                'updated_config': tts_config,
+                'preferred_engine': tts_config.get('preferred_engine'),
+                'edge_config': {
+                    'voice': tts_config.get('edge_voice'),
+                    'rate': tts_config.get('edge_rate'), 
+                    'pitch': tts_config.get('edge_pitch')
+                },
+                'fish_config': {
+                    'character': tts_config.get('fish_character_name'),
+                    'character_id': tts_config.get('fish_character_id')
+                }
             }
         })
         
@@ -402,7 +512,15 @@ def test_tts():
         # 清理旧的音频文件（保留最近5分钟的文件）
         cleanup_old_audio_files(temp_dir)
         
-        audio_filename = f"preview_{engine_id}_{timestamp}.mp3"  # 改为MP3扩展名
+        # 根据引擎类型确定文件扩展名
+        if engine_id == 'edge_tts':
+            file_extension = '.mp3'
+        elif engine_id == 'fish_tts':
+            file_extension = '.wav'
+        else:
+            file_extension = '.mp3'  # 默认
+            
+        audio_filename = f"preview_{engine_id}_{timestamp}{file_extension}"
         audio_path = temp_dir / audio_filename
         
         # 根据引擎类型调用相应的TTS功能
@@ -448,19 +566,59 @@ def test_tts():
                 success = False
                 
         elif engine_id == 'fish_tts':
-            # Fish TTS的处理逻辑（如果存在的话）
+            # Fish TTS处理逻辑
             try:
                 import sys
                 sys.path.append(str(Path(__file__).parent.parent.parent))
                 from all_tts_functions.fish_tts import fish_tts
-                fish_tts(test_text, str(audio_path), voice_id)
+                
+                # 将voice_id转换为character名称
+                # voice_id可能是character_id或者直接是character名称
+                fish_config = load_fish_tts_config()
+                character_name = None
+                
+                if fish_config and 'characters' in fish_config:
+                    # 首先尝试按character_id查找
+                    for char in fish_config['characters']:
+                        if char.get('character_id') == voice_id:
+                            character_name = char.get('character')
+                            break
+                    
+                    # 如果没找到，再尝试按character名称查找
+                    if not character_name:
+                        for char in fish_config['characters']:
+                            if char.get('character') == voice_id:
+                                character_name = char.get('character')
+                                break
+                
+                # 如果还是没找到，检查是否voice_id本身就是一个有效的角色名
+                if not character_name and fish_config:
+                    # 检查voice_id是否直接是配置中的一个角色名
+                    character_id_dict = fish_config.get('character_id_dict', {})
+                    if voice_id in character_id_dict:
+                        character_name = voice_id
+                
+                if not character_name:
+                    # 如果还是没找到，使用默认角色
+                    character_name = fish_config.get('default_character', '雷军') if fish_config else '雷军'
+                    logger.warning(f"未找到角色 {voice_id}，使用默认角色: {character_name}")
+                else:
+                    logger.info(f"找到角色: {character_name} (输入: {voice_id})")
+                
+                print(f"🐟 Fish TTS 预览开始")
+                print(f"   文本长度: {len(test_text)} 字符")
+                print(f"   角色选择: {character_name} (ID: {voice_id})")
+                print(f"   输出路径: {audio_path}")
+                
+                # 调用Fish TTS，传入character名称
+                fish_tts(test_text, str(audio_path), character_name)
                 success = audio_path.exists() and audio_path.stat().st_size > 0
-                logger.info(f"Fish TTS执行结果: success={success}, 文件大小={audio_path.stat().st_size if audio_path.exists() else 0}")
+                logger.info(f"Fish TTS预览结果: success={success}, 文件大小={audio_path.stat().st_size if audio_path.exists() else 0}")
             except ImportError:
                 logger.error("Fish TTS功能未实现")
                 success = False
             except Exception as e:
-                logger.error(f"Fish TTS执行失败: {e}")
+                logger.error(f"Fish TTS预览失败: {e}")
                 success = False
         else:
             return jsonify({

@@ -157,7 +157,7 @@
     "use_enhanced_mode": true
   },
   "tts": {
-    "preferred_engine": "edge_tts",
+    "preferred_engine": "fish_tts",
     "edge_voice": "zh-CN-XiaoxiaoNeural",
     "edge_rate": "+0%",
     "edge_pitch": "+0Hz",
@@ -291,5 +291,5 @@
     "subtitle_color": "white",
     "subtitle_position": "bottom"
   },
-  "_updated_at": ""
+  "_updated_at": "2025-09-24T14:56:58.958Z"
 }
