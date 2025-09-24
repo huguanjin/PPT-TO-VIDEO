@@ -69,10 +69,10 @@ const handleInput = debounce(function() {
   emit('update', editorView.dom.innerHTML)
 }, 100, { trailing: true }) // 减少延迟从300ms到100ms
 
-// 立即处理换行等重要操作
+// 立即处理换行、删除等重要操作
 const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Enter') {
-    // 换行操作，立即触发更新
+  if (event.key === 'Enter' || event.key === 'Backspace' || event.key === 'Delete') {
+    // 换行或删除操作，立即触发更新
     setTimeout(() => {
       emit('update', editorView.dom.innerHTML)
     }, 10) // 很短的延迟确保DOM更新完成
@@ -85,6 +85,13 @@ const handleFocus = () => {
 
 const handleBlur = () => {
   mainStore.setDisableHotkeysState(false)
+}
+
+// 处理粘贴操作
+const handlePaste = () => {
+  setTimeout(() => {
+    emit('update', editorView.dom.innerHTML)
+  }, 50) // 粘贴需要稍长一些的延迟确保内容已插入
 }
 
 const updateTextContent = () => {
@@ -188,6 +195,7 @@ onMounted(() => {
         handleKeydown(event)
         return false // 继续默认处理
       },
+      paste: handlePaste,
       input: handleInput,
     },
   }, {

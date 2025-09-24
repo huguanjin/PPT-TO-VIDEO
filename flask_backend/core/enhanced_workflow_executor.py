@@ -217,24 +217,46 @@ class EnhancedWorkflowExecutor:
             }
             
             for i, slide in enumerate(ppt_data.get("slides", []), 1):
-                # 从PPTist content JSON中提取remark文本
-                import json
+                # 从PPTist slide中正确提取remark文本
                 import re
-                content_str = slide.get("content", "{}")
-                try:
-                    content_json = json.loads(content_str)
-                    raw_remark = content_json.get("remark", "")
-                    # 使用正则表达式去除HTML标签，提取纯文本
-                    clean_remark = re.sub(r'<[^>]+>', '', raw_remark) if raw_remark else ""
-                except:
+                import json as json_lib
+                
+                # PPTist数据结构：remark在content字段的JSON字符串中
+                raw_remark = ""
+                content_str = slide.get("content", "")
+                if content_str:
+                    try:
+                        # 解析content中的JSON
+                        content_data = json_lib.loads(content_str)
+                        raw_remark = content_data.get("remark", "")
+                        self.logger.debug(f"第{i}页原始remark: {raw_remark[:100]}...")
+                    except (json_lib.JSONDecodeError, ValueError) as e:
+                        self.logger.warning(f"第{i}页content解析失败: {e}")
+                        raw_remark = ""
+                
+                # 处理PPTist的多个<p>标签格式，保留手动分行
+                if raw_remark:
+                    # 1. 将连续的</p><p>标签对转换为换行符（这是PPTist的手动分行格式）
+                    clean_remark = re.sub(r'</p>\s*<p[^>]*>', '\n', raw_remark, flags=re.IGNORECASE)
+                    # 2. 将各种形式的<br>标签转换为换行符
+                    clean_remark = re.sub(r'<br\s*/?>', '\n', clean_remark, flags=re.IGNORECASE)
+                    # 3. 去除所有剩余的HTML标签
+                    clean_remark = re.sub(r'<[^>]+>', '', clean_remark)
+                    # 4. 清理多余的空白字符，但保留换行符
+                    clean_remark = re.sub(r'[ \t]+', ' ', clean_remark)  # 将多个空格/制表符合并为单个空格
+                    clean_remark = re.sub(r' *\n *', '\n', clean_remark)  # 清理换行符前后的空格
+                    clean_remark = clean_remark.strip()  # 去除首尾空白
+                    self.logger.debug(f"第{i}页处理后文本: {clean_remark}")
+                else:
                     clean_remark = ""
+                    self.logger.debug(f"第{i}页无remark内容")
                 
                 standard_slide = {
-                    "slide_number": i,
-                    "title": f"幻灯片 {i}",
-                    "image_file": slide.get("image", f"slide_{i:03d}.jpg"),  # 转换image字段为image_file
-                    "notes": clean_remark,  # 使用提取的文本内容
-                    "remark": clean_remark  # 使用提取的文本内容
+                    "slide_id": i,
+                    "text": clean_remark,  # 使用text字段作为主要文本内容
+                    "duration": max(3.0, len(clean_remark) * 0.1),
+                    "background": slide.get("background", {}),
+                    "elements": slide.get("elements", [])
                 }
                 slides_data["slides"].append(standard_slide)
             
@@ -251,10 +273,10 @@ class EnhancedWorkflowExecutor:
         scripts_data = {
             "scripts": [
                 {
-                    "slide_number": slide["slide_number"],
-                    "script_content": slide.get("notes", slide.get("remark", "")),
-                    "word_count": len(slide.get("notes", slide.get("remark", ""))),
-                    "estimated_duration": max(3.0, len(slide.get("notes", slide.get("remark", ""))) * 0.1)
+                    "script_id": slide["slide_id"],
+                    "slide_id": slide["slide_id"],
+                    "text": slide.get("text", ""),  # 使用text字段匹配字幕生成器
+                    "duration": slide.get("duration", 3.0)
                 }
                 for slide in slides_data.get("slides", [])
             ],

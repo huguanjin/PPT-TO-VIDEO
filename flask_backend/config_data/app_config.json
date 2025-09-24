@@ -112,6 +112,16 @@
     "auto_fix_issues": true,
     "strict_netflix_compliance": true
   },
+  "subtitle": {
+    "enabled": true,
+    "font_family": "Microsoft YaHei",
+    "font_size": 40,
+    "font_color": "#FFFFFF",
+    "background_color": "rgba(0,0,0,0.8)",
+    "position": "bottom",
+    "max_chars_per_line": 36,
+    "use_enhanced_mode": true
+  },
   "tts": {
     "preferred_engine": "edge_tts",
     "edge_voice": "zh-CN-XiaoxiaoNeural",

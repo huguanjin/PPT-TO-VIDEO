@@ -30,6 +30,16 @@ class SubtitleMultilineFixer:
     
     def _get_default_fix_config(self) -> Dict[str, Any]:
         """🎯 优化配置: 获取优化后的默认修复配置"""
+        # 尝试从统一配置管理器获取字符限制
+        try:
+            from app.utils.config_manager import config_manager
+            unified_subtitle_config = config_manager.get_subtitle_config()
+            max_chars_from_config = unified_subtitle_config.get("max_chars_per_line", 36)
+            logger.info(f"多行修复器从统一配置获取字符限制: {max_chars_from_config}")
+        except Exception as e:
+            logger.warning(f"获取统一配置失败，使用默认值: {e}")
+            max_chars_from_config = 36
+            
         return {
             "character_weight_adjustments": {
                 "chinese": 1.2,      # 🎯 激进优化: 从1.8降低到1.2
@@ -42,7 +52,7 @@ class SubtitleMultilineFixer:
             },
             "line_control_rules": {
                 "max_lines_strict": 1,              # 🎯 强制单行显示
-                "max_chars_per_line_chinese": 18,   # 🎯 减少到18字符确保绝对单行 
+                "max_chars_per_line_chinese": max_chars_from_config,   # 🎯 使用统一配置
                 "enforce_line_limit": True,
                 "target_weight_ratio": 0.75,        # 🎯 优化: 从0.8降低到0.75
                 "balance_tolerance": 0.25            # 🎯 优化: 从0.3降低到0.25

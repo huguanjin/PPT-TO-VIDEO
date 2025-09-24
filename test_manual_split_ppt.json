@@ -1,0 +1,17 @@
+{
+  "project_name": "test_manual_split",
+  "slides": [
+    {
+      "slide_number": 1,
+      "title": "幻灯片 1",
+      "content": "{\"id\": \"test1\", \"remark\": \"<p style=\\\"\\\">\\u7b2c\\u4e00\\u884c\\u5185\\u5bb9<br/>\\u7b2c\\u4e8c\\u884c\\u5185\\u5bb9<br>\\u7b2c\\u4e09\\u884c\\u5185\\u5bb9</p>\", \"background\": {\"type\": \"solid\", \"color\": \"#fff\"}}",
+      "image": "slide_001.jpg"
+    },
+    {
+      "slide_number": 2,
+      "title": "幻灯片 2",
+      "content": "{\"id\": \"test2\", \"remark\": \"<p style=\\\"\\\">\\u5355\\u884c\\u5185\\u5bb9\\u6ca1\\u6709\\u5206\\u884c</p>\", \"background\": {\"type\": \"solid\", \"color\": \"#fff\"}}",
+      "image": "slide_002.jpg"
+    }
+  ]
+}

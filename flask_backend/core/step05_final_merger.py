@@ -45,10 +45,51 @@ class FFmpegFinalMerger:
             "movflags": "+faststart"
         }
         
+        # 加载单行模式配置
+        self.single_line_mode = self._load_single_line_mode_config()
+        self.logger.info(f"🔧 Step05初始化 - 单行模式: {self.single_line_mode}")
+        
         # 检查FFmpeg可用性
         self.ffmpeg_available = self._check_ffmpeg_availability()
         if not self.ffmpeg_available:
             self.logger.warning("FFmpeg不可用，将使用MoviePy作为备选方案")
+    
+    def _load_single_line_mode_config(self) -> bool:
+        """加载单行模式配置"""
+        try:
+            # 🔧 修复配置文件路径查找逻辑
+            config_path = self.project_dir / "flask_backend" / "config_data" / "manual_split_config.json"
+            
+            # 如果路径不存在，尝试从父目录查找（处理output目录的情况）
+            if not config_path.exists() and self.project_dir.name == "output":
+                parent_project_dir = self.project_dir.parent.parent  # output -> flask_backend -> 项目根
+                config_path = parent_project_dir / "flask_backend" / "config_data" / "manual_split_config.json"
+                self.logger.info(f"🔧 Step05从父目录查找配置: {config_path}")
+            
+            if config_path.exists():
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    
+                display_mode = config.get("manual_split_config", {}).get("subtitle_display_mode", {})
+                single_line_mode = display_mode.get("single_line_mode", False)
+                
+                # 强制布尔转换
+                if single_line_mode is True or str(single_line_mode).lower() == 'true':
+                    single_line_mode = True
+                else:
+                    single_line_mode = False
+                    
+                self.logger.info(f"✅ Step05加载单行模式配置: {single_line_mode} (从 {config_path})")
+                return single_line_mode
+            else:
+                self.logger.warning(f"⚠️ Step05: 未找到配置文件: {config_path}")
+                return False
+                
+        except Exception as e:
+            self.logger.warning(f"❌ Step05: 加载单行模式配置失败: {e}")
+            import traceback
+            self.logger.error(f"异常详情: {traceback.format_exc()}")
+            return False
     
     def _check_ffmpeg_availability(self) -> bool:
         """检查FFmpeg是否可用"""
@@ -250,10 +291,20 @@ class FFmpegFinalMerger:
             if subtitle_filename:
                 subtitle_path = self.file_manager.subtitles_dir / subtitle_filename
                 if subtitle_path.exists():
-                    # 🎯 强化: 在最终合并前对字幕文件应用多行修复
-                    enhanced_subtitle_path = self._apply_multiline_fix_to_subtitle_file(subtitle_path)
-                    subtitle_file = str(enhanced_subtitle_path)
-                    self.logger.info(f"找到字幕文件并应用多行修复: {subtitle_file}")
+                    # 🔧 加载单行模式配置
+                    single_line_mode = self._load_single_line_mode_config()
+                    
+                    if single_line_mode:
+                        # 单行模式：直接使用原始字幕文件，不应用多行修复
+                        self.logger.info("✅ 单行模式已启用 - 跳过多行修复，直接使用原始单行字幕")
+                        subtitle_file = str(subtitle_path)
+                        self.logger.info(f"使用单行模式字幕文件: {subtitle_file}")
+                    else:
+                        # 多行模式：在最终合并前对字幕文件应用多行修复
+                        self.logger.info("📝 多行模式：应用多行修复逻辑")
+                        enhanced_subtitle_path = self._apply_multiline_fix_to_subtitle_file(subtitle_path)
+                        subtitle_file = str(enhanced_subtitle_path)
+                        self.logger.info(f"找到字幕文件并应用多行修复: {subtitle_file}")
                 else:
                     self.logger.warning(f"字幕文件不存在: {subtitle_path}")
             else:
@@ -653,13 +704,23 @@ class FFmpegFinalMerger:
                 ffmpeg_color = "&HFFFFFF"  # 默认白色
             
             # 构造字幕滤镜 - 使用简单可靠的方式
-            # 尝试使用相对路径避免Windows路径问题
+            # 重要：确保字幕路径相对于工作目录（project_dir）正确
             try:
+                # 获取相对于project_dir的路径
                 subtitle_path_rel = subtitle_path_obj.relative_to(self.project_dir)
                 subtitle_path_fixed = str(subtitle_path_rel).replace('\\', '/')
+                self.logger.info(f"使用相对字幕路径: {subtitle_path_fixed}")
             except ValueError:
-                # 如果无法获取相对路径，使用绝对路径
-                subtitle_path_fixed = str(subtitle_path_obj).replace('\\', '/')
+                # 如果无法获取相对路径，使用绝对路径，但需要适配FFmpeg
+                subtitle_path_fixed = str(subtitle_path_obj).replace('\\', '/').replace(':', '\\:')
+                self.logger.warning(f"使用绝对字幕路径: {subtitle_path_fixed}")
+            
+            # 检查字幕文件是否存在
+            if not subtitle_path_obj.exists():
+                self.logger.error(f"字幕文件不存在: {subtitle_path_obj}")
+                return False
+            else:
+                self.logger.info(f"字幕文件确认存在: {subtitle_path_obj} (大小: {subtitle_path_obj.stat().st_size} bytes)")
             
             # 强制单行显示的关键配置 - 增强版
             vf_filter = (
@@ -668,8 +729,8 @@ class FFmpegFinalMerger:
                 f"subtitles={subtitle_path_fixed}:force_style='"
                 f"FontSize={user_font_size},FontName={font_name},"
                 f"PrimaryColour={ffmpeg_color},OutlineColour=&H000000,OutlineWidth=1,"
-                f"ShadowColour=&H80000000,BorderStyle=1,WrapStyle=0,MaxLines=1,"
-                f"Alignment=2,MarginV=40'"  # 添加底部对齐和边距
+                f"ShadowColour=&H80000000,BorderStyle=1,WrapStyle=2,MaxLines=1,"
+                f"Alignment=2,MarginV=40,ScaleX=0.9,ScaleY=0.9'"  # WrapStyle=2 禁用换行，ScaleX缩小防止溢出
             )
             
             # 构造 FFmpeg 命令 - 借鉴 testfile 方式

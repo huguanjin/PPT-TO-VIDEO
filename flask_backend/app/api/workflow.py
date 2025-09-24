@@ -419,29 +419,32 @@ def execute_workflow():
         task_id = f"workflow_{int(time.time() * 1000)}"
         
         output_dir = Path(current_app.config.get('OUTPUT_FOLDER', 'output'))
-        # 单机版本：直接使用output目录作为项目目录
-        project_dir = output_dir
+        # 🔧 修复：使用项目根目录而不是output目录，确保配置文件路径正确
+        # 项目根目录 = output目录的父级的父级 (flask_backend/output -> flask_backend -> 项目根)
+        project_dir = output_dir.parent.parent
+        logger.info(f"🔧 项目根目录设置为: {project_dir}")
+        logger.info(f"🔧 输出目录: {output_dir}")
         
         if not project_dir.exists():
             return jsonify({
                 'success': False,
-                'message': f'项目 {project_name} 不存在'
+                'message': f'项目根目录不存在: {project_dir}'
             }), 404
         
-        # 检查项目数据文件
-        ppt_data_file = project_dir / "ppt_data.json"
+        # 检查项目数据文件 - 在output目录下
+        ppt_data_file = output_dir / "ppt_data.json"
         if not ppt_data_file.exists():
             return jsonify({
                 'success': False,
-                'message': f'项目 {project_name} 缺少PPT数据文件'
+                'message': f'项目 {project_name} 缺少PPT数据文件: {ppt_data_file}'
             }), 400
         
-        # 检查图片文件
-        slides_dir = project_dir / "slides"
+        # 检查图片文件 - 在output目录下
+        slides_dir = output_dir / "slides"
         if not slides_dir.exists() or not any(slides_dir.glob("*.jpg")):
             return jsonify({
                 'success': False,
-                'message': f'项目 {project_name} 缺少幻灯片图片文件'
+                'message': f'项目 {project_name} 缺少幻灯片图片文件: {slides_dir}'
             }), 400
         
         logger.info(f"启动工作流执行: {project_name}, 任务ID: {task_id}")
@@ -450,7 +453,7 @@ def execute_workflow():
         import threading
         def run_workflow():
             try:
-                execute_workflow_task(project_name, task_id, project_dir)
+                execute_workflow_task(project_name, task_id, project_dir, output_dir)
             except Exception as e:
                 logger.error(f"工作流执行失败: {e}")
                 # 更新任务状态为失败
@@ -481,7 +484,7 @@ def execute_workflow():
         }), 500
 
 
-def execute_workflow_task(project_name: str, task_id: str, project_dir: Path):
+def execute_workflow_task(project_name: str, task_id: str, project_dir: Path, output_dir: Path):
     """实际执行工作流任务 - 使用增强的工作流执行器"""
     try:
         logger.info(f"开始执行工作流任务: {project_name}")
@@ -500,7 +503,8 @@ def execute_workflow_task(project_name: str, task_id: str, project_dir: Path):
                           project_name, 1, 6, steps)
         
         # 创建增强的工作流执行器
-        executor = EnhancedWorkflowExecutor(project_dir)
+        # 🔧 使用output目录作为工作目录，因为数据文件都在那里
+        executor = EnhancedWorkflowExecutor(output_dir)
         
         # 定义进度回调函数
         async def progress_callback(execution):

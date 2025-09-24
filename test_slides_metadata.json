@@ -1,0 +1,83 @@
+{
+  "slides": [
+    {
+      "slide_number": 1,
+      "title": "幻灯片 1",
+      "image_file": "slide_001.jpg",
+      "notes": "are you ok，我的朋友们，今天来教大家安装cherry studio",
+      "remark": "are you ok，我的朋友们，今天来教大家安装cherry studio"
+    },
+    {
+      "slide_number": 2,
+      "title": "幻灯片 2",
+      "image_file": "slide_002.jpg",
+      "notes": "首先下载cherry studio客户端程序，浏览器访问：https://www.cherry-ai.com",
+      "remark": "首先下载cherry studio客户端程序，浏览器访问：https://www.cherry-ai.com"
+    },
+    {
+      "slide_number": 3,
+      "title": "幻灯片 3",
+      "image_file": "slide_003.jpg",
+      "notes": "点击下载客户端",
+      "remark": "点击下载客户端"
+    },
+    {
+      "slide_number": 4,
+      "title": "幻灯片 4",
+      "image_file": "slide_004.jpg",
+      "notes": "根据自己的操作系统选择对应版本进行下载",
+      "remark": "根据自己的操作系统选择对应版本进行下载"
+    },
+    {
+      "slide_number": 5,
+      "title": "幻灯片 5",
+      "image_file": "slide_005.jpg",
+      "notes": "我是Windows64位的操作系统，我直接点击立即下载",
+      "remark": "我是Windows64位的操作系统，我直接点击立即下载"
+    },
+    {
+      "slide_number": 6,
+      "title": "幻灯片 6",
+      "image_file": "slide_006.jpg",
+      "notes": "然后直接双击下载的文件进行安装，选择更多信息，然后点击仍要运行",
+      "remark": "然后直接双击下载的文件进行安装，选择更多信息，然后点击仍要运行"
+    },
+    {
+      "slide_number": 7,
+      "title": "幻灯片 7",
+      "image_file": "slide_007.jpg",
+      "notes": "选择默认仅为我安装，点击下一步",
+      "remark": "选择默认仅为我安装，点击下一步"
+    },
+    {
+      "slide_number": 8,
+      "title": "幻灯片 8",
+      "image_file": "slide_008.jpg",
+      "notes": "选择安装路径，然后点击安装",
+      "remark": "选择安装路径，然后点击安装"
+    },
+    {
+      "slide_number": 9,
+      "title": "幻灯片 9",
+      "image_file": "slide_009.jpg",
+      "notes": "安装完成后直接运行",
+      "remark": "安装完成后直接运行"
+    },
+    {
+      "slide_number": 10,
+      "title": "幻灯片 10",
+      "image_file": "slide_010.jpg",
+      "notes": "这样你的cherry studio就已经安装完成了，下一节我们将讲解如何快速做cherry studio中配置和调用api中转站的模型。",
+      "remark": "这样你的cherry studio就已经安装完成了，下一节我们将讲解如何快速做cherry studio中配置和调用api中转站的模型。"
+    },
+    {
+      "slide_number": 11,
+      "title": "幻灯片 11",
+      "image_file": "slide_011.jpg",
+      "notes": "think you，宝宝们，下期见！！！",
+      "remark": "think you，宝宝们，下期见！！！"
+    }
+  ],
+  "total_slides": 11,
+  "generated_at": "2025-09-23T16:06:16.495905"
+}

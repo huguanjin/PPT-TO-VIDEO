@@ -39,6 +39,10 @@ class EnhancedSubtitleGenerator:
         manual_split_config = self.config_manager.get_manual_split_config()
         self.manual_split_manager = ManualSplitManager(manual_split_config)
         
+        # 🔥 加载单行模式配置
+        self.single_line_mode = self._load_single_line_mode_config()
+        self.logger.info(f"🔧 EnhancedSubtitleGenerator初始化 - 单行模式: {self.single_line_mode}")
+        
         # 初始化HTML备注处理器
         subtitle_config = self.config_manager.get_subtitle_config()
         char_limit = subtitle_config.get("max_chars_per_line", 20)
@@ -93,6 +97,30 @@ class EnhancedSubtitleGenerator:
             self.logger.warning(f"多行修复强化配置加载失败: {e}")
             self.enhancement_config = {}
     
+    def _load_single_line_mode_config(self) -> bool:
+        """加载单行模式配置"""
+        try:
+            # 尝试加载手动分割配置文件
+            config_path = self.project_dir / "flask_backend" / "config_data" / "manual_split_config.json"
+            if not config_path.exists():
+                # 备用路径
+                config_path = self.project_dir / "config" / "manual_split_config.json"
+            
+            if config_path.exists():
+                import json
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    single_line_mode = config.get("manual_split_config", {}).get("subtitle_display_mode", {}).get("single_line_mode", False)
+                    self.logger.info(f"✅ EnhancedSubtitleGenerator加载单行模式配置: {single_line_mode} (从 {config_path})")
+                    return single_line_mode
+            else:
+                self.logger.warning("⚠️ EnhancedSubtitleGenerator: 未找到手动分割配置文件，默认关闭单行模式")
+                return False
+                
+        except Exception as e:
+            self.logger.warning(f"❌ EnhancedSubtitleGenerator: 加载单行模式配置失败: {e}")
+            return False
+    
     def _enforce_multiline_fix(self, text: str, context: str = "general") -> str:
         """
         🎯 强制执行多行修复 - 确保严格的Netflix标准
@@ -102,6 +130,12 @@ class EnhancedSubtitleGenerator:
             context: 处理上下文 ("generation", "cleaning", "validation")
         """
         try:
+            # ✨ 单行模式：跳过所有多行修复逻辑
+            if self.single_line_mode:
+                self.logger.info(f"🔥 单行模式：跳过多行修复 (context: {context})")
+                return text
+            
+            # 多行模式：执行原有强化逻辑
             # 检查是否启用强化模式
             step04_config = self.enhancement_config.get("enforcement_levels", {}).get("step04_subtitle_generator", {})
             
@@ -504,11 +538,27 @@ class EnhancedSubtitleGenerator:
     
     def _split_text_to_segments(self, text: str) -> List[str]:
         """
-        智能文本分割 - 支持HTML备注解析和自动分割
+        智能文本分割 - 支持HTML备注解析和手动分割，优先支持单行模式
         """
         text = text.strip()
         if not text:
             return []
+
+        # ✨ 单行模式处理：绝对优先，严格单行，不执行任何其他分割逻辑
+        if self.single_line_mode:
+            self.logger.info("🔥 增强版单行模式已启用 - 严格单行处理，跳过所有其他分割逻辑")
+            
+            if '\n' in text:
+                self.logger.info("🔄 单行模式：将多行文本拆分为连续单行字幕")
+                lines = [line.strip() for line in text.split('\n') if line.strip()]
+                self.logger.info(f"📋 单行模式结果: {len(lines)} 个独立单行字幕")
+                return lines
+            else:
+                self.logger.info("📝 单行模式：文本已为单行，直接返回")
+                return [text]
+
+        # ✨ 非单行模式：执行原有的复杂分割逻辑
+        self.logger.info("📝 多行模式：执行增强版分割逻辑")
         
         # 检查文本是否为HTML格式（包含<p>标签）
         if '<p' in text and '</p>' in text:
@@ -547,7 +597,7 @@ class EnhancedSubtitleGenerator:
                     import re
                     text = re.sub(r'<[^>]+>', '', text).strip()
         
-        # 检查纯文本是否包含换行符（旧版手动分割逻辑）
+        # 检查纯文本是否包含换行符（手动分割逻辑）
         elif '\n' in text:
             # 使用手动分割处理器
             self.logger.info("检测到换行符，使用手动分割模式")
@@ -564,99 +614,29 @@ class EnhancedSubtitleGenerator:
                         self.logger.info(f"手动分割完成: {len(segments)} 个片段")
                         return segments
                     else:
-                        self.logger.warning("手动分割未产生有效片段，回退到自动分割")
+                        self.logger.warning("手动分割未产生有效片段，使用原文本")
+                        return [text]
                 else:
                     error_msg = split_result.get("error", "未知错误")
-                    self.logger.warning(f"手动分割失败: {error_msg}，回退到自动分割")
+                    self.logger.warning(f"手动分割失败: {error_msg}，使用原文本")
+                    return [text]
             except Exception as e:
-                self.logger.error(f"手动分割处理异常: {e}，回退到自动分割")
+                self.logger.error(f"手动分割处理异常: {e}，使用原文本")
+                return [text]
         
-        # 自动分割模式（原始逻辑）
-        self.logger.info("使用自动分割模式")
-        segments = []
-        current_segment = ""
-        max_chars = self.subtitle_config["max_chars_per_line"]
-        line_break_chars = self.subtitle_config["line_break_chars"]
-        
-        # 首先按标点符号分割
-        sentences = re.split(f'([{line_break_chars}])', text)
-        
-        for i in range(0, len(sentences), 2):
-            if i < len(sentences):
-                sentence = sentences[i].strip()
-                punctuation = sentences[i + 1] if i + 1 < len(sentences) else ""
-                
-                if sentence:
-                    sentence_with_punct = sentence + punctuation
-                    
-                    # 检查是否可以合并到当前段落
-                    if len(current_segment + sentence_with_punct) <= max_chars:
-                        current_segment += sentence_with_punct
-                    else:
-                        # 保存当前段落
-                        if current_segment:
-                            segments.append(current_segment.strip())
-                        
-                        # 检查新句子是否过长
-                        if len(sentence_with_punct) <= max_chars:
-                            current_segment = sentence_with_punct
-                        else:
-                            # 分割过长句子
-                            segments.extend(self._split_long_sentence(sentence_with_punct))
-                            current_segment = ""
-        
-        # 添加最后的段落
-        if current_segment:
-            segments.append(current_segment.strip())
-        
-        # 过滤空段落
-        segments = [seg for seg in segments if seg.strip()]
-        
-        self.logger.debug(f"文本分割完成: '{text}' -> {len(segments)} 个段落")
-        return segments
-    
-    def _split_long_sentence(self, sentence: str) -> List[str]:
-        """分割过长句子 - 使用增强的字符权重计算"""
-        # 使用多行修复器的智能分割
-        if self.subtitle_config.get("enable_multiline_fix", True):
-            max_weight = self.subtitle_config["max_chars_per_line"]
-            split_lines = self.multiline_fixer._smart_split_line(sentence, max_weight)
-            return split_lines
-        
-        # 原始基于字符长度的分割逻辑（备用）
-        max_length = self.subtitle_config["max_chars_per_line"]
-        segments = []
-        
-        # 尝试按逗号分割
-        parts = sentence.split('，')
-        current_part = ""
-        
-        for part in parts:
-            test_part = current_part + part + '，' if current_part else part + '，'
-            
-            if len(test_part) <= max_length:
-                current_part = test_part
-            else:
-                # 保存当前部分
-                if current_part:
-                    segments.append(current_part.rstrip('，'))
-                
-                # 处理新部分
-                if len(part) <= max_length:
-                    current_part = part + '，'
-                else:
-                    # 强制分割
-                    segments.extend([part[i:i+max_length] for i in range(0, len(part), max_length)])
-                    current_part = ""
-        
-        # 添加最后部分
-        if current_part:
-            segments.append(current_part.rstrip('，'))
-        
-        return segments
+        # 纯文本模式（无换行符）- 仅保留手动分割逻辑
+        self.logger.info("纯文本模式：保持文本完整")
+        return [text]
     
     def _clean_subtitle_text(self, text: str) -> str:
         """🎯 强化: 清理字幕文本以优化显示效果"""
+        
+        # ✨ 单行模式：跳过所有清理和多行修复逻辑
+        if self.single_line_mode:
+            self.logger.info("🔥 单行模式：跳过字幕文本清理和多行修复")
+            return text
+        
+        # 多行模式：执行原有清理逻辑
         if not self.subtitle_config["auto_punctuation_removal"]:
             # 即使不移除标点，也应用强化多行修复
             if self.subtitle_config.get("enable_multiline_fix", True):

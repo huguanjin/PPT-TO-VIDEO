@@ -63,6 +63,38 @@ class VideoGenerator:
             "codec": "mp4v"  # 使用mp4v编码器，兼容性更好
         }
     
+    def _get_slide_number(self, slide: Dict[str, Any]) -> int:
+        """
+        获取幻灯片编号，支持多种字段名格式
+        
+        Args:
+            slide: 幻灯片数据字典
+            
+        Returns:
+            幻灯片编号
+        """
+        # 支持多种字段名格式以保持兼容性
+        return (slide.get("slide_number") or 
+                slide.get("slide_id") or 
+                slide.get("script_id") or 
+                1)
+    
+    def _get_audio_key(self, audio: Dict[str, Any]) -> int:
+        """
+        获取音频的键值，支持多种字段名格式
+        
+        Args:
+            audio: 音频数据字典
+            
+        Returns:
+            音频对应的幻灯片编号
+        """
+        # 支持多种字段名格式以保持兼容性
+        return (audio.get("slide_number") or 
+                audio.get("slide_id") or 
+                audio.get("script_id") or 
+                1)
+    
     async def generate_video_clips(self, slides_data: Dict[str, Any], audio_data: Dict[str, Any], 
                                  progress_callback: Optional[Callable[[int], None]] = None) -> Dict[str, Any]:
         """
@@ -87,8 +119,11 @@ class VideoGenerator:
             audio_files = audio_data.get("audio_files", [])
             total_slides = len(slides)
             
-            # 创建音频文件映射
-            audio_map = {audio["slide_number"]: audio for audio in audio_files}
+            # 创建音频文件映射，兼容不同的字段名
+            audio_map = {}
+            for audio in audio_files:
+                key = self._get_audio_key(audio)
+                audio_map[key] = audio
             
             video_data = {
                 "total_video_clips": total_slides,
@@ -104,7 +139,7 @@ class VideoGenerator:
                     progress = int((i / total_slides) * 100)
                     progress_callback(progress)
                 
-                slide_number = slide["slide_number"]
+                slide_number = self._get_slide_number(slide)
                 self.logger.info(f"生成第 {slide_number} 页视频片段")
                 
                 # 获取对应的音频信息
@@ -150,8 +185,8 @@ class VideoGenerator:
         Returns:
             视频信息字典
         """
-        slide_number = slide["slide_number"]
-        slide_title = slide["title"]
+        slide_number = self._get_slide_number(slide)
+        slide_title = slide.get("title", f"第{slide_number}页")
         
         # 视频文件路径
         video_filename = f"clip_{slide_number:03d}.mp4"
@@ -159,7 +194,8 @@ class VideoGenerator:
         video_path = video_clips_dir / video_filename
         
         # 幻灯片图片路径
-        slide_image_path = self.file_manager.slides_dir / slide["image_file"]
+        image_filename = slide.get("image_file", slide.get("image", f"slide_{slide_number:03d}.jpg"))
+        slide_image_path = self.file_manager.slides_dir / image_filename
         
         try:
             # 生成视频片段
@@ -172,7 +208,9 @@ class VideoGenerator:
             
             video_info = {
                 "clip_id": f"{slide_number:03d}",
-                "slide_number": slide_number,
+                "slide_number": slide_number,  # 保持兼容性
+                "slide_id": slide_number,      # 新格式兼容
+                "script_id": slide_number,     # 另一种格式兼容
                 "video_file": video_filename,
                 "duration_seconds": duration,
                 "file_size_bytes": file_size,
@@ -180,7 +218,7 @@ class VideoGenerator:
                 "fps": self.fps,
                 "generation_timestamp": datetime.now().isoformat(),
                 "slide_title": slide_title,
-                "source_image": slide["image_file"]
+                "source_image": image_filename
             }
             
             return video_info

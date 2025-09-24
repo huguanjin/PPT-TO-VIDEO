@@ -79,6 +79,22 @@ class TTSGenerator:
             "pitch": self.tts_config.edge_pitch
         }
     
+    def _get_slide_number(self, script: Dict[str, Any]) -> int:
+        """
+        获取幻灯片编号，支持多种字段名格式
+        
+        Args:
+            script: 脚本数据字典
+            
+        Returns:
+            幻灯片编号
+        """
+        # 支持多种字段名格式以保持兼容性
+        return (script.get("slide_number") or 
+                script.get("slide_id") or 
+                script.get("script_id") or 
+                1)
+    
     async def generate_audio(self, scripts_data: Optional[Dict[str, Any]] = None, text: Optional[str] = None, 
                                output_file: Optional[str] = None, progress_callback: Optional[Callable[[int], None]] = None) -> Dict[str, Any]:
         """
@@ -181,7 +197,8 @@ class TTSGenerator:
                         progress = int((i / total_scripts) * 100)
                         progress_callback(progress)
                     
-                    self.logger.info(f"生成第 {script['slide_number']} 页音频")
+                    slide_number = self._get_slide_number(script)
+                    self.logger.info(f"生成第 {slide_number} 页音频")
                     
                     # 生成单个音频文件
                     audio_info = await self._generate_single_audio(script, cumulative_time)
@@ -374,8 +391,9 @@ class TTSGenerator:
         Returns:
             音频信息字典
         """
-        slide_number = script["slide_number"]
-        script_content = script["script_content"]
+        slide_number = self._get_slide_number(script)
+        # 支持多种字段名格式以保持兼容性：text（新格式）、script_content、content
+        script_content = script.get("text", script.get("script_content", script.get("content", "")))
         
         # 清理HTML标签
         script_content = self._clean_html_tags(script_content)
@@ -408,7 +426,9 @@ class TTSGenerator:
                 
                 audio_info = {
                     "audio_id": f"{slide_number:03d}",
-                    "slide_number": slide_number,
+                    "slide_number": slide_number,  # 保持兼容性
+                    "slide_id": slide_number,      # 新格式兼容
+                    "script_id": slide_number,     # 另一种格式兼容
                     "audio_file": audio_filename,
                     "duration_seconds": duration,
                     "file_size_bytes": file_size,
@@ -447,12 +467,13 @@ class TTSGenerator:
         Returns:
             音频信息字典
         """
-        slide_number = script["slide_number"]
+        slide_number = self._get_slide_number(script)
         audio_filename = f"audio_{slide_number:03d}.wav"
         audio_path = self.file_manager.audio_dir / audio_filename
         
         # 根据讲话稿内容估算时长，如果没有内容则使用3秒
-        script_content = script.get("script_content", "")
+        # 支持多种字段名格式以保持兼容性：text（新格式）、script_content、content
+        script_content = script.get("text", script.get("script_content", script.get("content", "")))
         
         # 清理HTML标签
         script_content = self._clean_html_tags(script_content)
@@ -488,7 +509,9 @@ class TTSGenerator:
             
             audio_info = {
                 "audio_id": f"{slide_number:03d}",
-                "slide_number": slide_number,
+                "slide_number": slide_number,  # 保持兼容性
+                "slide_id": slide_number,      # 新格式兼容
+                "script_id": slide_number,     # 另一种格式兼容
                 "audio_file": audio_filename,
                 "duration_seconds": duration,
                 "file_size_bytes": file_size,

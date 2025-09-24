@@ -3,12 +3,10 @@
     "description": "手动字幕分割功能配置 - 换行分割方案",
     "version": "1.0.0",
     "enabled": true,
-    
     "split_strategy": {
       "method": "newline_split",
       "fallback_to_auto": true
     },
-    
     "newline_split": {
       "enabled": true,
       "description": "按换行符进行内容分割",
@@ -24,7 +22,6 @@
         "adjust_for_readability": true
       }
     },
-    
     "ui_integration": {
       "show_split_preview": true,
       "real_time_duration_calculation": true,
@@ -34,7 +31,6 @@
         "apply_split": "Ctrl+Enter"
       }
     },
-    
     "quality_control": {
       "min_segment_length": 5,
       "max_segments_per_slide": 8,
@@ -43,12 +39,21 @@
       "validate_split_points": true,
       "auto_optimize_timing": true
     },
-    
     "advanced_options": {
       "preserve_empty_lines": false,
       "trim_whitespace": true,
       "filter_short_segments": true,
       "debug_mode": false
+    },
+    "subtitle_display_mode": {
+      "single_line_mode": true,
+      "description": "启用后将多行字幕转换为连续的单行字幕，每行独立时间分配",
+      "time_allocation": {
+        "method": "proportional",
+        "based_on": "character_count",
+        "min_line_duration": 1.0,
+        "max_line_duration": 8.0
+      }
     }
   }
 }

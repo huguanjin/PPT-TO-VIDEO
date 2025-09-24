@@ -22,7 +22,7 @@ class ConfigManager:
         self.config_file = self.config_dir / "app_config.json"
         
         # 手动分割配置文件路径
-        self.manual_split_config_file = Path(__file__).parent.parent.parent.parent / "config" / "manual_split_config.json"
+        self.manual_split_config_file = Path(__file__).parent.parent.parent / "config_data" / "manual_split_config.json"
         
         # 确保配置文件存在
         if not self.config_file.exists():

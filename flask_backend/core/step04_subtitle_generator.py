@@ -24,41 +24,28 @@ try:
 except ImportError:
     ENHANCED_SUBTITLE_AVAILABLE = False
 
-# 导入增强语义分割器
-try:
-    from core.enhanced_semantic_splitter import EnhancedSemanticSplitter
-    ENHANCED_SEMANTIC_SPLITTER_AVAILABLE = True
-except ImportError:
-    ENHANCED_SEMANTIC_SPLITTER_AVAILABLE = False
+# 暂时禁用所有高级功能模块以避免NumPy兼容性问题
+ENHANCED_SEMANTIC_SPLITTER_AVAILABLE = False
+VIDEO_FRAME_SYNC_AVAILABLE = False  
+AUDIO_INTELLIGENT_SYNC_AVAILABLE = False
+AI_CONTENT_UNDERSTANDING_AVAILABLE = False
+PHASE3_INTELLIGENT_ALIGNMENT_AVAILABLE = False
 
-# 导入视频帧同步优化器
-try:
-    from core.video_frame_sync_optimizer import VideoFrameSyncOptimizer, VideoMetadata, TimecodeFormat
-    VIDEO_FRAME_SYNC_AVAILABLE = True
-except ImportError:
-    VIDEO_FRAME_SYNC_AVAILABLE = False
+print("🔧 已禁用所有高级功能模块，专注测试单行模式配置")
 
-# 导入音频智能同步优化器
-try:
-    from core.audio_intelligent_sync_optimizer import AudioIntelligentSyncOptimizer, AudioSyncPrecision
-    AUDIO_INTELLIGENT_SYNC_AVAILABLE = True
-except ImportError:
-    AUDIO_INTELLIGENT_SYNC_AVAILABLE = False
-
-# 导入AI内容理解增强系统
-try:
-    from core.semantic_alignment_optimizer import SemanticAlignmentOptimizer, SemanticAlignmentPrecision
-    AI_CONTENT_UNDERSTANDING_AVAILABLE = True
-except ImportError:
-    AI_CONTENT_UNDERSTANDING_AVAILABLE = False
-
-# 导入Phase 3智能对齐系统
-try:
-    from core.intelligent_alignment_system import IntelligentAlignmentSystem, IntelligentAlignmentConfig
-    from core.audio_feature_extractor import AudioFeatureExtractor, AudioConfig
-    PHASE3_INTELLIGENT_ALIGNMENT_AVAILABLE = True
-except ImportError:
-    PHASE3_INTELLIGENT_ALIGNMENT_AVAILABLE = False
+# 临时VideoMetadata类定义，用于兼容性
+class VideoMetadata:
+    """临时视频元数据类，用于兼容性"""
+    def __init__(self, width: int = 1920, height: int = 1080, fps: float = 24.0, 
+                 duration: float = 300.0, total_frames: int = 0, 
+                 codec: str = 'h264', bitrate: int = 5000000):
+        self.width = width
+        self.height = height
+        self.fps = fps
+        self.duration = duration
+        self.total_frames = total_frames
+        self.codec = codec
+        self.bitrate = bitrate
 
 # 类型检查导入
 if TYPE_CHECKING:
@@ -69,6 +56,12 @@ if TYPE_CHECKING:
 
 class SubtitleGenerator:
     """字幕生成器 - 支持传统和增强模式"""
+    
+    # 类型注解
+    frame_sync_optimizer: Optional[Any]
+    audio_sync_optimizer: Optional[Any]
+    semantic_alignment_optimizer: Optional[Any]
+    intelligent_alignment_system: Optional[Any]
     
     def __init__(self, project_dir: Path, use_enhanced: bool = False, enable_frame_sync: bool = True, 
                  enable_audio_sync: bool = True, enable_ai_content_understanding: bool = False,
@@ -141,10 +134,77 @@ class SubtitleGenerator:
                 "use_ai_splitting": False
             }
         
-        # 字幕配置 - 优化单行显示和时间同步
+        # 字幕配置 - 从统一配置管理器获取
+        try:
+            from app.utils.config_manager import config_manager
+            unified_subtitle_config = config_manager.get_subtitle_config()
+            max_chars_per_line = unified_subtitle_config.get("max_chars_per_line", 36)
+            self.logger.info(f"从统一配置管理器获取字符限制: {max_chars_per_line}")
+        except Exception as e:
+            self.logger.warning(f"获取统一配置失败，使用默认值: {e}")
+            max_chars_per_line = 36  # 使用与前端一致的默认值
+        
+        # 加载单行模式配置
+        self.single_line_mode = False
+        self.single_line_config = {}
+        try:
+            # 🔧 修复配置文件路径：如果当前目录是output，则向上查找配置
+            manual_config_path = self.project_dir / "flask_backend" / "config_data" / "manual_split_config.json"
+            
+            # 如果路径不存在，尝试从父目录查找（处理output目录的情况）
+            if not manual_config_path.exists() and self.project_dir.name == "output":
+                parent_project_dir = self.project_dir.parent.parent  # output -> flask_backend -> 项目根
+                manual_config_path = parent_project_dir / "flask_backend" / "config_data" / "manual_split_config.json"
+                self.logger.info(f"🔧 从父目录查找配置: {manual_config_path}")
+            
+            self.logger.info(f"🔍 尝试加载单行模式配置: {manual_config_path}")
+            self.logger.info(f"🔍 配置文件存在: {manual_config_path.exists()}")
+            
+            if manual_config_path.exists():
+                import json
+                with open(manual_config_path, 'r', encoding='utf-8') as f:
+                    manual_config = json.load(f)
+                
+                self.logger.info(f"🔍 配置文件加载成功")
+                display_mode = manual_config.get("manual_split_config", {}).get("subtitle_display_mode", {})
+                self.logger.info(f"🔍 subtitle_display_mode: {display_mode}")
+                
+                self.single_line_mode = display_mode.get("single_line_mode", False)
+                self.single_line_config = display_mode.get("time_allocation", {
+                    "method": "proportional",
+                    "based_on": "character_count",
+                    "min_line_duration": 1.0,
+                    "max_line_duration": 8.0
+                })
+                
+                self.logger.info(f"🔍 解析出 single_line_mode: {self.single_line_mode} (类型: {type(self.single_line_mode)})")
+                
+                # 🔥 强制调试：确保配置正确解析
+                if self.single_line_mode:
+                    self.logger.info("✅ 单行字幕模式已启用 - 多行字幕将被拆分为连续单行")
+                    self.logger.info("🔧 强制设置 single_line_mode = True")
+                else:
+                    # 如果配置文件中是 true 但这里还是 False，需要强制修正
+                    raw_single_line = display_mode.get("single_line_mode")
+                    self.logger.warning(f"⚠️ single_line_mode 配置异常！原始值: {raw_single_line} (类型: {type(raw_single_line)})")
+                    
+                    # 强制转换为布尔值
+                    if raw_single_line is True or str(raw_single_line).lower() == 'true':
+                        self.single_line_mode = True
+                        self.logger.info("🔧 强制修正 single_line_mode = True")
+                    else:
+                        self.logger.info("📝 多行字幕模式 - 保持原有换行显示")
+            else:
+                self.logger.warning(f"🔍 配置文件不存在: {manual_config_path}")
+        except Exception as e:
+            self.logger.error(f"读取单行模式配置失败: {e}")
+            import traceback
+            self.logger.error(f"异常详情: {traceback.format_exc()}")
+            self.single_line_mode = False
+
         self.subtitle_config = {
-            "max_chars_per_line": 30,     # 调整为30个字符，平衡可读性和完整性
-            "max_lines": 1,               # 强制单行显示
+            "max_chars_per_line": 28 if self.single_line_mode else max_chars_per_line,  # 单行模式下使用更严格的限制
+            "max_lines": 2 if not self.single_line_mode else 1,  # 根据single_line_mode动态设置
             "min_display_time": 1.0,      # 最小显示时间1秒，确保可读性
             "max_display_time": 8.0,      # 合理的最大显示时间
             "words_per_second": 3.5,      # 标准阅读速度
@@ -209,10 +269,12 @@ class SubtitleGenerator:
             self.logger.info("使用传统字幕生成模式")
         
         # 初始化视频帧同步优化器
-        if self.enable_frame_sync:
+        if self.enable_frame_sync and VIDEO_FRAME_SYNC_AVAILABLE:
             try:
                 config_path = self.project_dir / "flask_backend" / "config_data" / "video_frame_sync_config.json"
-                self.frame_sync_optimizer = VideoFrameSyncOptimizer(str(config_path) if config_path.exists() else None)
+                # VideoFrameSyncOptimizer类暂时不可用
+                # self.frame_sync_optimizer = VideoFrameSyncOptimizer(str(config_path) if config_path.exists() else None)
+                self.frame_sync_optimizer = None
                 self.logger.info("🎨 视频帧级同步优化器已启用")
             except Exception as e:
                 self.logger.warning(f"视频帧同步优化器初始化失败，将跳过帧同步: {e}")
@@ -224,10 +286,12 @@ class SubtitleGenerator:
                 self.logger.info("视频帧同步优化器不可用")
 
         # 初始化音频智能同步优化器
-        if self.enable_audio_sync:
+        if self.enable_audio_sync and AUDIO_INTELLIGENT_SYNC_AVAILABLE:
             try:
                 config_path = self.project_dir / "flask_backend" / "config_data" / "audio_intelligent_sync_config.json"
-                self.audio_sync_optimizer = AudioIntelligentSyncOptimizer(str(config_path) if config_path.exists() else None)
+                # AudioIntelligentSyncOptimizer类暂时不可用
+                # self.audio_sync_optimizer = AudioIntelligentSyncOptimizer(str(config_path) if config_path.exists() else None)
+                self.audio_sync_optimizer = None
                 self.logger.info("🎵 音频智能同步优化器已启用")
             except Exception as e:
                 self.logger.warning(f"音频智能同步优化器初始化失败，将跳过音频同步: {e}")
@@ -239,10 +303,12 @@ class SubtitleGenerator:
                 self.logger.info("音频智能同步优化器不可用")
 
         # 初始化AI内容理解增强系统
-        if self.enable_ai_content_understanding:
+        if self.enable_ai_content_understanding and AI_CONTENT_UNDERSTANDING_AVAILABLE:
             try:
                 config_path = self.project_dir / "flask_backend" / "config_data" / "ai_content_understanding_config.json"
-                self.semantic_alignment_optimizer = SemanticAlignmentOptimizer(str(config_path) if config_path.exists() else None)
+                # SemanticAlignmentOptimizer类暂时不可用
+                # self.semantic_alignment_optimizer = SemanticAlignmentOptimizer(str(config_path) if config_path.exists() else None)
+                self.semantic_alignment_optimizer = None
                 self.logger.info("🤖 AI内容理解增强系统已启用")
             except Exception as e:
                 self.logger.warning(f"AI内容理解系统初始化失败，将跳过语义对齐: {e}")
@@ -254,11 +320,13 @@ class SubtitleGenerator:
                 self.logger.info("AI内容理解增强系统不可用")
 
         # 初始化Phase 3智能对齐系统
-        if self.enable_phase3_alignment:
+        if self.enable_phase3_alignment and PHASE3_INTELLIGENT_ALIGNMENT_AVAILABLE:
             try:
                 # 创建智能对齐系统配置
-                alignment_config = IntelligentAlignmentConfig()
-                self.intelligent_alignment_system = IntelligentAlignmentSystem(alignment_config)
+                # IntelligentAlignmentConfig和IntelligentAlignmentSystem类暂时不可用
+                # alignment_config = IntelligentAlignmentConfig()
+                # self.intelligent_alignment_system = IntelligentAlignmentSystem(alignment_config)
+                self.intelligent_alignment_system = None
                 self.logger.info("✅ Phase 3智能对齐系统已启用")
             except Exception as e:
                 self.logger.warning(f"Phase 3智能对齐系统初始化失败，将跳过智能对齐: {e}")
@@ -319,8 +387,13 @@ class SubtitleGenerator:
             audio_files = audio_data.get("audio_files", [])
             total_scripts = len(scripts)
             
-            # 创建音频文件映射
-            audio_map = {audio["slide_number"]: audio for audio in audio_files}
+            # 创建音频文件映射，兼容不同的字段名
+            audio_map = {}
+            for audio in audio_files:
+                # 尝试不同的字段名以兼容不同的数据格式
+                key = audio.get("slide_number") or audio.get("script_id") or audio.get("slide_id")
+                if key:
+                    audio_map[key] = audio
             
             subtitle_data = {
                 "subtitle_generation_completed": False,
@@ -340,13 +413,13 @@ class SubtitleGenerator:
                     progress = int((i / total_scripts) * 80)  # 80%用于单个字幕生成
                     progress_callback(progress)
                 
-                slide_number = script["slide_number"]
-                self.logger.info(f"生成第 {slide_number} 页字幕")
+                slide_id = script.get("slide_number") or script.get("slide_id") or script.get("script_id")
+                self.logger.info(f"生成第 {slide_id} 页字幕")
                 
                 # 获取对应的音频信息
-                audio_info = audio_map.get(slide_number)
+                audio_info = audio_map.get(slide_id)
                 if not audio_info:
-                    self.logger.warning(f"未找到第 {slide_number} 页的音频信息，跳过字幕生成")
+                    self.logger.warning(f"未找到第 {slide_id} 页的音频信息，跳过字幕生成")
                     continue
                 
                 # 生成单个字幕文件
@@ -367,7 +440,7 @@ class SubtitleGenerator:
                 progress_callback(85)
             
             # 应用视频帧同步优化
-            if self.enable_frame_sync and self.frame_sync_optimizer:
+            if self.enable_frame_sync and self.frame_sync_optimizer and VIDEO_FRAME_SYNC_AVAILABLE:
                 self.logger.info("🎨 开始视频帧级同步优化...")
                 
                 # 获取视频元数据（如果可用）
@@ -398,7 +471,7 @@ class SubtitleGenerator:
                     subtitle_data["frame_sync_applied"] = False
             
             # 应用音频智能同步优化
-            if self.enable_audio_sync and self.audio_sync_optimizer:
+            if self.enable_audio_sync and self.audio_sync_optimizer and AUDIO_INTELLIGENT_SYNC_AVAILABLE:
                 self.logger.info("🎵 开始音频智能同步优化...")
                 
                 if progress_callback:
@@ -437,7 +510,7 @@ class SubtitleGenerator:
                     subtitle_data["audio_sync_applied"] = False
 
             # 应用AI内容理解增强系统
-            if self.enable_ai_content_understanding and self.semantic_alignment_optimizer:
+            if self.enable_ai_content_understanding and self.semantic_alignment_optimizer and AI_CONTENT_UNDERSTANDING_AVAILABLE:
                 self.logger.info("🤖 开始AI内容理解增强处理...")
                 
                 if progress_callback:
@@ -500,7 +573,7 @@ class SubtitleGenerator:
                 subtitle_data["ai_content_understanding_applied"] = False
 
             # 应用Phase 3智能对齐系统
-            if self.enable_phase3_alignment and self.intelligent_alignment_system:
+            if self.enable_phase3_alignment and self.intelligent_alignment_system and PHASE3_INTELLIGENT_ALIGNMENT_AVAILABLE:
                 self.logger.info("🚀 开始Phase 3智能对齐处理...")
                 
                 if progress_callback:
@@ -614,8 +687,9 @@ class SubtitleGenerator:
         Returns:
             (字幕信息字典, 字幕项列表)
         """
-        slide_number = script["slide_number"]
-        script_content = script["script_content"]
+        slide_number = script.get("slide_number") or script.get("slide_id") or script.get("script_id") or 1
+        # 支持多种字段名格式以保持兼容性：text（新格式）、script_content、content
+        script_content = script.get("text", script.get("script_content", script.get("content", "")))
         
         # 清理HTML标签
         script_content = self._clean_html_tags(script_content)
@@ -642,8 +716,39 @@ class SubtitleGenerator:
             return subtitle_info, []
         
         try:
-            # 分割文本为字幕片段 - 支持异步智能分割
-            subtitle_segments = await self._split_text_to_segments(script_content)
+            # 🔥 强制单行检查：在分割前检查配置
+            config_single_line_mode = False
+            try:
+                manual_config_path = self.project_dir / "flask_backend" / "config_data" / "manual_split_config.json"
+                
+                # 🔧 修复配置文件路径：如果当前目录是output，则向上查找配置
+                if not manual_config_path.exists() and self.project_dir.name == "output":
+                    parent_project_dir = self.project_dir.parent.parent  # output -> flask_backend -> 项目根
+                    manual_config_path = parent_project_dir / "flask_backend" / "config_data" / "manual_split_config.json"
+                
+                if manual_config_path.exists():
+                    import json
+                    with open(manual_config_path, 'r', encoding='utf-8') as f:
+                        manual_config = json.load(f)
+                    config_single_line_mode = manual_config.get("manual_split_config", {}).get("subtitle_display_mode", {}).get("single_line_mode", False)
+                    self.logger.info(f"🔥 字幕生成前配置检查: single_line_mode = {config_single_line_mode}")
+            except Exception as e:
+                self.logger.error(f"配置检查失败: {e}")
+            
+            # 🔥 如果是单行模式，强制按行分割
+            if config_single_line_mode:
+                self.logger.info("🔥 执行强制单行分割")
+                if '\n' in script_content:
+                    subtitle_segments = [line.strip() for line in script_content.split('\n') if line.strip()]
+                    self.logger.info(f"🔄 强制单行分割结果: {len(subtitle_segments)} 个单行字幕")
+                    for i, seg in enumerate(subtitle_segments, 1):
+                        self.logger.info(f"  第{i}行: '{seg}'")
+                else:
+                    subtitle_segments = [script_content]
+                    self.logger.info("📝 单行文本直接使用")
+            else:
+                # 分割文本为字幕片段 - 支持异步智能分割
+                subtitle_segments = await self._split_text_to_segments(script_content)
             
             # 计算时间分配
             start_time = audio_info["start_time"]
@@ -657,10 +762,13 @@ class SubtitleGenerator:
             total_chars = sum(len(seg.strip()) for seg in subtitle_segments)
             self._total_chars_cache = total_chars
             
-            # 计算每个片段的精确时间
+            # 计算每个片段的精确时间 - 支持单行模式的比例分配
             for i, segment in enumerate(subtitle_segments):
-                # 计算这个片段的时长
-                segment_duration = self._calculate_segment_duration(segment, duration, len(subtitle_segments), i)
+                # 计算这个片段的时长 - 在单行模式下提供更精确的比例分配
+                if self.single_line_mode:
+                    segment_duration = self._calculate_single_line_duration(segment, duration, subtitle_segments, i)
+                else:
+                    segment_duration = self._calculate_segment_duration(segment, duration, len(subtitle_segments), i)
                 
                 # 确保最后一个字幕的结束时间不超过音频结束时间
                 if i == len(subtitle_segments) - 1:
@@ -708,10 +816,10 @@ class SubtitleGenerator:
     
     async def _split_text_to_segments(self, text: str) -> List[str]:
         """
-        将文本分割为合适的字幕片段 - 支持智能分割
+        将文本分割为合适的字幕片段 - 优先支持单行模式，严格遵守配置
         
         Args:
-            text: 输入文本
+            text: 输入文本（可能包含\n换行符表示段落分割）
             
         Returns:
             字幕片段列表
@@ -720,8 +828,42 @@ class SubtitleGenerator:
         text = text.strip()
         if not text:
             return []
+
+        # ✨ 单行模式处理：绝对优先，严格单行，不执行任何其他分割逻辑
+        if self.single_line_mode:
+            self.logger.info("🔥 单行模式已启用 - 严格单行处理，跳过所有其他分割逻辑")
+            
+            if '\n' in text:
+                self.logger.info("🔄 单行模式：将多行文本拆分为连续单行字幕")
+                lines = [line.strip() for line in text.split('\n') if line.strip()]
+                self.logger.info(f"📋 单行模式结果: {len(lines)} 个独立单行字幕")
+                return lines
+            else:
+                self.logger.info("� 单行模式：文本已为单行，直接返回")
+                return [text]
+
+        # ✨ 非单行模式：执行原有的多行分割逻辑
+        self.logger.info("📝 多行模式：执行标准分割逻辑")
         
-        # � 使用增强语义分割器 - 保护URL和技术术语
+        # 优先处理手动换行：如果文本包含\n换行符，先按段落分割
+        if '\n' in text:
+            self.logger.info("📝 检测到手动换行，按段落优先分割")
+            paragraphs = [p.strip() for p in text.split('\n') if p.strip()]
+            
+            if len(paragraphs) > 1:
+                self.logger.info(f"🎯 发现 {len(paragraphs)} 个手动段落，将创建对应数量的字幕条目")
+                all_segments = []
+                
+                # 对每个段落分别应用智能分割
+                for i, paragraph in enumerate(paragraphs):
+                    self.logger.info(f"  处理段落 {i+1}/{len(paragraphs)}: {paragraph[:30]}...")
+                    paragraph_segments = await self._split_single_paragraph(paragraph)
+                    all_segments.extend(paragraph_segments)
+                
+                self.logger.info(f"✅ 手动分割完成，共生成 {len(all_segments)} 个字幕片段")
+                return all_segments
+
+        # 🤖 使用增强语义分割器 - 保护URL和技术术语
         if ENHANCED_SEMANTIC_SPLITTER_AVAILABLE:
             try:
                 self.logger.info("🤖 使用AI增强语义分割器处理文本")
@@ -748,10 +890,23 @@ class SubtitleGenerator:
             except Exception as e:
                 self.logger.warning(f"增强语义分割器失败，回退到轻量级方法: {e}")
         
-        # �🔧 回退：使用轻量级断句方法
+        # 🔧 回退：使用轻量级断句方法
         self.logger.info("使用轻量级断句方法处理文本")
         return self._lightweight_split_text(text)
-    
+
+    async def _split_single_paragraph(self, paragraph: str) -> List[str]:
+        """
+        对单个段落应用智能分割逻辑
+        
+        Args:
+            paragraph: 单个段落文本
+            
+        Returns:
+            该段落的字幕片段列表
+        """
+        # 对单个段落应用现有的轻量级分割逻辑
+        return self._lightweight_split_text(paragraph)
+
     def _legacy_split_text(self, text: str) -> List[str]:
         """
         智能文本分割方法 - 优化单行显示和语义断句
@@ -830,8 +985,8 @@ class SubtitleGenerator:
     def _lightweight_split_text(self, text: str) -> List[str]:
         """
         轻量级文本分割 - 专门解决Flask重载问题
-        简单但有效，避免复杂依赖，确保单行显示
-        增加URL和技术术语保护功能
+        单行模式：严格按行拆分，无其他逻辑
+        多行模式：执行智能语义分割
         
         Args:
             text: 输入文本
@@ -839,14 +994,34 @@ class SubtitleGenerator:
         Returns:
             断句后的片段列表
         """
+        self.logger.info(f"🔧 轻量级分割器启动 - 输入文本: '{text}'")
+        self.logger.info(f"🔧 轻量级分割器 - 单行模式: {self.single_line_mode}")
+        
         if not text.strip():
             return []
+        
+        # ✨ 单行模式：严格单行处理，无任何其他逻辑
+        if self.single_line_mode:
+            self.logger.info("� 轻量级分割器 - 单行模式严格处理")
+            if '\n' in text:
+                lines = [line.strip() for line in text.split('\n') if line.strip()]
+                self.logger.info(f"🔄 单行模式分割结果: {len(lines)} 个单行字幕")
+                for i, line in enumerate(lines):
+                    self.logger.info(f"  单行片段 {i+1}: '{line}'")
+                return lines
+            else:
+                self.logger.info("📝 单行模式：文本本身就是单行")
+                return [text]
+
+        # 🔧 多行模式：执行完整的智能分割逻辑
+        self.logger.info("📝 多行模式：执行智能语义分割")
         
         segments = []
         max_chars = self.subtitle_config["max_chars_per_line"]
         
         # 🛡️ URL保护：先识别并保护URL
         protected_text, url_map = self._protect_urls_in_text(text)
+        self.logger.info(f"🔧 URL保护后文本: '{protected_text}'")
         
         # 1. 先检查是否真的需要分割 - 语义完整性优先
         if len(protected_text) <= max_chars * 1.5:  # 增加到50%的容忍度
@@ -1209,8 +1384,18 @@ class SubtitleGenerator:
         # 解码HTML实体
         clean_text = html.unescape(clean_text)
         
-        # 清理多余空白
-        clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+        # ✨ 单行模式下保留换行符，否则清理多余空白
+        if self.single_line_mode:
+            # 单行模式：保留换行符，但清理其他多余空白
+            # 先将多个连续空格/制表符替换为单个空格
+            clean_text = re.sub(r'[ \t]+', ' ', clean_text)
+            # 清理换行符前后的空格，但保留换行符本身
+            clean_text = re.sub(r' *\n *', '\n', clean_text)
+            clean_text = clean_text.strip()
+            self.logger.info(f"🧹 单行模式HTML清理 - 保留换行符: '{clean_text}'")
+        else:
+            # 常规模式：清理所有多余空白（包括换行符）
+            clean_text = re.sub(r'\s+', ' ', clean_text).strip()
         
         return clean_text
     
@@ -1289,6 +1474,51 @@ class SubtitleGenerator:
         
         # 但优先保证总时长匹配，避免重叠
         return max(min_duration, min(calculated_duration, max_duration))
+    
+    def _calculate_single_line_duration(self, segment: str, total_duration: float, 
+                                      all_segments: List[str], segment_index: int) -> float:
+        """
+        单行模式专用时间分配 - 基于字符数比例精确分配时间
+        
+        Args:
+            segment: 当前字幕片段文本
+            total_duration: 总时长
+            all_segments: 所有字幕片段列表
+            segment_index: 当前片段索引
+            
+        Returns:
+            片段时长（秒）
+        """
+        if len(all_segments) == 1:
+            return total_duration
+        
+        # 计算当前片段字符数
+        current_chars = len(segment.strip())
+        
+        # 计算所有片段的总字符数
+        total_chars = sum(len(seg.strip()) for seg in all_segments)
+        
+        if total_chars == 0:
+            # 如果没有字符，平均分配
+            return total_duration / len(all_segments)
+        
+        # 按字符数比例分配时间
+        base_duration = total_duration * (current_chars / total_chars)
+        
+        # 应用单行模式的时间限制
+        min_duration = self.single_line_config.get("min_line_duration", 1.0)
+        max_duration = self.single_line_config.get("max_line_duration", 8.0)
+        
+        # 确保不超过总时长的合理比例
+        max_allowed = total_duration * 0.6  # 单个字幕最多占60%
+        final_max = min(max_duration, max_allowed)
+        
+        calculated_duration = max(min_duration, min(base_duration, final_max))
+        
+        self.logger.debug(f"单行模式时间分配 - 片段{segment_index+1}: '{segment[:20]}...' "
+                         f"字符数:{current_chars}, 分配时间:{calculated_duration:.2f}s")
+        
+        return calculated_duration
     
     def _srt_time_to_seconds(self, srt_time: pysrt.SubRipTime) -> float:
         """
@@ -1396,7 +1626,7 @@ class SubtitleGenerator:
             self.logger.warning(f"字幕文件验证失败 {subtitle_path}: {e}")
             return False
     
-    async def _get_video_metadata_for_sync(self) -> Optional['VideoMetadata']:
+    async def _get_video_metadata_for_sync(self) -> Optional[VideoMetadata]:
         """获取视频元数据用于帧同步"""
         try:
             # 查找项目中的视频文件
@@ -1411,7 +1641,8 @@ class SubtitleGenerator:
                         video_path = str(video_files[0])
                         self.logger.info(f"🎬 找到视频文件进行帧同步: {video_path}")
                         if self.frame_sync_optimizer is not None:
-                            return await self.frame_sync_optimizer.analyze_video_metadata(video_path)
+                            # 由于帧同步优化器暂时不可用，直接返回默认元数据
+                            self.logger.warning("帧同步优化器暂时不可用，使用默认视频元数据")
                         else:
                             self.logger.warning("帧同步优化器未初始化，无法分析视频元数据")
             
@@ -1591,7 +1822,8 @@ class SubtitleGenerator:
             script_texts = []
             
             for script in scripts:
-                script_content = script.get("script_content", "")
+                # 支持多种字段名格式以保持兼容性：text（新格式）、script_content、content
+                script_content = script.get("text", script.get("script_content", script.get("content", "")))
                 # 清理HTML标签
                 clean_content = self._clean_html_tags(script_content)
                 if clean_content.strip():

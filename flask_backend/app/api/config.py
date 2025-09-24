@@ -68,14 +68,27 @@ except ImportError as e:
         
         def get_subtitle_config_for_ffmpeg(self):
             """获取字幕配置用于FFmpeg"""
-            subtitle_config = self.get_section('subtitle')
+            config = self.load_config()
+            # 优先使用smart_subtitle配置，其次使用netflix_v2配置，最后使用subtitle配置
+            smart_subtitle = config.get('smart_subtitle', {})
+            netflix_v2 = config.get('netflix_v2', {})
+            subtitle_config = config.get('subtitle', {})
+            
             return {
                 "font_family": subtitle_config.get("font_family", "Microsoft YaHei"),
                 "font_size": subtitle_config.get("font_size", 40),
                 "font_color": subtitle_config.get("font_color", "#FFFFFF"),
                 "background_color": subtitle_config.get("background_color", "rgba(0,0,0,0.8)"),
-                "position": subtitle_config.get("position", "bottom")
+                "position": subtitle_config.get("position", "bottom"),
+                "max_chars_per_line": smart_subtitle.get("max_chars_per_line") or netflix_v2.get("max_chars_per_line") or subtitle_config.get("max_chars_per_line", 20),
+                "max_lines": smart_subtitle.get("max_lines", 2),
+                "netflix_style": smart_subtitle.get("netflix_style", True),
+                "use_enhanced_mode": subtitle_config.get("use_enhanced_mode", True)
             }
+        
+        def get_subtitle_config(self):
+            """获取字幕配置，与get_subtitle_config_for_ffmpeg保持一致"""
+            return self.get_subtitle_config_for_ffmpeg()
         
         def _create_default_config(self):
             """创建默认配置"""
@@ -183,6 +196,27 @@ def reset_config():
         
     except Exception as e:
         logger.error(f"重置配置失败: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+@bp.route('/subtitle', methods=['GET'])
+def get_subtitle_config():
+    """获取字幕配置 - 使用统一的字幕配置方法"""
+    try:
+        # 使用统一配置管理器的字幕配置方法
+        subtitle_config = config_manager.get_subtitle_config()
+        
+        logger.info("获取字幕配置成功")
+        return jsonify({
+            'success': True,
+            'data': subtitle_config,
+            'message': '获取字幕配置成功'
+        })
+        
+    except Exception as e:
+        logger.error(f"获取字幕配置失败: {e}")
         return jsonify({
             'success': False,
             'message': str(e)
