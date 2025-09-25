@@ -1,23 +1,23 @@
 {
-  "project_name": "ppt_video_project",
-  "output_format": "MP4 (推荐)",
-  "tts_voice": "zh-CN-XiaoxiaoNeural",
-  "speech_rate": "medium",
-  "speech_pitch": "medium",
-  "video_resolution": "1920x1080 (Full HD)",
-  "video_fps": 24,
-  "video_bitrate": 2000,
-  "video_codec": "libx264",
-  "include_subtitles": true,
-  "subtitle_fontsize": 18,
-  "subtitle_color": "white",
-  "subtitle_position": "bottom",
-  "last_updated": null,
-  "auto_save": true,
+  "_config_meta": {
+    "version": "2.0.0",
+    "updated_at": "2025-09-20T00:00:00.000000",
+    "description": "PPT转视频项目 - 统一后端配置文件模板",
+    "source": "合并根目录和Flask目录配置",
+    "note": "请将敏感API密钥替换为真实值"
+  },
+  "project": {
+    "name": "ppt_video_project",
+    "version": "1.0.0",
+    "description": "PPT转视频教程生成工具",
+    "auto_save": true,
+    "output_format": "MP4 (推荐)",
+    "last_updated": "auto"
+  },
   "ai": {
     "openai": {
-      "api_key": "",
-      "base_url": "https://api.openai.com",
+      "api_key": "test-key",
+      "base_url": "https://api.openai.com/v1",
       "model": "gpt-3.5-turbo",
       "timeout": 300,
       "max_retries": 3,
@@ -31,44 +31,17 @@
       "max_retries": 3
     },
     "custom": {
-      "api_key": "",
-      "base_url": "",
-      "model": "",
+      "api_key": "YOUR_CUSTOM_API_KEY_HERE",
+      "base_url": "https://fast.yourapi.cn/v1",
+      "model": "gemini-2.0-flash",
       "timeout": 300,
       "max_retries": 3,
       "support_json": true
     },
-    "default_service": "openai",
+    "default_service": "custom",
     "source_language": "中文",
     "target_language": "中文",
     "max_workers": 4,
-    "prompts": {
-      "subtitle_split": {
-        "max_weight": 75,
-        "num_parts": 2,
-        "style": "netflix"
-      },
-      "ppt_summary": {
-        "max_terms": 15,
-        "include_definitions": true,
-        "extract_key_topics": true
-      },
-      "tts_optimization": {
-        "default_style": "natural",
-        "target_wpm": 150,
-        "include_pauses": true
-      },
-      "ppt_narration": {
-        "default_style": "educational",
-        "include_transitions": true,
-        "speaking_notes": true
-      },
-      "text_cleanup": {
-        "normalize_numbers": true,
-        "remove_special_chars": true,
-        "preserve_meaning": true
-      }
-    },
     "services_config": {
       "openai": {
         "name": "OpenAI",
@@ -137,5 +110,192 @@
         "note": "请确保API服务兼容OpenAI接口格式，模型名称需要手动输入"
       }
     }
-  }
+  },
+  "ai_content_optimization": {
+    "enabled": true,
+    "max_segment_length": 35,
+    "min_segment_length": 10,
+    "preserve_meaning": true,
+    "natural_breaks": true,
+    "fallback_to_original": true
+  },
+  "smart_subtitle": {
+    "enabled": true,
+    "splitter_type": "ai_semantic",
+    "max_chars_per_line": 36,
+    "max_lines": 2,
+    "netflix_style": true,
+    "netflix_v2_enabled": true,
+    "use_enhanced_generator": true
+  },
+  "netflix_v2": {
+    "enabled": true,
+    "style_preset": "videolingo_netflix",
+    "max_chars_per_line": 36,
+    "validation_level": "netflix",
+    "chinese_weight": 1.75,
+    "english_weight": 1.0,
+    "enable_semantic_splitting": true,
+    "max_optimization_rounds": 5,
+    "quality_threshold": 0.7,
+    "font_color": "&H00FFFF",
+    "font_size": 17,
+    "outline_color": "&H000000",
+    "outline_width": 1,
+    "background_alpha": 0.8,
+    "enable_quality_validation": true,
+    "auto_fix_issues": true,
+    "strict_netflix_compliance": true
+  },
+  "subtitle": {
+    "enabled": true,
+    "font_family": "Microsoft YaHei",
+    "font_size": 40,
+    "font_color": "#FFFFFF",
+    "background_color": "rgba(0,0,0,0.8)",
+    "position": "bottom",
+    "max_chars_per_line": 36,
+    "use_enhanced_mode": true
+  },
+  "tts": {
+    "preferred_engine": "edge_tts",
+    "edge_voice": "zh-CN-XiaoxiaoNeural",
+    "edge_rate": "+0%",
+    "edge_pitch": "+0Hz",
+    "fish_api_key": "YOUR_FISH_API_KEY_HERE",
+    "fish_character": "雷军",
+    "fish_character_id": "738d0cc1a3e9430a9de2b544a466a7fc",
+    "fish_character_name": "雷军",
+    "openai_api_key": "",
+    "openai_voice": "alloy",
+    "openai_model": "tts-1",
+    "azure_api_key": "",
+    "azure_region": "eastus",
+    "azure_voice": "zh-CN-XiaoxiaoNeural",
+    "sample_rate": 22050,
+    "max_retries": 3,
+    "timeout": 30
+  },
+  "video": {
+    "resolution": "1920x1080",
+    "fps": 30,
+    "video_bitrate": "8000k",
+    "background_color": "#000000",
+    "include_subtitles": true,
+    "audio_bitrate": "192k",
+    "audio_codec": "aac",
+    "video_codec": "libx264",
+    "preset": "medium",
+    "crf": 18,
+    "profile": "high",
+    "level": "4.1",
+    "pixel_format": "yuv420p"
+  },
+  "advanced_features": {
+    "enhanced_subtitles": true,
+    "frame_sync_optimization": true,
+    "netflix_v2_mode": true,
+    "phase3_alignment": true,
+    "ai_content_understanding": true,
+    "audio_intelligent_sync": true,
+    "lightweight_mode": false
+  },
+  "phase3_intelligent_alignment": {
+    "enabled": true,
+    "precision_level": "enhanced",
+    "audio_analysis": {
+      "sample_rate": 16000,
+      "frame_length": 1024,
+      "hop_length": 512
+    },
+    "alignment_settings": {
+      "dtw_step_pattern": "symmetric2",
+      "boundary_detection_threshold": 0.3,
+      "min_segment_duration": 0.5
+    },
+    "quality_control": {
+      "min_confidence_threshold": 0.7,
+      "max_time_deviation": 200,
+      "enable_validation": true
+    }
+  },
+  "features": {
+    "ai_semantic_enhancement": true,
+    "intelligent_alignment": true,
+    "enhanced_subtitle_generation": true,
+    "netflix_standards": true,
+    "phase3_integration": true,
+    "audio_intelligent_sync": true,
+    "advanced_ai_models": true,
+    "lightweight_mode": false
+  },
+  "ai_models": {
+    "enable_custom_models": true,
+    "use_transformer_models": true,
+    "enable_semantic_analysis": true,
+    "force_ai_mode": true
+  },
+  "enhanced_subtitle_generator": {
+    "enabled": true,
+    "use_netflix_standards": true,
+    "enable_intelligent_sentence_breaking": true,
+    "use_ai_optimization": true
+  },
+  "intelligent_sentence_breaking": {
+    "enabled": true,
+    "disable_for_flask": false,
+    "use_lightweight_mode": false
+  },
+  "intelligent_alignment_system": {
+    "enabled": true,
+    "use_phase3_features": true,
+    "enable_dtw_algorithm": true,
+    "enable_audio_feature_extraction": true
+  },
+  "audio_processing": {
+    "enabled": true,
+    "use_librosa": true,
+    "enable_advanced_analysis": true
+  },
+  "ai_content_understanding": {
+    "enabled": true,
+    "use_lightweight_mode": false,
+    "enable_semantic_analysis": true,
+    "enable_intelligent_splitting": true
+  },
+  "semantic_alignment": {
+    "enabled": true,
+    "precision_level": "high",
+    "use_transformer_models": true
+  },
+  "subtitle_generation": {
+    "enable_multiline_fix": true,
+    "character_weight_mode": "enhanced",
+    "strict_line_limit": true,
+    "max_lines": 2,
+    "resolution_adaptive_font": true,
+    "videolingo_integration": {
+      "enabled": true,
+      "use_smart_splitting": true,
+      "use_character_weights": true,
+      "use_netflix_timing": true
+    }
+  },
+  "_legacy_support": {
+    "tts_voice": "zh-CN-XiaoxiaoNeural",
+    "speech_rate": "medium",
+    "speech_pitch": "medium",
+    "video_resolution": "1920x1080 (Full HD)",
+    "video_fps": 24,
+    "video_bitrate": 2000,
+    "subtitle_fontsize": 16,
+    "subtitle_color": "white",
+    "subtitle_position": "bottom"
+  },
+  "_sensitive_keys_replaced": {
+    "custom_api_key": "原值已被 YOUR_CUSTOM_API_KEY_HERE 替换",
+    "fish_api_key": "原值已被 YOUR_FISH_API_KEY_HERE 替换",
+    "note": "仅这两个密钥被隐藏，其他配置保持与原文件一致"
+  },
+  "_updated_at": "2025-09-25T01:23:08.526Z"
 }

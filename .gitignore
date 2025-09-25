@@ -82,6 +82,18 @@ config_data/storage/*.db
 !config_data/*.template
 !config_data/*.example
 
+# Flask backend config files (含有敏感API密钥)
+flask_backend/config_data/app_config.json
+flask_backend/config_data/tts_config.json
+flask_backend/config_data/server_config.json
+flask_backend/config_data/backup/*.json
+flask_backend/config_data/storage/*.db
+flask_backend/.env
+flask_backend/.env.local
+flask_backend/.env.*.local
+!flask_backend/config_data/*_template.json
+!flask_backend/config_data/*_example.json
+
 # Test files and temporary data
 test_*.py
 quick_test_*.py
