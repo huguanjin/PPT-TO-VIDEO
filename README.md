@@ -37,6 +37,33 @@
 - **模块化设计**: 60+ 核心模块，高度可扩展
 - **实时监控**: 完善的性能监控和错误追踪
 
+## 🎥 演示效果
+
+### 🎵 Edge TTS 配音示例
+**高质量微软云端语音合成效果展示**
+
+| 访问方式 | 链接 | 说明 |
+|----------|------|------|
+| 📁 **本地查看** | [`Demo/edgetts配音结果.mp4`](Demo/edgetts配音结果.mp4) | 克隆仓库后本地观看 |
+| 🌐 **在线预览** | [GitHub查看器](https://github.com/huguanjin/PPT-TO-VIDEO/raw/main/Demo/edgetts配音结果.mp4) | 直接在浏览器中播放 |
+| � **下载观看** | [下载视频](https://github.com/huguanjin/PPT-TO-VIDEO/raw/main/Demo/edgetts配音结果.mp4) | 右键保存到本地 |
+
+---
+
+### 🐟 Fish TTS 配音示例  
+**AI语音克隆技术演示效果**
+
+| 访问方式 | 链接 | 说明 |
+|----------|------|------|
+| 📁 **本地查看** | [`Demo/fishtts配音示例.mp4`](Demo/fishtts配音示例.mp4) | 克隆仓库后本地观看 |
+| 🌐 **在线预览** | [GitHub查看器](https://github.com/huguanjin/PPT-TO-VIDEO/raw/main/Demo/fishtts配音示例.mp4) | 直接在浏览器中播放 |
+| � **下载观看** | [下载视频](https://github.com/huguanjin/PPT-TO-VIDEO/raw/main/Demo/fishtts配音示例.mp4) | 右键保存到本地 |
+
+> 💡 **提示**: 
+> - 在线预览需要浏览器支持MP4格式
+> - 本地查看需要先克隆仓库: `git clone https://github.com/huguanjin/PPT-TO-VIDEO.git`
+> - 推荐使用支持视频预览的编辑器如VS Code查看
+
 ## 🏗️ 技术架构
 
 ```
@@ -135,8 +162,8 @@ python flask_backend/unified_app.py
 # 终端2 - Vue前端  
 cd PPTist
 npm install && npm run dev
-浏览器访问 http://localhost:5173
 ```
+### 浏览器访问 http://localhost:5173
 
 ### 🌐 访问地址
 
@@ -187,17 +214,9 @@ npm install && npm run dev
 
 ### 🎯 工作流程
 
-#### 1️⃣ **项目初始化**
-```bash
-# 启动统一后端服务
-python flask_backend/unified_app.py
-
-# 访问Streamlit界面进行操作
-streamlit run main.py
-```
 
 #### 2️⃣ **内容导入**
-- **PPT文件上传**: 支持 .pptx 格式文件直接导入
+- **PPT文件上传**: 支持 .pptx、.pdf、.pptx、.json 格式文件直接导入
 - **PPTist编辑**: 在线可视化编辑器创建内容
 - **文本输入**: 直接输入或粘贴文本内容
 
@@ -344,15 +363,6 @@ python -m spacy download zh_core_web_md
 cp flask_backend/config_data/app_config_template.json flask_backend/config_data/app_config.json
 ```
 
-### 调试模式
-```bash
-# Flask调试模式
-export FLASK_ENV=development
-python flask_backend/unified_app.py
-
-# Streamlit调试模式
-streamlit run main.py --logger.level=debug
-```
 
 ### 测试运行
 ```bash
@@ -370,7 +380,6 @@ curl http://localhost:5000/health
 | **架构分析** | [FLASK_BACKEND_STRUCTURE_ANALYSIS.md](docs/FLASK_BACKEND_STRUCTURE_ANALYSIS.md) | 完整后端架构分析 |
 | **API文档** | [FRONTEND_API_ANALYSIS.md](docs/FRONTEND_API_ANALYSIS.md) | API接口详细说明 |
 | **配置说明** | [flask_backend/config_data/README.md](flask_backend/config_data/README.md) | 配置文件使用指南 |
-| **部署指南** | [deploy/README.md](deploy/README.md) | 生产环境部署 |
 
 ## ⚠️ 重要提醒
 
