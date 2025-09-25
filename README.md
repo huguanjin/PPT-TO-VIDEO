@@ -8,6 +8,27 @@
 [![Flask](https://img.shields.io/badge/flask-2.3%2B-red.svg)](https://flask.palletsprojects.com)
 [![AI](https://img.shields.io/badge/AI-Netflix级字幕-purple.svg)](#)
 
+## 🎥 Demo
+
+<table>
+<tr>
+<td width="33%">
+
+### edge tts配音示例
+---
+https://github.com/user-attachments/assets/05e070a9-9341-4292-8f26-4b5bd672db75
+
+</td>
+<td width="33%">
+
+### fishtts配音示例
+---
+https://github.com/user-attachments/assets/12c26839-078c-4d98-a0db-1e4d4819e336
+
+</td>
+</tr>
+</table>
+
 ## ✨ 核心特性
 
 ### � **Netflix级字幕技术**
@@ -37,26 +58,6 @@
 - **模块化设计**: 60+ 核心模块，高度可扩展
 - **实时监控**: 完善的性能监控和错误追踪
 
-## 🎥 Demo
-
-<table>
-<tr>
-<td width="33%">
-
-### edge tts配音示例
----
-https://github.com/user-attachments/assets/05e070a9-9341-4292-8f26-4b5bd672db75
-
-</td>
-<td width="33%">
-
-### fishtts配音示例
----
-https://github.com/user-attachments/assets/12c26839-078c-4d98-a0db-1e4d4819e336
-
-</td>
-</tr>
-</table>
 
 ## 🏗️ 技术架构
 
