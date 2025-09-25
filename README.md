@@ -37,32 +37,26 @@
 - **模块化设计**: 60+ 核心模块，高度可扩展
 - **实时监控**: 完善的性能监控和错误追踪
 
-## 🎥 演示效果
+## 🎥 Demo
 
-### 🎵 Edge TTS 配音示例
-**高质量微软云端语音合成效果展示**
+<table>
+<tr>
+<td width="33%">
 
-| 访问方式 | 链接 | 说明 |
-|----------|------|------|
-| 📁 **本地查看** | [`Demo/edgetts配音结果.mp4`](Demo/edgetts配音结果.mp4) | 克隆仓库后本地观看 |
-| 🌐 **在线预览** | [GitHub查看器](https://github.com/huguanjin/PPT-TO-VIDEO/raw/main/Demo/edgetts配音结果.mp4) | 直接在浏览器中播放 |
-| � **下载观看** | [下载视频](https://github.com/huguanjin/PPT-TO-VIDEO/raw/main/Demo/edgetts配音结果.mp4) | 右键保存到本地 |
-
+### edge tts配音示例
 ---
+https://github.com/user-attachments/assets/05e070a9-9341-4292-8f26-4b5bd672db75
 
-### 🐟 Fish TTS 配音示例  
-**AI语音克隆技术演示效果**
+</td>
+<td width="33%">
 
-| 访问方式 | 链接 | 说明 |
-|----------|------|------|
-| 📁 **本地查看** | [`Demo/fishtts配音示例.mp4`](Demo/fishtts配音示例.mp4) | 克隆仓库后本地观看 |
-| 🌐 **在线预览** | [GitHub查看器](https://github.com/huguanjin/PPT-TO-VIDEO/raw/main/Demo/fishtts配音示例.mp4) | 直接在浏览器中播放 |
-| � **下载观看** | [下载视频](https://github.com/huguanjin/PPT-TO-VIDEO/raw/main/Demo/fishtts配音示例.mp4) | 右键保存到本地 |
+### fishtts配音示例
+---
+https://github.com/user-attachments/assets/12c26839-078c-4d98-a0db-1e4d4819e336
 
-> 💡 **提示**: 
-> - 在线预览需要浏览器支持MP4格式
-> - 本地查看需要先克隆仓库: `git clone https://github.com/huguanjin/PPT-TO-VIDEO.git`
-> - 推荐使用支持视频预览的编辑器如VS Code查看
+</td>
+</tr>
+</table>
 
 ## 🏗️ 技术架构
 
