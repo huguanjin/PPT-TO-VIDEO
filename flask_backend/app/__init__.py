@@ -194,6 +194,16 @@ def register_blueprints(app):
     except Exception as e:
         print(f"❌ netflix_subtitle_api模块加载错误: {e}")
     
+    # 导入模板API
+    template_api = None
+    try:
+        from app.api.template_api import template_api
+        print("✅ template_api模块导入成功")
+    except ImportError as e:
+        print(f"❌ template_api模块导入失败: {e}")
+    except Exception as e:
+        print(f"❌ template_api模块加载错误: {e}")
+    
     # 注册原有蓝图
     app.register_blueprint(common_bp)
     app.register_blueprint(pptist_bp, url_prefix='/api/pptist')
@@ -274,6 +284,14 @@ def register_blueprints(app):
             print("✅ netflix_subtitle_api蓝图注册成功: /api/netflix-subtitle/*")
         except Exception as e:
             print(f"❌ netflix_subtitle_api蓝图注册失败: {e}")
+    
+    # 注册模板API
+    if template_api is not None:
+        try:
+            app.register_blueprint(template_api)
+            print("✅ template_api蓝图注册成功: /data/*, /img/*, /templates/*")
+        except Exception as e:
+            print(f"❌ template_api蓝图注册失败: {e}")
     
     # 手动分割API已通过直接路由注册
     

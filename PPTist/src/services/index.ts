@@ -2,7 +2,8 @@ import axios from './config'
 
 // 使用环境变量配置的API地址
 export const SERVER_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.MODE === 'development' ? '/api' : 'https://ptv.aifast.site')
-export const ASSET_URL = 'https://asset.pptist.cn'
+// 使用相对路径访问public目录下的资源
+export const ASSET_URL = ''
 
 interface AIPPTOutlinePayload {
   content: string
@@ -28,7 +29,7 @@ export default {
   },
 
   getFileData(filename: string): Promise<any> {
-    return axios.get(`${ASSET_URL}/data/${filename}.json`)
+    return axios.get(`./mocks/${filename}.json`)
   },
 
   AIPPT_Outline({
