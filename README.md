@@ -47,6 +47,13 @@ https://github.com/user-attachments/assets/12c26839-078c-4d98-a0db-1e4d4819e336
 - **多AI服务支持**: OpenAI GPT-4、Claude 3、自定义API
 - **智能内容优化**: AI驱动的文本结构优化和语义增强
 - **自适应配置**: 基于内容类型的智能参数调整
+- **大模型的 API_KEY**：
+
+| 推荐模型 | 推荐提供商 | base_url | 价格 | 评价 |
+|:-----|:---------|:---------|:-----|:---------|
+| claude-sonnet-4-20250514 | [xiaohumini.site](https://xiaohumini.site) | https://xiaohumini.site | 0.8元充一刀 | 🤩 |
+| claude-sonnet-4-20250514 | [xiaohuapi.site](https://xiaohuapi.site) | https://xiaohuapi.site | 0.48元充一刀 | 😃 |
+| claude-sonnet-4-20250514 | [aifast.site](https://aifast.site) | https://aifast.site | 0.4元充一刀 | 🤩 |
 
 ### 🎵 **多引擎语音合成**
 - **Edge TTS**: 微软云端语音合成，支持多语言多音色
