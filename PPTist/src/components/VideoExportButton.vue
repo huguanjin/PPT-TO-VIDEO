@@ -1,354 +1,780 @@
-<!--
-  完整视频导出组件 - 支持配置、工作流、项目管理
--->
+<!-- 简化的视频导出按钮组件 -->
 <template>
   <div class="video-export-group">
-    <!-- 配置按钮 -->
-    <div class="menu-item config-btn" v-tooltip="'视频导出配置'" @click="handleShowConfig">
-      <span class="icon">⚙️</span>
-    </div>
-    
-    <!-- 视频导出按钮组 -->
-    <div class="group-menu-item">
-      <div 
-        class="menu-item video-export-btn" 
-        v-tooltip="'导出为视频'" 
-        @click="handleStartExport"
-        :class="{ disabled: exportState.isExporting }"
-      >
-        <span class="icon" v-if="!exportState.isExporting">🎬</span>
-        <span class="loading-icon" v-else>⏳</span>
-        <span class="text">视频导出</span>
-      </div>
-      <div class="arrow-btn" @click="handleToggleMenu">
-        <span class="arrow">▼</span>
-      </div>
-    </div>
-
-    <!-- 下拉菜单 -->
-    <div v-if="uiState.showMenu" class="export-menu" @click.stop>
-      <div class="menu-option" @click="handleStartExport">
-        <span class="menu-icon">🚀</span>
-        <span>快速导出</span>
-      </div>
-      <div class="menu-option" @click="handleConfigExport">
-        <span class="menu-icon">⚙️</span>
-        <span>配置后导出</span>
-      </div>
-      <div class="menu-option" @click="handleShowProjects">
-        <span class="menu-icon">📁</span>
-        <span>查看项目</span>
-      </div>
-    </div>
-
-    <!-- 简化的状态提示 -->
-    <div v-if="uiState.showConfigPage" class="config-notice">
-      配置功能开发中...
-      <button @click="handleHideConfig">关闭</button>
-    </div>
-    
-    <div v-if="uiState.showWorkflowProgress" class="progress-notice">
-      工作流正在执行中...
-      <button @click="handleCloseProgress">关闭</button>
-    </div>
-    
-    <div v-if="uiState.showProjectList" class="projects-notice">
-      项目列表功能开发中...
-      <button @click="handleHideProjects">关闭</button>
+    <!-- 视频导出按钮 -->
+    <div 
+      class="menu-item video-export-btn" 
+      v-tooltip="'导出为视频'" 
+      @click="startVideoExport"
+      :class="{ disabled: isExporting || !canExport }"
+    >
+      <span class="icon" v-if="!isExporting">🎬</span>
+      <span class="loading-icon" v-else>⏳</span>
+      <span class="text">视频导出</span>
     </div>
   </div>
 </template>
 
-<script lang="ts" setup>
-import { computed, onMounted, onUnmounted, reactive } from 'vue'
-import message from '@/utils/message'
-import useVideoExport from '@/hooks/useVideoExport'
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useSlidesStore, useScreenStore, useWorkflowStore } from '@/store'
 
-// 使用导出功能
-const { 
-  exporting, 
-  exportToBackend,
-  canExport 
-} = useVideoExport()
+const slidesStore = useSlidesStore()
+const screenStore = useScreenStore()
+const workflowStore = useWorkflowStore()
+const { slides } = storeToRefs(slidesStore)
 
-// UI状态管理
-const uiState = reactive({
-  showMenu: false,
-  showConfigPage: false,
-  showWorkflowProgress: false,
-  showProjectList: false,
-  backendAvailable: false
+const isExporting = ref(false)
+
+// 检查是否可以导出
+const canExport = computed(() => {
+  return slides.value && slides.value.length > 0
 })
 
-// 导出状态管理
-const exportState = reactive({
-  isExporting: computed(() => exporting.value),
-  currentWorkflowId: ''
-})
-
-// API配置
-import { API_BASE_URL } from '@/config/api'
-
-// 事件处理函数
-const handleShowConfig = () => {
-  uiState.showConfigPage = true
-}
-
-const handleHideConfig = () => {
-  uiState.showConfigPage = false
-}
-
-const handleToggleMenu = () => {
-  uiState.showMenu = !uiState.showMenu
-}
-
-const handleShowProjects = () => {
-  uiState.showMenu = false
-  uiState.showProjectList = true
-}
-
-const handleHideProjects = () => {
-  uiState.showProjectList = false
-}
-
-const handleCloseProgress = () => {
-  uiState.showWorkflowProgress = false
-  exportState.currentWorkflowId = ''
-}
-
-// 检查后端状态
-const checkBackend = async () => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/health`)
-    uiState.backendAvailable = response.ok
-  } 
-  catch (error) {
-    uiState.backendAvailable = false
-  }
-}
-
-// 主要导出函数
-const handleStartExport = async () => {
-  if (!canExport.value || exportState.isExporting) return
-  
-  uiState.showMenu = false
-  
-  if (!uiState.backendAvailable) {
-    message.warning('后端服务不可用，请确保工作流服务已启动')
-    return
-  }
-
-  try {
-    // 1. 先导出PPT数据到后端
-    const projectName = `project_${Date.now()}`
-    await exportToBackend(projectName)
+// 等待批量导出完成
+const waitForBatchExportComplete = (): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    // 进入Screen模式
+    screenStore.setScreening(true)
     
-    // 2. 启动工作流
-    const response = await fetch(`${API_BASE_URL}/api/workflow/execute`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        project_name: projectName
-      })
-    })
-
-    if (!response.ok) {
-      throw new Error('工作流启动失败')
+    // 设置超时（60秒）
+    const timeout = setTimeout(() => {
+      cleanup()
+      reject(new Error('批量导出超时'))
+    }, 60000)
+    
+    // 监听批量导出完成事件
+    const handleExportComplete = (event: CustomEvent) => {
+      const { success, workflow_id, error } = event.detail
+      
+      cleanup()
+      
+      if (success && workflow_id) {
+        resolve(workflow_id)
+      }
+      else {
+        reject(new Error(error || '批量导出失败'))
+      }
     }
+    
+    // 清理函数
+    const cleanup = () => {
+      clearTimeout(timeout)
+      window.removeEventListener('batchExportComplete', handleExportComplete as EventListener)
+    }
+    
+    // 添加事件监听
+    window.addEventListener('batchExportComplete', handleExportComplete as EventListener)
+  })
+}
 
-    const result = await response.json()
-    exportState.currentWorkflowId = result.workflow_id || 'default'
+// 开始视频导出
+const startVideoExport = async () => {
+  if (isExporting.value || !canExport.value) return
+  
+  try {
+    isExporting.value = true
     
-    // 显示进度窗口
-    uiState.showWorkflowProgress = true
+    // 生成项目名称
+    const projectName = `pptist_${new Date().toISOString().slice(0, 19).replace(/[:-]/g, '').replace('T', '_')}`
     
-    message.success('工作流已启动，正在生成视频...')
+    // 🔧 新流程：使用批量导出功能
+    // eslint-disable-next-line no-console
+    console.log('🚀 开始批量导出图片，项目名称:', projectName)
     
-  } 
+    // 1. 触发批量导出（自动进入Screen模式并导出）
+    localStorage.setItem('auto_export_on_screen', 'true')
+    localStorage.setItem('auto_start_workflow_after_export', 'true')
+    localStorage.setItem('video_export_project_name', projectName)
+    
+    // eslint-disable-next-line no-console
+    console.log('🎬 准备进入Screen模式进行批量导出...')
+    
+    // 等待批量导出完成的监听器
+    let result
+    try {
+      result = await waitForBatchExportComplete()
+      // eslint-disable-next-line no-console
+      console.log('✅ 批量导出完成，工作流已自动启动, workflow_id:', result)
+    }
+    catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('❌ 批量导出失败:', error)
+      throw error
+    }
+    
+    // 新的导出方法成功时返回workflowId字符串
+    // eslint-disable-next-line no-console
+    console.log('🔍 导出结果:', result, '类型:', typeof result)
+    
+    if (result) {
+      // 使用全局workflowStore显示进度对话框
+      workflowStore.showWorkflowProgress(result)
+    }
+    else {
+      // eslint-disable-next-line no-console
+      console.error('❌ 导出失败：未返回有效结果，result值为:', result)
+      throw new Error('导出失败：未返回有效结果')
+    }
+  }
   catch (error) {
-    message.error('导出失败：' + (error as Error).message)
+    // 处理错误但不使用console.error和alert
+    isExporting.value = false
+    throw error
+  }
+  finally {
+    isExporting.value = false
   }
 }
-
-// 配置后导出
-const handleConfigExport = () => {
-  uiState.showMenu = false
-  uiState.showConfigPage = true
-}
-
-// 关闭菜单的点击外部监听
-const handleClickOutside = (event: MouseEvent) => {
-  const target = event.target as HTMLElement
-  if (!target.closest('.video-export-group')) {
-    uiState.showMenu = false
-  }
-}
-
-// 组件挂载时设置监听和检查状态
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-  checkBackend()
-  // 定期检查后端状态（每30秒）
-  setInterval(checkBackend, 30000)
-})
-
-// 组件卸载时清理
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .video-export-group {
   display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
   gap: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 12px;
+  min-height: 28px;
   position: relative;
-  
-  .menu-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    user-select: none;
+  overflow: hidden;
+}
 
-    &:hover:not(.disabled) {
-      background-color: rgba(0, 0, 0, 0.05);
-    }
+.menu-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
 
-    &.disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
+.menu-item:hover:not(.disabled) {
+  background-color: #f1f5f9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
 
-    .icon, .loading-icon {
-      font-size: 16px;
-      line-height: 1;
-    }
+.menu-item:hover:not(.disabled)::before {
+  left: 100%;
+}
 
-    .loading-icon {
-      animation: rotate 2s linear infinite;
-    }
+.menu-item.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
-    .text {
-      font-size: 12px;
-      font-weight: 500;
-      color: #333;
-    }
+.config-btn {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border: 1px solid #cbd5e1;
+}
+
+.video-export-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.video-export-btn:hover:not(.disabled) {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.icon, .loading-icon {
+  font-size: 14px;
+}
+
+.text {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.workflow-progress-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 99999 !important;
+  animation: fadeIn 0.3s ease-out;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
   }
-
-  .group-menu-item {
-    display: flex;
-    align-items: center;
-    background: white;
-    border: 1px solid #d9d9d9;
-    border-radius: 4px;
-    overflow: hidden;
-
-    .video-export-btn {
-      border: none;
-      border-radius: 0;
-      padding: 8px 12px;
-    }
-
-    .arrow-btn {
-      padding: 8px 6px;
-      border-left: 1px solid #d9d9d9;
-      cursor: pointer;
-      transition: background-color 0.2s;
-
-      &:hover {
-        background-color: rgba(0, 0, 0, 0.05);
-      }
-
-      .arrow {
-        font-size: 10px;
-        color: #666;
-      }
-    }
+  to {
+    opacity: 1;
   }
+}
 
-  .export-menu {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    min-width: 140px;
-    background: white;
-    border: 1px solid #d9d9d9;
-    border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    padding: 4px 0;
-    margin-top: 4px;
+.workflow-progress-modal {
+  background: white !important;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  width: 90% !important;
+  max-width: 700px !important;
+  min-width: 500px !important;
+  max-height: 85vh !important;
+  min-height: 400px !important;
+  overflow: hidden;
+  animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative !important;
+  margin: 0 !important;
+  transform: none !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+}
 
-    .menu-option {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      cursor: pointer;
-      font-size: 13px;
-      transition: background-color 0.2s;
-
-      &:hover:not(.disabled) {
-        background-color: #f5f5f5;
-      }
-
-      &.disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        color: #999;
-      }
-
-      .menu-icon {
-        font-size: 14px;
-      }
-    }
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(50px) scale(0.95);
   }
-
-  // 简化的通知样式
-  .config-notice,
-  .progress-notice,
-  .projects-notice {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: white;
-    border: 1px solid #d9d9d9;
-    border-radius: 4px;
-    padding: 12px;
-    margin-top: 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-    
-    button {
-      margin-left: 8px;
-      padding: 4px 8px;
-      background: #1677ff;
-      color: white;
-      border: none;
-      border-radius: 3px;
-      cursor: pointer;
-      font-size: 12px;
-      
-      &:hover {
-        background: #1454d4;
-      }
-    }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 28px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.modal-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.05"/><circle cx="50" cy="10" r="1" fill="white" opacity="0.08"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+  pointer-events: none;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  position: relative;
+  z-index: 1;
+}
+
+.close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 8px;
+  color: white;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.modal-content {
+  padding: 0;
+  overflow-y: auto;
+  max-height: calc(85vh - 160px); /* 减去header和footer的高度 */
+  position: relative;
+}
+
+.modal-content::before {
+  content: '';
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.workflow-status {
+  min-height: 300px;
+  padding: 28px;
+}
+
+/* 滚动区域渐变指示器 */
+.modal-content::after {
+  content: '';
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.9) 70%, white 100%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.status-info h3 {
+  margin: 0 0 16px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-info h3::before {
+  content: '🎬';
+  font-size: 24px;
+}
+
+.current-step {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  padding: 12px 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  font-weight: 500;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.step-item {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 16px;
+  background: #f9fafb;
+  border: 2px solid transparent;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.step-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.step-item.running {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border-color: #3b82f6;
+  box-shadow: 0 8px 25px -8px rgba(59, 130, 246, 0.3);
+  animation: pulse 2s infinite;
+}
+
+.step-item.running::before {
+  opacity: 1;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 8px 25px -8px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 8px 25px -8px rgba(59, 130, 246, 0.5);
+  }
+}
+
+.step-item.completed {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #10b981;
+  box-shadow: 0 4px 15px -4px rgba(16, 185, 129, 0.2);
+  animation: completePulse 0.6s ease-out;
+}
+
+@keyframes completePulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.step-item.failed {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-color: #ef4444;
+  box-shadow: 0 4px 15px -4px rgba(239, 68, 68, 0.2);
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.step-number {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.1);
+}
+
+.step-item.running .step-number {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  animation: rotate 2s linear infinite;
+  box-shadow: 0 6px 20px -6px rgba(59, 130, 246, 0.4);
 }
 
 @keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.step-item.completed .step-number {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 6px 20px -6px rgba(16, 185, 129, 0.4);
+}
+
+.step-item.completed .step-number::after {
+  content: '✓';
+  position: absolute;
+  animation: checkmark 0.4s ease-out 0.2s both;
+}
+
+@keyframes checkmark {
+  0% {
+    transform: scale(0) rotate(45deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.step-item.failed .step-number {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 6px 20px -6px rgba(239, 68, 68, 0.4);
+}
+
+.step-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.step-name {
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #1f2937;
+  font-size: 16px;
+}
+
+.step-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.progress-percent {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  min-width: 45px;
+  text-align: right;
+}
+
+.step-message {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.completion-actions {
+  margin-top: 32px;
+  padding: 24px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-radius: 16px;
+  text-align: center;
+  border: 2px solid #10b981;
+  animation: completionGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes completionGlow {
   from {
-    transform: rotate(0deg);
+    box-shadow: 0 4px 20px -4px rgba(16, 185, 129, 0.3);
   }
   to {
-    transform: rotate(360deg);
+    box-shadow: 0 8px 30px -4px rgba(16, 185, 129, 0.5);
   }
+}
+
+.success-message {
+  font-size: 18px;
+  font-weight: 700;
+  color: #059669;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.download-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 16px;
+  box-shadow: 0 4px 15px -2px rgba(16, 185, 129, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.download-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -4px rgba(16, 185, 129, 0.6);
+}
+
+.error-message {
+  margin-top: 32px;
+  padding: 24px;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-radius: 16px;
+  color: #dc2626;
+  text-align: center;
+  border: 2px solid #ef4444;
+  font-weight: 600;
+}
+
+.loading-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  gap: 24px;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-status div {
+  font-size: 16px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.modal-footer {
+  padding: 20px 28px;
+  border-top: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  text-align: right;
+}
+
+.close-workflow-btn {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.close-workflow-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  transform: translateY(-1px);
+}
+
+.close-workflow-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 滚动条美化和增强 */
+.modal-content {
+  scroll-behavior: smooth;
+}
+
+.modal-content::-webkit-scrollbar {
+  width: 12px;
+  background: transparent;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 6px;
+  margin: 4px 0;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 6px;
+  border: 2px solid #f1f5f9;
+  transition: all 0.3s ease;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+  border-color: #e2e8f0;
+  transform: scale(1.1);
+}
+
+.modal-content::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+}
+
+/* 滚动指示器 */
+.modal-content::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* 确保模态框显示的重置样式 */
+.workflow-progress-overlay * {
+  box-sizing: border-box !important;
+}
+
+.workflow-progress-overlay {
+  pointer-events: auto !important;
+}
+
+.workflow-progress-modal {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* 高亮脉冲动画 */
+@keyframes highlightPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+    background-color: rgba(74, 222, 128, 0.1);
+  }
+  25% {
+    box-shadow: 0 0 0 10px rgba(74, 222, 128, 0.5);
+    background-color: rgba(74, 222, 128, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 20px rgba(74, 222, 128, 0.3);
+    background-color: rgba(74, 222, 128, 0.15);
+  }
+  75% {
+    box-shadow: 0 0 0 10px rgba(74, 222, 128, 0.2);
+    background-color: rgba(74, 222, 128, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+    background-color: transparent;
+  }
+}
+
+/* 调试样式 - 临时添加以确保可见性 */
+.workflow-progress-overlay {
+  border: 2px solid red !important; /* 临时调试边框 */
+}
+
+.workflow-progress-modal {
+  border: 2px solid blue !important; /* 临时调试边框 */
 }
 </style>
