@@ -5,7 +5,7 @@ PPTist数据导入模块
 import json
 import os
 import base64
-from typing import Dict, List, Any, Optional, Callable
+from typing import Dict, List, Any, Optional, Callable, TYPE_CHECKING
 from pathlib import Path
 from dataclasses import dataclass, asdict
 import asyncio
@@ -14,6 +14,18 @@ from datetime import datetime
 
 from app.utils.logger import get_logger
 from app.utils.file_manager import FileManager
+
+if TYPE_CHECKING:
+    from .headless_browser_renderer import HeadlessBrowserRenderer, RenderConfig
+
+# 导入无头浏览器渲染器（可选）
+try:
+    from .headless_browser_renderer import HeadlessBrowserRenderer, RenderConfig
+    HEADLESS_RENDERER_AVAILABLE = True
+except ImportError:
+    HEADLESS_RENDERER_AVAILABLE = False
+    HeadlessBrowserRenderer = None  # type: ignore
+    RenderConfig = None  # type: ignore
 
 logger = get_logger(__name__)
 
@@ -42,7 +54,22 @@ class PPTistImportResult:
 class PPTistImporter:
     """PPTist数据导入器"""
     
-    def __init__(self, project_name: str, base_output_dir: Optional[Path] = None):
+    def __init__(
+        self, 
+        project_name: str, 
+        base_output_dir: Optional[Path] = None,
+        use_headless_browser: bool = True,
+        render_quality: int = 95
+    ):
+        """
+        初始化PPTist导入器
+        
+        Args:
+            project_name: 项目名称
+            base_output_dir: 输出目录
+            use_headless_browser: 是否使用无头浏览器渲染（高质量模式）
+            render_quality: 渲染质量 (0-100)，仅在use_headless_browser=True时生效
+        """
         self.project_name = project_name
         if base_output_dir is None:
             # 使用flask_backend/output目录，而不是项目根目录
@@ -53,6 +80,18 @@ class PPTistImporter:
         self.output_dir = base_output_dir
         self.slides_dir = self.output_dir / "slides"
         self.file_manager = FileManager(self.output_dir)
+        
+        # 无头浏览器渲染配置
+        self.use_headless_browser = use_headless_browser and HEADLESS_RENDERER_AVAILABLE
+        self.render_quality = render_quality
+        self.headless_renderer = None
+        
+        if self.use_headless_browser:
+            logger.info(f"✨ 启用无头浏览器高质量渲染模式 (质量={render_quality})")
+        else:
+            if use_headless_browser and not HEADLESS_RENDERER_AVAILABLE:
+                logger.warning("⚠️ 无头浏览器渲染器不可用，使用标准模式")
+            logger.info("使用标准图片保存模式")
         
     async def import_pptist_data(
         self, 
@@ -170,29 +209,67 @@ class PPTistImporter:
         }
     
     async def _save_image_files(self, images_data: List[Dict[str, str]]) -> List[str]:
-        """保存图片文件"""
+        """
+        保存图片文件
+        
+        如果启用无头浏览器模式，会使用高质量渲染重新保存图片
+        """
         image_files = []
+        
+        # 如果使用无头浏览器，初始化渲染器
+        if self.use_headless_browser and self.headless_renderer is None:
+            try:
+                if RenderConfig is None or HeadlessBrowserRenderer is None:
+                    raise ImportError("无头浏览器渲染器不可用")
+                
+                render_config = RenderConfig(quality=self.render_quality)
+                self.headless_renderer = HeadlessBrowserRenderer(render_config)
+                await self.headless_renderer.initialize()
+                logger.info("✅ 无头浏览器渲染器初始化成功")
+            except Exception as e:
+                logger.error(f"❌ 无头浏览器初始化失败，回退到标准模式: {e}")
+                self.use_headless_browser = False
         
         for i, img_data in enumerate(images_data):
             try:
-                filename = img_data.get("filename") or f"slide_{i+1:03d}.png"
+                filename = img_data.get("filename") or f"slide_{i+1:03d}.jpg"
+                # 修改扩展名为jpg以匹配渲染质量
+                if self.use_headless_browser:
+                    filename = filename.rsplit('.', 1)[0] + '.jpg'
+                
                 base64_data = img_data["data"]
-                
-                # 处理base64数据
-                if "," in base64_data:
-                    # 去除data:image/png;base64,前缀
-                    base64_data = base64_data.split(",", 1)[1]
-                
-                # 解码base64数据
-                image_bytes = base64.b64decode(base64_data)
-                
-                # 保存文件
                 file_path = self.slides_dir / filename
-                with open(file_path, 'wb') as f:
-                    f.write(image_bytes)
                 
-                image_files.append(str(file_path))
-                logger.info(f"保存图片: {filename} ({len(image_bytes)} bytes)")
+                if self.use_headless_browser:
+                    # 使用无头浏览器高质量渲染
+                    if self.headless_renderer is None:
+                        raise RuntimeError("渲染器未初始化")
+                    
+                    result = await self.headless_renderer.render_base64_image(
+                        base64_data,
+                        str(file_path)
+                    )
+                    
+                    if result.success:
+                        image_files.append(str(file_path))
+                        logger.info(
+                            f"✨ 高质量渲染: {filename} "
+                            f"({result.file_size/1024:.1f} KB, {result.render_time:.2f}s)"
+                        )
+                    else:
+                        raise Exception(f"渲染失败: {result.error_message}")
+                else:
+                    # 标准模式：直接保存base64
+                    if "," in base64_data:
+                        base64_data = base64_data.split(",", 1)[1]
+                    
+                    image_bytes = base64.b64decode(base64_data)
+                    
+                    with open(file_path, 'wb') as f:
+                        f.write(image_bytes)
+                    
+                    image_files.append(str(file_path))
+                    logger.info(f"保存图片: {filename} ({len(image_bytes)} bytes)")
                 
             except Exception as e:
                 logger.error(f"保存图片失败 {i+1}: {e}")

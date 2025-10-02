@@ -3,6 +3,7 @@ import { useSlidesStore } from './slides'
 import { useSnapshotStore } from './snapshot'
 import { useKeyboardStore } from './keyboard'
 import { useScreenStore } from './screen'
+import { useWorkflowStore } from './workflow'
 
 export {
   useMainStore,
@@ -10,4 +11,5 @@ export {
   useSnapshotStore,
   useKeyboardStore,
   useScreenStore,
+  useWorkflowStore,
 }

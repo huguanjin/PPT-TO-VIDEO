@@ -691,8 +691,16 @@ class SubtitleGenerator:
         # 支持多种字段名格式以保持兼容性：text（新格式）、script_content、content
         script_content = script.get("text", script.get("script_content", script.get("content", "")))
         
+        # 🔍 调试：检查原始文本
+        self.logger.info(f"🔍 原始script_content: {repr(script_content)[:200]}")
+        self.logger.info(f"🔍 原始换行符数量: {script_content.count(chr(10))}")
+        
         # 清理HTML标签
         script_content = self._clean_html_tags(script_content)
+        
+        # 🔍 调试：检查清理后的文本
+        self.logger.info(f"🔍 清理后script_content: {repr(script_content)[:200]}")
+        self.logger.info(f"🔍 清理后换行符数量: {script_content.count(chr(10))}")
         
         # 字幕文件路径
         subtitle_filename = f"subtitle_{slide_number:03d}.srt"
@@ -851,17 +859,13 @@ class SubtitleGenerator:
             paragraphs = [p.strip() for p in text.split('\n') if p.strip()]
             
             if len(paragraphs) > 1:
-                self.logger.info(f"🎯 发现 {len(paragraphs)} 个手动段落，将创建对应数量的字幕条目")
-                all_segments = []
+                self.logger.info(f"🎯 发现 {len(paragraphs)} 个手动段落，保留原始换行结构")
+                # 🔧 修复：直接返回段落列表，不再进行二次分割
+                # 这样可以保留用户在PPT备注中输入的原始换行符结构
+                return paragraphs
                 
-                # 对每个段落分别应用智能分割
-                for i, paragraph in enumerate(paragraphs):
-                    self.logger.info(f"  处理段落 {i+1}/{len(paragraphs)}: {paragraph[:30]}...")
-                    paragraph_segments = await self._split_single_paragraph(paragraph)
-                    all_segments.extend(paragraph_segments)
-                
-                self.logger.info(f"✅ 手动分割完成，共生成 {len(all_segments)} 个字幕片段")
-                return all_segments
+            # 如果只有一个段落，继续执行常规分割逻辑
+            text = paragraphs[0]
 
         # 🤖 使用增强语义分割器 - 保护URL和技术术语
         if ENHANCED_SEMANTIC_SPLITTER_AVAILABLE:
@@ -1384,18 +1388,16 @@ class SubtitleGenerator:
         # 解码HTML实体
         clean_text = html.unescape(clean_text)
         
-        # ✨ 单行模式下保留换行符，否则清理多余空白
-        if self.single_line_mode:
-            # 单行模式：保留换行符，但清理其他多余空白
-            # 先将多个连续空格/制表符替换为单个空格
-            clean_text = re.sub(r'[ \t]+', ' ', clean_text)
-            # 清理换行符前后的空格，但保留换行符本身
-            clean_text = re.sub(r' *\n *', '\n', clean_text)
-            clean_text = clean_text.strip()
-            self.logger.info(f"🧹 单行模式HTML清理 - 保留换行符: '{clean_text}'")
-        else:
-            # 常规模式：清理所有多余空白（包括换行符）
-            clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+        # 🔧 修复：始终保留换行符，让后续的分割逻辑来处理
+        # 清理连续空格和制表符，但保留换行符
+        clean_text = re.sub(r'[ \t]+', ' ', clean_text)
+        # 清理换行符前后的空格，但保留换行符本身
+        clean_text = re.sub(r' *\n *', '\n', clean_text)
+        clean_text = clean_text.strip()
+        
+        # 调试：显示清理结果
+        self.logger.info(f"🧹 HTML清理完成 - 文本: {repr(clean_text)[:200]}")
+        self.logger.info(f"🔍 清理后换行符数量: {clean_text.count(chr(10))}")
         
         return clean_text
     

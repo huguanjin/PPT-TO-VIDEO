@@ -431,23 +431,52 @@ def execute_workflow():
                 'message': f'项目根目录不存在: {project_dir}'
             }), 404
         
-        # 检查项目数据文件 - 在output目录下
-        ppt_data_file = output_dir / "ppt_data.json"
-        if not ppt_data_file.exists():
-            return jsonify({
-                'success': False,
-                'message': f'项目 {project_name} 缺少PPT数据文件: {ppt_data_file}'
-            }), 400
+        # 🔧 兼容两种数据源格式
+        # 方式1: 批量导出格式 - slides/slides_metadata.json (新方法)
+        # 方式2: 旧格式 - ppt_data.json + slides/*.jpg (旧方法)
         
-        # 检查图片文件 - 在output目录下
         slides_dir = output_dir / "slides"
-        if not slides_dir.exists() or not any(slides_dir.glob("*.jpg")):
+        slides_metadata_file = slides_dir / "slides_metadata.json"
+        ppt_data_file = output_dir / "ppt_data.json"
+        
+        use_batch_export = False
+        
+        # 优先检查新的批量导出格式
+        if slides_metadata_file.exists():
+            logger.info("✅ 检测到批量导出格式: slides/slides_metadata.json")
+            use_batch_export = True
+            
+            # 验证图片文件
+            if not slides_dir.exists() or not any(slides_dir.glob("slide_*.jpg")):
+                return jsonify({
+                    'success': False,
+                    'message': f'批量导出的幻灯片图片文件缺失: {slides_dir}'
+                }), 400
+        
+        # 如果没有批量导出格式，检查旧格式
+        elif ppt_data_file.exists():
+            logger.info("✅ 检测到旧格式: ppt_data.json")
+            use_batch_export = False
+            
+            # 验证图片文件
+            if not slides_dir.exists() or not any(slides_dir.glob("*.jpg")):
+                return jsonify({
+                    'success': False,
+                    'message': f'项目 {project_name} 缺少幻灯片图片文件: {slides_dir}'
+                }), 400
+        
+        else:
             return jsonify({
                 'success': False,
-                'message': f'项目 {project_name} 缺少幻灯片图片文件: {slides_dir}'
+                'message': (
+                    f'项目 {project_name} 缺少数据文件。'
+                    f'需要以下之一：'
+                    f'\n1. 批量导出格式: {slides_metadata_file}'
+                    f'\n2. 旧格式: {ppt_data_file}'
+                )
             }), 400
         
-        logger.info(f"启动工作流执行: {project_name}, 任务ID: {task_id}")
+        logger.info(f"启动工作流执行: {project_name}, 任务ID: {task_id}, 使用{'批量导出' if use_batch_export else '旧'}格式")
         
         # 启动后台任务处理工作流
         import threading

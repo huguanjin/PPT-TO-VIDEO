@@ -216,6 +216,16 @@ def register_blueprints(app):
     app.register_blueprint(pptist_export_bp, url_prefix='/api/pptist_export')
     app.register_blueprint(workspace_bp, url_prefix='/api/workspace')
     
+    # 注册批量导入API蓝图（前端批量导出功能）
+    try:
+        from flask_backend.api.batch_import import batch_import_bp
+        app.register_blueprint(batch_import_bp)
+        print("✅ batch_import蓝图注册成功: /api/import-slides-batch")
+    except ImportError as e:
+        print(f"❌ batch_import蓝图导入失败: {e}")
+    except Exception as e:
+        print(f"❌ batch_import蓝图注册失败: {e}")
+    
     # 注册VideoLingo集成蓝图
     if videolingo_bp is not None:
         try:

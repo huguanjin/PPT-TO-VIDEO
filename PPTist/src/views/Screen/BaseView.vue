@@ -6,9 +6,9 @@
       :animationIndex="animationIndex"
       :turnSlideToId="turnSlideToId"
       :manualExitFullscreen="manualExitFullscreen"
-      @wheel="$event => mousewheelListener($event)"
-      @touchstart="$event => touchStartListener($event)"
-      @touchend="$event => touchEndListener($event)"
+      @wheel="mousewheelListener"
+      @touchstart="touchStartListener"
+      @touchend="touchEndListener"
       v-contextmenu="contextmenus"
     />
 
@@ -46,6 +46,7 @@
         <IconMagic class="tool-btn" v-tooltip="'激光笔'" :class="{ 'active': laserPen }" @click="laserPen = !laserPen" />
         <IconStopwatchStart class="tool-btn" v-tooltip="'计时器'" :class="{ 'active': timerlVisible }" @click="timerlVisible = !timerlVisible" />
         <IconListView class="tool-btn" v-tooltip="'演讲者视图'" @click="changeViewMode('presenter')" />
+        <IconSendOne class="tool-btn" v-tooltip="'批量导出到后端'" :class="{ 'active': batchExporting }" @click="handleBatchExport" />
         <IconOffScreenOne class="tool-btn" v-tooltip="'退出全屏'" v-if="fullscreenState" @click="manualExitFullscreen()" />
         <IconFullScreenOne class="tool-btn" v-tooltip="'进入全屏'" v-else @click="enterFullscreen()" />
         <IconPower class="tool-btn" v-tooltip="'结束放映'" @click="exitScreening()" />
@@ -53,19 +54,32 @@
     </div>
 
     <BottomThumbnails v-if="bottomThumbnailsVisible" />
+    
+    <!-- 批量导出进度提示 -->
+    <div class="batch-export-progress" v-if="batchExporting">
+      <div class="progress-content">
+        <div class="progress-text">{{ batchExportStatus }}</div>
+        <div class="progress-bar">
+          <div class="progress-fill" :style="{ width: batchExportProgress + '%' }"></div>
+        </div>
+        <div class="progress-percent">{{ batchExportProgress }}%</div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useSlidesStore } from '@/store'
+import { useSlidesStore, useScreenStore } from '@/store'
 import type { ContextmenuItem } from '@/components/Contextmenu/types'
 import { enterFullscreen } from '@/utils/fullscreen'
 import useScreening from '@/hooks/useScreening'
 import useExecPlay from './hooks/useExecPlay'
 import useSlideSize from './hooks/useSlideSize'
 import useFullscreen from './hooks/useFullscreen'
+import { useBatchExport } from './hooks/useBatchExport'
+import message from '@/utils/message'
 
 import ScreenSlideList from './ScreenSlideList.vue'
 import SlideThumbnails from './SlideThumbnails.vue'
@@ -78,6 +92,7 @@ const props = defineProps<{
 }>()
 
 const { slides, slideIndex } = storeToRefs(useSlidesStore())
+const screenStore = useScreenStore()
 
 const {
   autoPlayTimer,
@@ -103,12 +118,345 @@ const { slideWidth, slideHeight } = useSlideSize()
 const { exitScreening } = useScreening()
 const { fullscreenState, manualExitFullscreen } = useFullscreen()
 
+// 批量导出功能
+const { 
+  exporting: batchExporting, 
+  exportProgress: batchExportProgress,
+  exportStatus: batchExportStatus
+} = useBatchExport()
+
 const rightToolsVisible = ref(false)
 const writingBoardToolVisible = ref(false)
 const timerlVisible = ref(false)
 const slideThumbnailModelVisible = ref(false)
 const bottomThumbnailsVisible = ref(false)
 const laserPen = ref(false)
+
+/**
+ * 将HTML格式的remark转换为纯文本,保留段落换行
+ * PPTist存储的remark是HTML格式如: <p>段落1</p><p>段落2</p>
+ * 需要转换为: 段落1\n段落2
+ */
+const convertHtmlRemarkToPlainText = (html: string): string => {
+  if (!html || html.trim() === '') return ''
+  
+  // 创建临时DOM元素解析HTML
+  const tempDiv = document.createElement('div')
+  tempDiv.innerHTML = html
+  
+  // 获取所有段落元素
+  const paragraphs = tempDiv.querySelectorAll('p')
+  
+  if (paragraphs.length === 0) {
+    // 如果没有<p>标签,直接返回文本内容
+    return tempDiv.textContent?.trim() || ''
+  }
+  
+  // 提取每个段落的文本,用换行符连接
+  const textLines: string[] = []
+  paragraphs.forEach(p => {
+    const text = p.textContent?.trim()
+    if (text) {
+      textLines.push(text)
+    }
+  })
+  
+  return textLines.join('\n')
+}
+
+// 批量导出处理函数 - 逐页切换并导出
+const handleBatchExport = async () => {
+  if (batchExporting.value) {
+    message.warning('正在导出中，请稍候...')
+    return
+  }
+
+  try {
+    const totalSlides = slides.value.length
+    
+    if (totalSlides === 0) {
+      message.error('没有幻灯片可导出')
+      return
+    }
+
+    // eslint-disable-next-line no-console
+    console.log(`🚀 开始逐页导出 ${totalSlides} 张幻灯片...`)
+    message.info(`开始批量导出 ${totalSlides} 张幻灯片...`)
+
+    // 手动控制导出状态
+    batchExporting.value = true
+    batchExportProgress.value = 0
+    batchExportStatus.value = '准备导出...'
+
+    const exportedImages: Array<{
+      slideIndex: number
+      filename: string
+      dataURL: string
+      size: number
+      text?: string
+      duration?: number
+    }> = []
+
+    // 逐页导出
+    for (let i = 0; i < totalSlides; i++) {
+      batchExportStatus.value = `正在导出第 ${i + 1}/${totalSlides} 张...`
+      
+      // 切换到目标页
+      if (slideIndex.value !== i) {
+        turnSlideToIndex(i)
+        // 等待渲染完成
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+
+      // 查找当前幻灯片的DOM元素
+      const slideElement = document.querySelector('.screen-slide-list .slide-item.current .screen-slide')
+      
+      if (!slideElement) {
+        // eslint-disable-next-line no-console
+        console.warn(`⚠️ 幻灯片 ${i + 1} 的DOM元素不存在，跳过`)
+        continue
+      }
+
+      try {
+        // 移除可能导致问题的xmlns属性
+        const foreignObjectSpans = slideElement.querySelectorAll('foreignObject [xmlns]')
+        foreignObjectSpans.forEach((span: Element) => span.removeAttribute('xmlns'))
+
+        // 获取元素的原始transform
+        const originalTransform = (slideElement as HTMLElement).style.transform
+        
+        // 临时移除transform缩放，使用原始尺寸导出
+        ;(slideElement as HTMLElement).style.transform = 'scale(1)'
+        
+        // 等待浏览器重新渲染
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        // 获取实际的DOM尺寸（无缩放状态）
+        const rect = slideElement.getBoundingClientRect()
+        const actualWidth = Math.round(rect.width)
+        const actualHeight = Math.round(rect.height)
+        
+        // eslint-disable-next-line no-console
+        console.log(`📐 幻灯片 ${i + 1} 原始尺寸: ${actualWidth}x${actualHeight}`)
+
+        // 使用html-to-image导出 - 使用原始尺寸（scale=1）
+        const { toJpeg } = await import('html-to-image')
+        const dataURL = await toJpeg(slideElement as HTMLElement, {
+          quality: 1.0,
+          width: actualWidth,
+          height: actualHeight,
+          pixelRatio: 2, // 2x 提高清晰度
+          cacheBust: true,
+        })
+        
+        // 恢复原始transform
+        ;(slideElement as HTMLElement).style.transform = originalTransform
+
+        const filename = `slide_${String(i + 1).padStart(3, '0')}.jpg`
+        
+        // 获取当前幻灯片的备注文本和时长
+        const currentSlide = slides.value[i]
+        const remarkHtml = currentSlide?.remark || ''
+        
+        // 将HTML格式的remark转换为纯文本,保留段落换行
+        const slideText = convertHtmlRemarkToPlainText(remarkHtml)
+        const slideDuration = Math.max(3.0, slideText.length * 0.1)
+        
+        exportedImages.push({
+          slideIndex: i,
+          filename,
+          dataURL,
+          size: dataURL.length,
+          text: slideText,
+          duration: slideDuration
+        })
+
+        batchExportProgress.value = Math.round(((i + 1) / totalSlides) * 100)
+        
+        // eslint-disable-next-line no-console
+        console.log(`✅ 已导出: ${filename} (${(dataURL.length / 1024 / 1024).toFixed(2)} MB)`)
+      }
+      catch (error) {
+        // eslint-disable-next-line no-console
+        console.error(`❌ 导出幻灯片 ${i + 1} 失败:`, error)
+        message.error(`导出第 ${i + 1} 张幻灯片失败`)
+      }
+    }
+
+    // 发送到后端
+    batchExportStatus.value = '正在发送到后端...'
+    
+    const exportData = {
+      projectName: '如何选择中转大模型，如何比较价格',
+      totalSlides,
+      exportedCount: exportedImages.length,
+      images: exportedImages,
+      timestamp: Date.now()
+    }
+
+    const response = await fetch('http://localhost:5000/api/import-slides-batch', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(exportData)
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP错误: ${response.status}`)
+    }
+
+    const result = await response.json()
+    
+    batchExporting.value = false
+    
+    // eslint-disable-next-line no-console
+    console.log('✅ 批量导出完成:', result)
+    
+    // 🔧 检查是否应该自动启动工作流
+    const autoStartWorkflow = localStorage.getItem('auto_start_workflow_after_export')
+    
+    if (autoStartWorkflow === 'true' && result.workflow_ready) {
+      message.success(`批量导出成功！共 ${exportedImages.length} 张，正在启动工作流...`)
+      
+      try {
+        // 启动工作流
+        const workflowResponse = await fetch('http://localhost:5000/api/workflow/execute', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            project_name: result.project_name
+          })
+        })
+        
+        if (workflowResponse.ok) {
+          const workflowResult = await workflowResponse.json()
+          // eslint-disable-next-line no-console
+          console.log('🔍 后端返回的完整数据:', workflowResult)
+          
+          // 兼容两种API返回格式:
+          // 1. 旧版API: { success: true, data: { workflow_id, task_id } }
+          // 2. 新版API: { success: true, workflow_id, task_id }
+          const workflowId = workflowResult.data?.workflow_id || 
+                           workflowResult.data?.task_id || 
+                           workflowResult.workflow_id || 
+                           workflowResult.task_id
+          
+          if (!workflowId) {
+            // eslint-disable-next-line no-console
+            console.error('❌ 未获取到工作流ID!后端返回:', workflowResult)
+            throw new Error('未获取到工作流ID')
+          }
+          
+          message.success(`工作流已启动！任务ID: ${workflowId}`)
+          // eslint-disable-next-line no-console
+          console.log('✅ 工作流启动成功, ID:', workflowId)
+          
+          // 🔧 触发自定义事件通知VideoExportButtonNew
+          const event = new CustomEvent('batchExportComplete', {
+            detail: {
+              success: true,
+              workflow_id: workflowId,
+              project_name: result.project_name
+            }
+          })
+          window.dispatchEvent(event)
+          
+          // 退出Screen模式，返回编辑器
+          setTimeout(() => {
+            screenStore.setScreening(false)
+          }, 1000)
+        }
+        else {
+          message.warning('图片导出成功，但工作流启动失败，请手动启动')
+          
+          // 触发失败事件
+          const event = new CustomEvent('batchExportComplete', {
+            detail: {
+              success: false,
+              error: '工作流启动失败'
+            }
+          })
+          window.dispatchEvent(event)
+        }
+      }
+      catch (workflowError) {
+        // eslint-disable-next-line no-console
+        console.error('工作流启动失败:', workflowError)
+        message.warning('图片导出成功，但工作流启动失败，请手动启动')
+        
+        // 触发失败事件
+        const event = new CustomEvent('batchExportComplete', {
+          detail: {
+            success: false,
+            error: String(workflowError)
+          }
+        })
+        window.dispatchEvent(event)
+      }
+    }
+    else {
+      message.success(`批量导出成功！共 ${exportedImages.length} 张幻灯片`)
+      
+      if (result.next_step) {
+        message.info('提示：可以在工作流页面启动视频生成')
+      }
+      
+      // 🔧 如果不自动启动工作流，也触发事件（用于手动模式）
+      const event = new CustomEvent('batchExportComplete', {
+        detail: {
+          success: true,
+          workflow_id: null,
+          project_name: result.project_name
+        }
+      })
+      window.dispatchEvent(event)
+    }
+    
+    // 清除自动导出标记
+    localStorage.removeItem('auto_export_on_screen')
+    localStorage.removeItem('auto_start_workflow_after_export')
+  } 
+  catch (error) {
+    batchExporting.value = false
+    batchExportStatus.value = '导出失败'
+    // eslint-disable-next-line no-console
+    console.error('批量导出失败:', error)
+    message.error('批量导出失败')
+    
+    // 触发失败事件
+    const event = new CustomEvent('batchExportComplete', {
+      detail: {
+        success: false,
+        error: String(error)
+      }
+    })
+    window.dispatchEvent(event)
+    
+    // 清除自动导出标记
+    localStorage.removeItem('auto_export_on_screen')
+    localStorage.removeItem('auto_start_workflow_after_export')
+  }
+}
+
+// 检查是否需要自动导出
+onMounted(() => {
+  nextTick(() => {
+    const autoExport = localStorage.getItem('auto_export_on_screen')
+    if (autoExport === 'true') {
+      // eslint-disable-next-line no-console
+      console.log('🚀 检测到自动导出标记，延迟2秒后开始导出...')
+      message.info('检测到批量导出请求，即将自动开始...')
+      
+      // 延迟2秒，确保所有幻灯片都已渲染完成
+      setTimeout(() => {
+        handleBatchExport()
+      }, 2000)
+    }
+  })
+})
 
 const contextmenus = (): ContextmenuItem[] => {
   return [
@@ -280,6 +628,53 @@ const contextmenus = (): ContextmenuItem[] => {
     font-size: 12px;
     padding: 0 12px;
     cursor: pointer;
+  }
+}
+
+.batch-export-progress {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  padding: 30px 40px;
+  border-radius: 8px;
+  z-index: 999;
+  min-width: 300px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+
+  .progress-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .progress-text {
+    font-size: 16px;
+    text-align: center;
+    font-weight: 500;
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #409eff, #67c23a);
+      transition: width 0.3s ease;
+    }
+  }
+
+  .progress-percent {
+    font-size: 24px;
+    text-align: center;
+    font-weight: bold;
+    color: #67c23a;
   }
 }
 </style>

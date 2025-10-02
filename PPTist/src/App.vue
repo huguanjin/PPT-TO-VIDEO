@@ -5,22 +5,32 @@
     <Mobile v-else />
   </template>
   <FullscreenSpin tip="数据初始化中，请稍等 ..." v-else  loading :mask="false" />
+  
+  <!-- 全局工作流进度对话框 - 不受Screen/Editor切换影响 -->
+  <WorkflowProgress 
+    v-if="workflowStore.showProgress && workflowStore.workflowId"
+    :workflowId="workflowStore.workflowId"
+    @close="workflowStore.hideWorkflowProgress()"
+    @download="handleDownload"
+  />
 </template>
 
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useScreenStore, useMainStore, useSnapshotStore, useSlidesStore } from '@/store'
+import { useScreenStore, useMainStore, useSnapshotStore, useSlidesStore, useWorkflowStore } from '@/store'
 import { useWorkspaceManager } from '@/hooks/useWorkspaceManager'
 import { LOCALSTORAGE_KEY_DISCARDED_DB } from '@/configs/storage'
 import { deleteDiscardedDB } from '@/utils/database'
 import { isPC } from '@/utils/common'
+import { API_BASE_URL } from '@/config/api'
 import api from '@/services'
 
 import Editor from './views/Editor/index.vue'
 import Screen from './views/Screen/index.vue'
 import Mobile from './views/Mobile/index.vue'
 import FullscreenSpin from '@/components/FullscreenSpin.vue'
+import WorkflowProgress from '@/components/WorkflowProgress.vue'
 
 const _isPC = isPC()
 const appReady = ref(false)
@@ -28,9 +38,21 @@ const appReady = ref(false)
 const mainStore = useMainStore()
 const slidesStore = useSlidesStore()
 const snapshotStore = useSnapshotStore()
+const workflowStore = useWorkflowStore()
 const workspace = useWorkspaceManager()
 const { databaseId } = storeToRefs(mainStore)
 const { screening } = storeToRefs(useScreenStore())
+
+// 处理视频下载
+const handleDownload = (projectName: string) => {
+  const downloadUrl = `${API_BASE_URL}/api/download/${projectName}/final_video.mp4`
+  const link = document.createElement('a')
+  link.href = downloadUrl
+  link.download = `${projectName}_final_video.mp4`
+  link.click()
+  // eslint-disable-next-line no-console
+  console.log('📥 [App] 下载视频:', downloadUrl)
+}
 
 if (import.meta.env.MODE !== 'development') {
   window.onbeforeunload = () => false

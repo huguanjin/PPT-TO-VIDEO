@@ -1,0 +1,28 @@
+{
+  "render_engine": {
+    "type": "headless_browser",
+    "description": "渲染引擎类型: standard(标准) 或 headless_browser(无头浏览器高质量模式)",
+    "enabled": true,
+    "quality": 95,
+    "format": "jpeg",
+    "width": 1600,
+    "height": 900,
+    "device_scale_factor": 1,
+    "wait_for_fonts": true,
+    "timeout": 30000,
+    "note": "quality: 0-100, 95推荐用于生产环境, 100用于最高质量"
+  },
+  "comparison": {
+    "standard_mode": {
+      "avg_file_size_kb": 75,
+      "compression_ratio": "55:1",
+      "quality_score": 60
+    },
+    "headless_browser_mode": {
+      "avg_file_size_kb": 300,
+      "compression_ratio": "7:1",
+      "quality_score": 98
+    },
+    "recommendation": "建议使用无头浏览器模式以获得最佳渲染质量"
+  }
+}

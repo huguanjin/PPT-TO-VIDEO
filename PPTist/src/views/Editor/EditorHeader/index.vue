@@ -72,7 +72,7 @@
         </div>
       </div>
       
-      <VideoExportButtonNew />
+      <VideoExportButton />
       <div class="menu-item unified-config-btn" v-tooltip="'项目配置'" @click="showUnifiedConfig = true">
         <IconFormat class="icon" />
         <span class="text">配置</span>
@@ -108,6 +108,17 @@
       <HotkeyDoc />
       <template v-slot:title>快捷操作</template>
     </Drawer>
+
+    <!-- 批量导出进度显示 -->
+    <div v-if="batchExporting" class="batch-export-progress-overlay">
+      <div class="progress-content">
+        <div class="progress-title">{{ exportStatus }}</div>
+        <div class="progress-bar">
+          <div class="progress-fill" :style="{ width: exportProgress + '%' }"></div>
+        </div>
+        <div class="progress-text">{{ exportProgress }}%</div>
+      </div>
+    </div>
 
     <FullscreenSpin :loading="exporting" tip="正在导入..." />
 
@@ -149,6 +160,7 @@ import useScreening from '@/hooks/useScreening'
 import useImport from '@/hooks/useImport'
 import useSlideHandler from '@/hooks/useSlideHandler'
 import { useProjectManager } from '@/hooks/useProjectManager'
+import { useBatchExport } from '@/views/Screen/hooks/useBatchExport'
 import type { DialogForExportTypes } from '@/types/export'
 
 import HotkeyDoc from './HotkeyDoc.vue'
@@ -158,7 +170,7 @@ import Drawer from '@/components/Drawer.vue'
 import Input from '@/components/Input.vue'
 import Popover from '@/components/Popover.vue'
 import PopoverMenuItem from '@/components/PopoverMenuItem.vue'
-import VideoExportButtonNew from '@/components/VideoExportButtonNew.vue'
+import VideoExportButton from '@/components/VideoExportButton.vue'
 import SaveButton from '@/components/SaveButton.vue'
 import EnhancedProjectManager from '@/components/EnhancedProjectManager.vue'
 import UnifiedConfig from '@/views/UnifiedConfigSimple.vue'
@@ -174,6 +186,9 @@ const { resetSlides } = useSlideHandler()
 
 // 项目管理
 const { autoSaveConfig, toggleAutoSave } = useProjectManager()
+
+// 批量导出
+const { exporting: batchExporting, exportProgress, exportStatus } = useBatchExport()
 
 const mainMenuVisible = ref(false)
 const hotkeyDrawerVisible = ref(false)
@@ -286,6 +301,45 @@ const openAIPPTDialog = () => {
       background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
       transform: translateY(-1px);
       box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+  }
+  
+  // 批量导出按钮特殊样式
+  &.batch-export-btn {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    border-radius: 6px;
+    padding: 0 12px;
+    margin: 0 4px;
+    
+    .icon {
+      color: white;
+      margin-right: 4px;
+      font-size: 16px;
+    }
+    
+    .text {
+      color: white;
+      width: auto;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    
+    &:hover:not(.disabled) {
+      background: linear-gradient(135deg, #e082ea 0%, #e3465b 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(245, 87, 108, 0.3);
+    }
+    
+    &.disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      
+      &:hover {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        transform: none;
+        box-shadow: none;
+      }
     }
   }
   
@@ -473,6 +527,58 @@ const openAIPPTDialog = () => {
     
     &.active .toggle-slider {
       transform: translateX(18px);
+    }
+  }
+}
+
+// 批量导出进度显示
+.batch-export-progress-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+
+  .progress-content {
+    background: white;
+    border-radius: 12px;
+    padding: 30px 40px;
+    min-width: 400px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+
+    .progress-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #f0f0f0;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 12px;
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        transition: width 0.3s ease;
+      }
+    }
+
+    .progress-text {
+      font-size: 16px;
+      color: #666;
+      text-align: center;
+      font-weight: 500;
     }
   }
 }
