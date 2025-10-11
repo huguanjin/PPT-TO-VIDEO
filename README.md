@@ -318,41 +318,6 @@ npm install && npm run dev
 }
 ```
 
-## 📁 项目结构
-
-```
-PPT-TO-VIDEO/
-├── 📱 前端界面
-│   ├── main.py                    # Streamlit主界面
-│   ├── PPTist/                    # Vue.js编辑器
-│   └── ui/                        # UI组件库
-├── 🚀 Flask后端 (企业级架构)
-│   ├── unified_app.py            # ✅ 统一后端入口
-│   ├── app/                      # Flask应用 (工厂模式)
-│   │   ├── api/                 # 25+ RESTful API端点
-│   │   ├── utils/               # 核心工具模块
-│   │   └── __init__.py          # 应用工厂
-│   ├── core/                    # 60+ 核心处理模块
-│   │   ├── enhanced_workflow_executor.py  # 增强工作流
-│   │   ├── netflix_*.py         # Netflix级字幕系统 (8个模块)
-│   │   ├── step01_*.py          # PPT解析处理
-│   │   ├── step02_*.py          # TTS语音合成
-│   │   ├── step03_*.py          # 视频生成
-│   │   ├── step04_*.py          # 智能字幕处理
-│   │   └── step05_*.py          # 最终合成
-│   ├── config/                  # 配置管理
-│   └── config_data/             # 配置文件存储
-├── 📚 文档和配置
-│   ├── docs/                    # 详细文档
-│   │   ├── FLASK_BACKEND_STRUCTURE_ANALYSIS.md  # 后端架构分析
-│   │   └── README.md
-│   ├── requirements.txt         # 统一依赖管理
-│   └── .gitignore              # Git忽略规则
-└── 🔧 部署和工具
-    ├── deploy/                  # 部署脚本
-    ├── logs/                    # 日志文件
-    └── output/                  # 输出文件
-```
 
 详细的项目结构和架构分析请参考：
 - [Flask后端结构分析](docs/FLASK_BACKEND_STRUCTURE_ANALYSIS.md) - 完整的后端架构分析
