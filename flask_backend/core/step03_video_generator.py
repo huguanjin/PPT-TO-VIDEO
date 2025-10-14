@@ -96,7 +96,8 @@ class VideoGenerator:
                 1)
     
     async def generate_video_clips(self, slides_data: Dict[str, Any], audio_data: Dict[str, Any], 
-                                 progress_callback: Optional[Callable[[int], None]] = None) -> Dict[str, Any]:
+                                 progress_callback: Optional[Callable[[int], None]] = None,
+                                 resume_mode: bool = True) -> Dict[str, Any]:
         """
         生成所有PPT页面的视频片段
         
@@ -104,6 +105,7 @@ class VideoGenerator:
             slides_data: 幻灯片数据
             audio_data: 音频数据
             progress_callback: 进度回调函数
+            resume_mode: 是否启用恢复模式（跳过已存在的视频）
             
         Returns:
             视频数据字典
@@ -125,41 +127,134 @@ class VideoGenerator:
                 key = self._get_audio_key(audio)
                 audio_map[key] = audio
             
+            # 检查是否存在未完成的进度
+            existing_metadata = None
+            video_metadata_file = self.file_manager.base_path / 'video_clips' / 'video_metadata.json'
+            if resume_mode and video_metadata_file.exists():
+                try:
+                    import json
+                    with open(video_metadata_file, 'r', encoding='utf-8') as f:
+                        existing_metadata = json.load(f)
+                    
+                    if not existing_metadata.get("generation_completed", False):
+                        completed_clips = len(existing_metadata.get("video_clips", []))
+                        self.logger.info(f"🔄 检测到未完成的任务，已生成 {completed_clips}/{total_slides} 个视频")
+                except Exception as e:
+                    self.logger.warning(f"无法加载现有元数据: {e}")
+                    existing_metadata = None
+            
             video_data = {
                 "total_video_clips": total_slides,
                 "generation_completed": False,
                 "generation_timestamp": datetime.now().isoformat(),
                 "video_config": self.video_config.copy(),
-                "video_clips": [],
-                "total_duration_seconds": 0.0
+                "video_clips": existing_metadata.get("video_clips", []) if existing_metadata else [],
+                "total_duration_seconds": 0.0,
+                "resume_mode": resume_mode
             }
             
+            # 创建已生成视频的映射（用于快速查找）
+            existing_clips = {}
+            if resume_mode:
+                for clip in video_data["video_clips"]:
+                    clip_id = clip.get("slide_number") or clip.get("slide_id") or clip.get("script_id")
+                    if clip_id:
+                        existing_clips[clip_id] = clip
+                        # 验证视频文件是否真的存在
+                        video_file = video_clips_dir / clip.get("video_file", "")
+                        if not video_file.exists():
+                            self.logger.warning(f"视频文件不存在，将重新生成: {clip.get('video_file')}")
+                            existing_clips.pop(clip_id, None)
+            
+            skipped_count = len(existing_clips)
+            if skipped_count > 0:
+                self.logger.info(f"✅ 将跳过 {skipped_count} 个已生成的视频片段")
+            
+            generated_count = 0
+            
+            generated_count = 0
+            
             for i, slide in enumerate(slides):
-                if progress_callback:
-                    progress = int((i / total_slides) * 100)
-                    progress_callback(progress)
-                
-                slide_number = self._get_slide_number(slide)
-                self.logger.info(f"生成第 {slide_number} 页视频片段")
-                
-                # 获取对应的音频信息
-                audio_info = audio_map.get(slide_number)
-                if not audio_info:
-                    self.logger.warning(f"未找到第 {slide_number} 页的音频信息，使用默认时长")
-                    duration = 3.0
-                else:
-                    duration = audio_info["duration_seconds"]
-                
-                # 生成单个视频片段
-                video_info = await self._generate_single_video_clip(slide, duration)
-                video_data["video_clips"].append(video_info)
-                
-                # 模拟处理延迟
-                await asyncio.sleep(0.3)
+                try:
+                    slide_number = self._get_slide_number(slide)
+                    
+                    # 检查是否已经生成过
+                    if resume_mode and slide_number in existing_clips:
+                        self.logger.info(f"⏭️ 跳过第 {slide_number} 页（已存在）")
+                        # 更新进度
+                        if progress_callback:
+                            progress = int(((i + 1) / total_slides) * 100)
+                            progress_callback(progress)
+                        continue
+                    
+                    if progress_callback:
+                        progress = int((i / total_slides) * 100)
+                        progress_callback(progress)
+                    
+                    self.logger.info(f"生成第 {slide_number} 页视频片段")
+                    
+                    # 获取对应的音频信息
+                    audio_info = audio_map.get(slide_number)
+                    if not audio_info:
+                        self.logger.warning(f"未找到第 {slide_number} 页的音频信息，使用默认时长")
+                        duration = 3.0
+                    else:
+                        duration = audio_info["duration_seconds"]
+                    
+                    # 生成单个视频片段
+                    video_info = await self._generate_single_video_clip(slide, duration)
+                    video_data["video_clips"].append(video_info)
+                    generated_count += 1
+                    
+                    # 每10个视频保存一次进度，避免意外中断丢失所有进度
+                    if (generated_count) % 10 == 0 or (i + 1) == total_slides:
+                        completed_total = skipped_count + generated_count
+                        self.logger.info(f"✅ 已完成 {completed_total}/{total_slides} 个视频片段（新生成{generated_count}个），保存进度...")
+                        temp_video_data = video_data.copy()
+                        temp_video_data["total_duration_seconds"] = sum(
+                            clip["duration_seconds"] for clip in temp_video_data["video_clips"]
+                        )
+                        temp_video_data["generation_completed"] = False
+                        temp_video_data["progress"] = {
+                            "completed": completed_total,
+                            "total": total_slides,
+                            "percentage": int((completed_total / total_slides) * 100),
+                            "newly_generated": generated_count,
+                            "skipped": skipped_count
+                        }
+                        self.file_manager.save_video_metadata(temp_video_data)
+                    
+                    # 模拟处理延迟
+                    await asyncio.sleep(0.3)
+                    
+                except Exception as e:
+                    self.logger.error(f"生成第 {slide_number} 页视频片段失败: {e}", exc_info=True)
+                    # 保存已生成的部分
+                    temp_video_data = video_data.copy()
+                    temp_video_data["total_duration_seconds"] = sum(
+                        clip["duration_seconds"] for clip in temp_video_data["video_clips"]
+                    )
+                    temp_video_data["generation_completed"] = False
+                    temp_video_data["error"] = f"在第 {slide_number} 页失败: {str(e)}"
+                    temp_video_data["progress"] = {
+                        "completed": skipped_count + generated_count,
+                        "total": total_slides,
+                        "percentage": int(((skipped_count + generated_count) / total_slides) * 100),
+                        "newly_generated": generated_count,
+                        "skipped": skipped_count
+                    }
+                    self.file_manager.save_video_metadata(temp_video_data)
+                    raise
             
             # 计算总时长
             video_data["total_duration_seconds"] = sum(clip["duration_seconds"] for clip in video_data["video_clips"])
             video_data["generation_completed"] = True
+            video_data["final_stats"] = {
+                "total_clips": len(video_data["video_clips"]),
+                "newly_generated": generated_count,
+                "skipped": skipped_count,
+                "resume_mode": resume_mode
+            }
             
             # 保存视频元数据
             self.file_manager.save_video_metadata(video_data)
@@ -167,7 +262,9 @@ class VideoGenerator:
             if progress_callback:
                 progress_callback(100)
             
-            self.logger.info(f"视频片段生成完成，总时长: {video_data['total_duration_seconds']:.2f} 秒")
+            self.logger.info(f"✅ 视频片段生成完成！总数: {len(video_data['video_clips'])}，总时长: {video_data['total_duration_seconds']:.2f} 秒")
+            if resume_mode and skipped_count > 0:
+                self.logger.info(f"   📊 统计: 新生成{generated_count}个, 跳过{skipped_count}个")
             return video_data
             
         except Exception as e:

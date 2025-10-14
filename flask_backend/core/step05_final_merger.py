@@ -328,6 +328,9 @@ class FFmpegFinalMerger:
             output_extension = ".mp4"
         
         output_filename = f"final_video_{datetime.now().strftime('%Y%m%d_%H%M%S')}{output_extension}"
+        
+        # 确保final目录存在
+        self.file_manager.ensure_dir(self.file_manager.final_dir)
         output_path = self.file_manager.final_dir / output_filename
         
         return {
@@ -501,22 +504,40 @@ class FFmpegFinalMerger:
             
             self.logger.info(f"执行视频合并: {' '.join(cmd)}")
             
+            # FFmpeg会将进度信息输出到stderr，这是正常的，不应该capture
+            # 只检查返回码和输出文件是否存在
             result = subprocess.run(
                 cmd,
-                capture_output=True,
+                stdout=subprocess.DEVNULL,  # 忽略标准输出
+                stderr=subprocess.PIPE,  # 捕获错误输出用于日志
                 text=True,
                 timeout=300  # 5分钟超时
             )
             
-            if result.returncode == 0 and output_path.exists():
-                self.logger.info("视频片段合并成功")
-                return str(output_path)
+            # FFmpeg的进度输出会到stderr，所以stderr有内容是正常的
+            # 只要返回码是0且文件存在就算成功
+            if result.returncode == 0:
+                if output_path.exists():
+                    self.logger.info("视频片段合并成功")
+                    return str(output_path)
+                else:
+                    self.logger.error(f"视频合并命令成功但未生成文件: {output_path}")
+                    if result.stderr:
+                        self.logger.error(f"FFmpeg输出: {result.stderr[-500:]}")  # 只记录最后500字符
+                    return None
             else:
-                self.logger.error(f"视频合并失败: {result.stderr}")
+                self.logger.error(f"视频合并失败，返回码: {result.returncode}")
+                if result.stderr:
+                    self.logger.error(f"FFmpeg错误: {result.stderr}")
                 return None
                 
+        except subprocess.TimeoutExpired as e:
+            self.logger.error(f"视频合并超时: {str(e)}")
+            return None
         except Exception as e:
             self.logger.error(f"视频合并异常: {str(e)}")
+            import traceback
+            self.logger.error(f"异常堆栈: {traceback.format_exc()}")
             return None
     
     def _concatenate_audios(self, audio_files: List[str]) -> Optional[str]:
@@ -556,20 +577,34 @@ class FFmpegFinalMerger:
             
             result = subprocess.run(
                 cmd,
-                capture_output=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
                 text=True,
                 timeout=180  # 3分钟超时
             )
             
-            if result.returncode == 0 and output_path.exists():
-                self.logger.info("音频文件合并成功")
-                return str(output_path)
+            if result.returncode == 0:
+                if output_path.exists():
+                    self.logger.info("音频文件合并成功")
+                    return str(output_path)
+                else:
+                    self.logger.error(f"音频合并命令成功但未生成文件: {output_path}")
+                    if result.stderr:
+                        self.logger.error(f"FFmpeg输出: {result.stderr[-500:]}")
+                    return None
             else:
-                self.logger.error(f"音频合并失败: {result.stderr}")
+                self.logger.error(f"音频合并失败，返回码: {result.returncode}")
+                if result.stderr:
+                    self.logger.error(f"FFmpeg错误: {result.stderr}")
                 return None
                 
+        except subprocess.TimeoutExpired as e:
+            self.logger.error(f"音频合并超时: {str(e)}")
+            return None
         except Exception as e:
             self.logger.error(f"音频合并异常: {str(e)}")
+            import traceback
+            self.logger.error(f"异常堆栈: {traceback.format_exc()}")
             return None
     
     def _merge_audio_video(self, video_path: str, audio_path: str) -> Optional[str]:

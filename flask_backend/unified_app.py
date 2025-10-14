@@ -88,12 +88,14 @@ def main():
     
     try:
         # 启动开发服务器
+        # 禁用auto-reloader，避免在工作流执行时触发重启中断长时间运行的任务
         app.run(
             host='0.0.0.0',
             port=5000,
             debug=(environment != 'production'),
             threaded=True,
-            use_reloader=(environment != 'production')
+            use_reloader=False,  # 禁用auto-reloader，避免中断长时间运行的工作流
+            extra_files=None  # 不监视额外文件
         )
     except KeyboardInterrupt:
         print("\n👋 服务器已停止")
