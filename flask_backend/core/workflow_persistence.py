@@ -74,17 +74,12 @@ class WorkflowPersistenceManager:
         self.workflow_dir.mkdir(exist_ok=True)
         
         # 定义工作流步骤和依赖关系
+        # 🔧 移除了 step01b_ai_content_optimization (Phase 4已删除 ai_content_optimizer.py)
         self.workflow_steps = {
             "step01_data_preparation": {
                 "name": "数据准备",
                 "required_inputs": ["slides_metadata.json", "slides/*.png"],
                 "expected_outputs": ["scripts/scripts_metadata.json"],
-                "can_skip_if_complete": True
-            },
-            "step01b_ai_content_optimization": {
-                "name": "AI内容优化",
-                "required_inputs": ["scripts/scripts_metadata.json"],
-                "expected_outputs": ["scripts/scripts_metadata.json"],  # 优化后的脚本
                 "can_skip_if_complete": True
             },
             "step02_tts_generation": {

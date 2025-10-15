@@ -52,8 +52,8 @@ https://github.com/user-attachments/assets/12c26839-078c-4d98-a0db-1e4d4819e336
 
 <div align="center">
 
-### 🎯 Netflix级字幕技术
-**AI语义分割** • **专业质量监控** • **精确时间对齐**
+### 🎯 专业级字幕技术
+**智能断句** • **精确时间对齐** • **单行模式**
 
 </div>
 
@@ -61,13 +61,13 @@ https://github.com/user-attachments/assets/12c26839-078c-4d98-a0db-1e4d4819e336
 <tr>
 <td width="50%">
 
-#### 🧠 AI智能处理
-- ✅ **AI语义分割**: 基于spaCy和Transformer模型的智能断句
-- ✅ **专业质量监控**: 实时字幕质量评估和自动优化
-- ✅ **精确时间对齐**: DTW算法驱动的音频智能同步
-- ✅ **多AI服务支持**: OpenAI GPT-4、Claude 3、自定义API
-- ✅ **智能内容优化**: AI驱动的文本结构优化和语义增强
-- ✅ **自适应配置**: 基于内容类型的智能参数调整
+#### 🧠 智能处理
+- ✅ **智能断句系统**: 基于语义的智能字幕分割
+- ✅ **单行字幕模式**: 优化的单行字幕显示和时间分配
+- ✅ **精确时间对齐**: 基于音频时长的精确字幕时间轴
+- ✅ **多AI服务支持**: OpenAI GPT-4、Claude 3、Gemini等
+- ✅ **自适应字体**: 根据内容自动调整字幕字体大小
+- ✅ **灵活配置**: 支持手动换行和配置化参数调整
 
 </td>
 <td width="50%">
@@ -108,7 +108,7 @@ https://github.com/user-attachments/assets/12c26839-078c-4d98-a0db-1e4d4819e336
 <div align="center">
 
 ### 🏗️ 现代化架构
-**Flask工厂模式** • **异步任务处理** • **模块化设计(60+模块)** • **实时监控**
+**Flask工厂模式** • **异步任务处理** • **模块化设计** • **实时监控**
 
 </div>
 
@@ -119,31 +119,31 @@ https://github.com/user-attachments/assets/12c26839-078c-4d98-a0db-1e4d4819e336
 <div align="center">
 
 ```
-PPT转视频系统 (企业级架构)
+PPT转视频系统 (现代化架构)
 ├── 🎨 前端层 (PPTist + Streamlit)
 │   ├── PPTist编辑器       # Vue 3 + TypeScript + Vite
-│   ├── Streamlit界面      # Python + Streamlit UI
-│   └── 配置管理面板       # 实时配置和监控
+│   ├── 配置管理面板       # 实时配置和监控
+│   └── 实时预览界面       # WebSocket支持
 ├── 🚀 API网关层 (Flask Backend)
 │   ├── 统一Flask后端      # unified_app.py (主入口)
-│   ├── RESTful API       # 25+ 标准化API端点
-│   ├── 工作流管理        # enhanced_workflow.py
-│   └── 实时预览          # WebSocket支持
-├── 🧠 AI处理层 (Core Modules)
-│   ├── Netflix字幕系统   # netflix_*.py (8个模块)
-│   ├── 智能音频对齐      # DTW + librosa算法
-│   ├── AI内容优化        # GPT-4/Claude集成
-│   └── 语义分析处理      # spaCy + Transformers
-├── 🔄 工作流引擎
-│   ├── Step 1: PPT解析   # python-pptx + 图像处理
+│   ├── RESTful API       # 标准化API端点
+│   ├── 工作流管理        # enhanced_workflow_executor.py
+│   └── 批量导入          # 批量PPT导入支持
+├── 🧠 核心处理层 (Core Modules)
+│   ├── 智能字幕系统      # subtitle_*.py (智能断句和单行模式)
+│   ├── 自适应字体计算    # adaptive_font_calculator.py
+│   ├── 动态规划分割      # dp_sentence_splitter.py
+│   └── 字幕工具集        # subtitle_utils.py
+├── 🔄 工作流引擎 (5步标准流程)
+│   ├── Step 1: 数据准备  # PPTist导入 + 元数据解析
 │   ├── Step 2: TTS合成   # 多引擎语音生成
 │   ├── Step 3: 视频生成  # moviepy + OpenCV
-│   ├── Step 4: 字幕处理  # Netflix级智能字幕
+│   ├── Step 4: 字幕处理  # 智能字幕生成和时间对齐
 │   └── Step 5: 最终合成  # FFmpeg高质量输出
 └── 📊 基础设施层
-    ├── 配置管理          # 环境配置 + API密钥管理
+    ├── 配置管理          # 统一配置文件 (app_config.json)
     ├── 任务调度          # 异步任务 + 进度跟踪
-    ├── 文件存储          # 分类存储 + 缓存管理
+    ├── 文件存储          # 分类存储 + 元数据管理
     └── 监控日志          # 实时监控 + 错误追踪
 ```
 
@@ -164,19 +164,19 @@ PPT转视频系统 (企业级架构)
 <th>说明</th>
 </tr>
 <tr>
-<td align="center">🎬 <b>AI字幕技术</b></td>
-<td align="center"><b>业界领先</b></td>
-<td>Netflix级别专业字幕生成系统</td>
+<td align="center">🎬 <b>字幕技术</b></td>
+<td align="center"><b>专业级</b></td>
+<td>智能断句 + 单行模式 + 精确时间对齐</td>
 </tr>
 <tr>
 <td align="center">🎵 <b>音频对齐</b></td>
-<td align="center"><b>先进算法</b></td>
-<td>DTW + 特征提取的毫秒级精度</td>
+<td align="center"><b>精确算法</b></td>
+<td>基于音频时长的毫秒级精度</td>
 </tr>
 <tr>
 <td align="center">🏗️ <b>架构设计</b></td>
-<td align="center"><b>企业级</b></td>
-<td>现代Flask + 模块化 + 可扩展</td>
+<td align="center"><b>现代化</b></td>
+<td>Flask工厂模式 + 模块化 + 可扩展</td>
 </tr>
 <tr>
 <td align="center">⚡ <b>工程质量</b></td>
@@ -201,9 +201,9 @@ PPT转视频系统 (企业级架构)
 <td width="50%">
 
 **🎯 智能优化**
-- AI智能分割: 基于语义的智能断句
-- Netflix级效果: 专业字幕样式和动画
-- 多语言支持: 自动翻译和本地化
+- 智能断句: 基于语义的智能字幕分割
+- 单行模式: 优化的单行字幕显示
+- 多语言支持: 中英文智能识别
 - 高质量渲染: 4K视频输出支持
 
 </td>
@@ -214,9 +214,9 @@ PPT转视频系统 (企业级架构)
 
 | 指标 | 性能表现 | 说明 |
 |:----:|:--------:|:-----|
-| 🎯 **字幕准确率** | >95% | Netflix级别质量标准 |
-| ⏱️ **音频对齐精度** | <50ms | DTW算法毫秒级对齐 |
-| ⚡ **处理速度** | 1-5x实时 | 根据硬件配置变化 |
+| 🎯 **字幕准确率** | >90% | 智能断句 + 精确时间对齐 |
+| ⏱️ **音频对齐精度** | <100ms | 基于音频时长的精确对齐 |
+| ⚡ **处理速度** | 1-3x实时 | 根据硬件配置变化 |
 | 🔄 **并发任务** | 5个任务 | 智能资源调度 |
 | 📁 **支持格式** | 10+种 | 主流视频音频格式 |
 
@@ -284,15 +284,11 @@ venv\Scripts\activate  # Windows
 # 2️⃣ 安装依赖
 pip install -r requirements.txt
 
-# 3️⃣ 安装spaCy中文模型
-python -m spacy download zh_core_web_sm
-python -m spacy download zh_core_web_md
-
-# 4️⃣ 配置API密钥
+# 3️⃣ 配置API密钥
 cp flask_backend/config_data/app_config_template.json flask_backend/config_data/app_config.json
 # 编辑 app_config.json，填入真实API密钥
 
-# 5️⃣ 启动统一后端服务
+# 4️⃣ 启动统一后端服务
 python flask_backend/unified_app.py
 ```
 
@@ -378,14 +374,15 @@ npm install && npm run dev
 
 ```json
 {
-  "netflix_v2": {
-    "enabled": true,
+  "subtitle": {
     "max_chars_per_line": 36,
-    "quality_threshold": 0.7
+    "font_size": 24,
+    "position": "bottom"
   },
-  "phase3_intelligent_alignment": {
-    "enabled": true,
-    "precision_level": "enhanced"
+  "video": {
+    "resolution": "1920x1080",
+    "fps": 30,
+    "quality": "high"
   }
 }
 ```
@@ -412,19 +409,19 @@ PPTist编辑<br>
 <td width="20%" align="center">
 
 #### 2️⃣
-### ⚙️ AI配置
-选择AI服务<br>
-TTS引擎设置<br>
-字幕样式配置
+### 🎤 语音合成
+选择TTS引擎<br>
+生成音频<br>
+时长计算
 
 </td>
 <td width="20%" align="center">
 
 #### 3️⃣
-### 🤖 智能处理
-AI内容优化<br>
-语音合成<br>
-字幕生成
+### 📝 字幕生成
+智能断句<br>
+时间对齐<br>
+单行模式
 
 </td>
 <td width="20%" align="center">
@@ -441,7 +438,7 @@ AI内容优化<br>
 #### 5️⃣
 ### 📊 质量监控
 实时进度<br>
-质量评估<br>
+质量检查<br>
 错误恢复
 
 </td>
@@ -456,20 +453,19 @@ AI内容优化<br>
 
 <div align="center">
 
-### ✨ Netflix级AI字幕系统
+### ✨ 智能字幕生成系统
 
 </div>
 
 ```python
-# 智能字幕分割示例
+# 智能字幕配置示例
 {
-  "netflix_v2": {
+  "subtitle": {
     "enabled": true,
-    "style_preset": "videolingo_netflix",
     "max_chars_per_line": 36,
-    "validation_level": "netflix",
-    "chinese_weight": 1.75,
-    "quality_threshold": 0.7
+    "single_line_mode": true,
+    "font_size": 24,
+    "position": "bottom"
   }
 }
 ```
@@ -478,23 +474,23 @@ AI内容优化<br>
 <tr>
 <td width="33%" align="center">
 
-#### 🧠 AI语义理解
-基于spaCy和Transformer<br>
-的深度语义分析
+#### 🧠 智能断句
+基于动态规划的<br>
+智能句子分割
 
 </td>
 <td width="33%" align="center">
 
-#### 📐 专业断句算法
-动态规划优化的<br>
-句子分割
+#### ⏱️ 精确对齐
+基于音频时长的<br>
+时间轴对齐
 
 </td>
 <td width="33%" align="center">
 
-#### ✅ 实时质量监控
-Netflix级别字幕<br>
-质量标准验证
+#### 📏 单行模式
+简洁清晰的<br>
+单行字幕显示
 
 </td>
 </tr>
@@ -518,15 +514,15 @@ Netflix级别字幕<br>
 
 <div align="center">
 
-### 🏗️ 企业级架构特点
+### 🏗️ 现代化架构特点
 
 <table>
 <tr>
 <td width="25%" align="center">
 
-#### ⚡ 高并发
-支持5个并发<br>
-任务处理
+#### ⚡ 高性能
+多任务并发<br>
+处理能力
 
 </td>
 <td width="25%" align="center">
@@ -539,15 +535,15 @@ Netflix级别字幕<br>
 <td width="25%" align="center">
 
 #### 📊 监控体系
-实时性能监控<br>
-日志追踪
+实时进度追踪<br>
+日志记录
 
 </td>
 <td width="25%" align="center">
 
 #### 🔧 扩展性
 模块化设计<br>
-功能扩展
+易于扩展
 
 </td>
 </tr>
@@ -561,34 +557,35 @@ Netflix级别字幕<br>
 
 <div align="center">
 
-### Phase 3: 智能音频对齐
+### 🎙️ 多引擎TTS支持
 
 </div>
 
 ```json
 {
-  "phase3_intelligent_alignment": {
-    "enabled": true,
-    "precision_level": "enhanced",
-    "dtw_algorithm": true,
-    "audio_feature_extraction": true
+  "tts": {
+    "preferred_engine": "edge_tts",
+    "fish_api_key": "your-fish-speech-key",
+    "azure_key": "your-azure-key"
   }
 }
 ```
 
 <div align="center">
 
-### AI内容理解与优化
+### 🎨 自适应字幕样式
 
 </div>
 
 ```json
 {
-  "ai_content_understanding": {
-    "enabled": true,
-    "semantic_analysis": true,
-    "intelligent_splitting": true,
-    "transformer_models": true
+  "subtitle": {
+    "max_chars_per_line": 36,
+    "font_size": 24,
+    "font_name": "Arial",
+    "position": "bottom",
+    "color": "white",
+    "background": "rgba(0,0,0,0.6)"
   }
 }
 ```
@@ -650,32 +647,25 @@ python flask_backend/unified_app.py  # 正常启动
 
 <table>
 <tr>
-<td width="25%" align="center">
+<td width="33%" align="center">
 
 #### 🐍 Python版本
 确保使用<br>
 Python 3.8+
 
 </td>
-<td width="25%" align="center">
-
-#### 🧠 spaCy模型
-必须安装<br>
-中文语言模型
-
-</td>
-<td width="25%" align="center">
+<td width="33%" align="center">
 
 #### 🎬 FFmpeg
 视频处理<br>
 必需组件
 
 </td>
-<td width="25%" align="center">
+<td width="33%" align="center">
 
 #### 💾 内存要求
-推荐 16GB+<br>
-用于AI模型
+推荐 8GB+<br>
+用于视频处理
 
 </td>
 </tr>

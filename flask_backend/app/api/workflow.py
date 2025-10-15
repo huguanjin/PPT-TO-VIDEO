@@ -540,8 +540,9 @@ def execute_workflow_task(project_name: str, task_id: str, project_dir: Path, ou
             """进度回调函数"""
             current_step = execution.current_step
             if current_step:
-                step_names = ['step01_data_preparation', 'step01b_ai_content_optimization', 'step02_tts_generation', 'step03_video_generation', 'step04_subtitle_generation', 'step05_final_merge']
-                display_names = ['数据准备', 'AI内容优化', 'TTS音频生成', '视频合成', '字幕生成', '最终合并']
+                # 🔧 移除了 step01b_ai_content_optimization (Phase 4已删除)
+                step_names = ['step01_data_preparation', 'step02_tts_generation', 'step03_video_generation', 'step04_subtitle_generation', 'step05_final_merge']
+                display_names = ['数据准备', 'TTS音频生成', '视频合成', '字幕生成', '最终合并']
                 
                 # 更新所有步骤的状态，不仅仅是当前步骤
                 for i, step_name in enumerate(step_names):
