@@ -23,7 +23,6 @@ if TYPE_CHECKING:
     from core.step04_subtitle_generator import SubtitleGenerator as RealSubtitleGenerator
 
 try:
-    from core.step01_ppt_parser import PPTParser  # type: ignore
     from core.step02_tts_generator import TTSGenerator  # type: ignore
     from core.step03_video_generator import VideoGenerator  # type: ignore
     from core.step04_subtitle_generator import SubtitleGenerator  # type: ignore
@@ -43,8 +42,6 @@ try:
 except ImportError as e:
     print(f"Warning: Could not import core modules: {e}")
     # 提供模拟类以避免导入错误
-    class PPTParser:
-        def __init__(self, project_dir): pass
     class TTSGenerator:
         def __init__(self, project_dir): pass
     class VideoGenerator:

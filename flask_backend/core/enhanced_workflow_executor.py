@@ -15,8 +15,6 @@ from core.workflow_persistence import (
     WorkflowPersistenceManager, WorkflowExecution, 
     StepStatus, WorkflowStatus
 )
-from core.step01_ppt_parser import PPTParser
-from core.step01_pptist_importer import PPTistImporter
 from core.step02_tts_generator import TTSGenerator
 from core.step03_video_generator import VideoGenerator
 from core.step04_subtitle_generator import SubtitleGenerator

@@ -17,16 +17,11 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
 
 try:
-    from core.step01_pptist_importer import PPTistImporter  # type: ignore
     from app.utils.task_manager import TaskManager  # type: ignore
     from app.utils.logger import get_logger  # type: ignore
 except ImportError as e:
     print(f"Warning: Could not import core modules: {e}")
     # 在没有依赖时提供模拟类
-    class PPTistImporter:
-        def __init__(self, project_name):
-            self.project_name = project_name
-    
     class TaskManager:
         def __init__(self, base_dir):
             self.base_dir = base_dir
@@ -232,8 +227,7 @@ def handle_form_import():
         task_id = f"pptist_import_{clean_project_name}_{int(time.time())}"
         
         try:
-            importer = PPTistImporter(clean_project_name)
-            logger.info(f"开始导入PPTist数据: {clean_project_name}")
+            logger.info(f"PPTist数据导入: {clean_project_name}")
             
             return jsonify({
                 'success': True,
