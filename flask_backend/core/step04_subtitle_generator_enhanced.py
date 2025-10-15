@@ -1,7 +1,7 @@
 ﻿"""
 增强版字幕生成器 - Netflix级字幕处理机制
 基于精确时间对齐和智能间隙填充算法
-集成多行显示修复功能
+🔥 单行模式优化版 (已移除多行修复功能)
 """
 import os
 import re
@@ -16,7 +16,6 @@ import dataclasses
 from app.utils.logger import get_logger
 from app.utils.file_manager import FileManager
 from app.utils.config_manager import ConfigManager
-from .subtitle_multiline_fixer import SubtitleMultilineFixer
 from .manual_split_processor import ManualSplitManager, NewlineSplitProcessor
 from .html_remark_processor import HtmlRemarkProcessor
 
@@ -32,8 +31,8 @@ class EnhancedSubtitleGenerator:
         # 初始化配置管理器
         self.config_manager = ConfigManager(project_dir)
         
-        # 初始化多行修复器
-        self.multiline_fixer = SubtitleMultilineFixer()
+        # 🔥 单行模式优化 - 已移除 multiline_fixer
+        self.logger.info("🔥 单行模式 - 跳过多行修复器初始化")
         
         # 初始化手动分割管理器
         manual_split_config = self.config_manager.get_manual_split_config()

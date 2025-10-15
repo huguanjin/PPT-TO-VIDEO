@@ -104,23 +104,16 @@ class SubtitleGenerator:
             self.enable_audio_sync = enable_audio_sync
             self.enable_ai_content_understanding = enable_ai_content_understanding
         
-        # 加载智能字幕配置
-        try:
-            from core.subtitle_config_loader import create_config_loader
-            smart_config_loader = create_config_loader(
-                config_dir=self.project_dir / "config_data"
-            )
-            smart_config = smart_config_loader.get_config()
-            self.logger.info("成功加载智能字幕配置，AI分割功能已启用")
-        except Exception as e:
-            self.logger.warning(f"加载智能字幕配置失败，使用默认配置: {e}")
-            smart_config = {
-                "enabled": True,
-                "max_length": 75,
-                "target_multiplier": 1.2,
-                "smart_split": True,
-                "use_ai_splitting": False
-            }
+        # 🔥 单行模式简化配置 (已删除subtitle_config_loader)
+        # 单行模式下不需要复杂的智能配置加载
+        smart_config = {
+            "enabled": True,
+            "max_length": 75,
+            "target_multiplier": 1.2,
+            "smart_split": True,
+            "use_ai_splitting": False  # 单行模式不使用AI分割
+        }
+        self.logger.info("使用单行模式简化配置")
         
         # 字幕配置 - 从统一配置管理器获取
         try:
@@ -244,6 +237,12 @@ class SubtitleGenerator:
             self.smart_integrator = None
             self.multiline_fixer = None
         
+        # 🔥 单行模式优化：禁用增强版生成器
+        # 增强版包含多行修复逻辑，单行模式下不需要
+        if self.single_line_mode:
+            self.use_enhanced = False
+            self.logger.info("🔥 单行模式：强制禁用增强字幕生成器")
+        
         # 初始化增强版生成器
         if self.use_enhanced:
             if ENHANCED_SUBTITLE_AVAILABLE:
@@ -254,7 +253,7 @@ class SubtitleGenerator:
                 self.logger.warning("增强版字幕生成器不可用，将使用传统模式")
         else:
             self.enhanced_generator = None
-            self.logger.info("使用传统字幕生成模式")
+            self.logger.info("使用传统字幕生成模式 (单行模式)")
         
         # 初始化视频帧同步优化器
         if self.enable_frame_sync and VIDEO_FRAME_SYNC_AVAILABLE:

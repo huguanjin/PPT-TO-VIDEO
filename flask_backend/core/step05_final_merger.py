@@ -14,8 +14,7 @@ import shutil
 import time
 import platform
 
-if TYPE_CHECKING:
-    from .subtitle_multiline_fixer import SubtitleMultilineFixer
+# 🔥 单行模式优化 - 已移除 SubtitleMultilineFixer 导入
 
 try:
     import cv2
@@ -291,20 +290,10 @@ class FFmpegFinalMerger:
             if subtitle_filename:
                 subtitle_path = self.file_manager.subtitles_dir / subtitle_filename
                 if subtitle_path.exists():
-                    # 🔧 加载单行模式配置
-                    single_line_mode = self._load_single_line_mode_config()
-                    
-                    if single_line_mode:
-                        # 单行模式：直接使用原始字幕文件，不应用多行修复
-                        self.logger.info("✅ 单行模式已启用 - 跳过多行修复，直接使用原始单行字幕")
-                        subtitle_file = str(subtitle_path)
-                        self.logger.info(f"使用单行模式字幕文件: {subtitle_file}")
-                    else:
-                        # 多行模式：在最终合并前对字幕文件应用多行修复
-                        self.logger.info("📝 多行模式：应用多行修复逻辑")
-                        enhanced_subtitle_path = self._apply_multiline_fix_to_subtitle_file(subtitle_path)
-                        subtitle_file = str(enhanced_subtitle_path)
-                        self.logger.info(f"找到字幕文件并应用多行修复: {subtitle_file}")
+                    # � 单行模式优化 - 直接使用原始字幕文件
+                    self.logger.info("✅ 单行模式 - 直接使用原始单行字幕")
+                    subtitle_file = str(subtitle_path)
+                    self.logger.info(f"使用单行模式字幕文件: {subtitle_file}")
                 else:
                     self.logger.warning(f"字幕文件不存在: {subtitle_path}")
             else:
@@ -1005,193 +994,12 @@ class FFmpegFinalMerger:
             self.logger.warning(f"颜色转换失败: {e}，使用默认白色")
             return "&HFFFFFF"
     
-    def _apply_multiline_fix_to_subtitle_file(self, subtitle_path: Path) -> Path:
-        """
-        🎯 强化多行修复: 对字幕文件应用多行修复机制
-        在最终合并前确保所有字幕条目都严格控制在2行以内
-        
-        Args:
-            subtitle_path: 原始字幕文件路径
-            
-        Returns:
-            处理后的字幕文件路径
-        """
-        try:
-            from .subtitle_multiline_fixer import SubtitleMultilineFixer
-            
-            # 创建多行修复器实例
-            fixer = SubtitleMultilineFixer()
-            
-            # 读取原始字幕文件
-            if not subtitle_path.exists():
-                self.logger.warning(f"字幕文件不存在: {subtitle_path}")
-                return subtitle_path
-            
-            # 生成增强版字幕文件路径
-            enhanced_filename = f"{subtitle_path.stem}_multiline_enhanced{subtitle_path.suffix}"
-            enhanced_path = subtitle_path.parent / enhanced_filename
-            
-            self.logger.info(f"开始对字幕文件应用多行修复: {subtitle_path.name} -> {enhanced_filename}")
-            
-            # 根据文件格式处理
-            if subtitle_path.suffix.lower() == '.srt':
-                self._fix_srt_subtitle_file(subtitle_path, enhanced_path, fixer)
-            elif subtitle_path.suffix.lower() == '.ass':
-                self._fix_ass_subtitle_file(subtitle_path, enhanced_path, fixer)
-            else:
-                self.logger.warning(f"不支持的字幕格式: {subtitle_path.suffix}，跳过多行修复")
-                return subtitle_path
-            
-            # 验证处理结果
-            if enhanced_path.exists():
-                stats = self._validate_subtitle_multiline_fix(enhanced_path)
-                self.logger.info(f"多行修复完成 - 统计: {stats}")
-                return enhanced_path
-            else:
-                self.logger.warning("多行修复失败，使用原始字幕文件")
-                return subtitle_path
-                
-        except Exception as e:
-            self.logger.error(f"字幕多行修复失败: {e}", exc_info=True)
-            return subtitle_path
-    
-    def _fix_srt_subtitle_file(self, input_path: Path, output_path: Path, fixer: 'SubtitleMultilineFixer'):
-        """处理SRT格式字幕文件的多行修复"""
-        try:
-            import re
-            
-            with open(input_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            # 分割SRT条目
-            entries = re.split(r'\n\s*\n', content.strip())
-            enhanced_entries = []
-            
-            for entry in entries:
-                if not entry.strip():
-                    continue
-                
-                lines = entry.strip().split('\n')
-                if len(lines) >= 3:
-                    # SRT格式: 序号, 时间轴, 字幕文本
-                    subtitle_text = '\n'.join(lines[2:])
-                    
-                    # 应用多行修复
-                    fixed_text = fixer.optimize_subtitle_text(subtitle_text)
-                    
-                    # 重建条目
-                    enhanced_entry = '\n'.join(lines[:2] + [fixed_text])
-                    enhanced_entries.append(enhanced_entry)
-            
-            # 保存增强版字幕
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write('\n\n'.join(enhanced_entries) + '\n')
-            
-            self.logger.info(f"SRT字幕多行修复完成: {len(enhanced_entries)} 条目")
-            
-        except Exception as e:
-            self.logger.error(f"SRT字幕处理失败: {e}")
-            raise
-    
-    def _fix_ass_subtitle_file(self, input_path: Path, output_path: Path, fixer: 'SubtitleMultilineFixer'):
-        """处理ASS格式字幕文件的多行修复"""
-        try:
-            with open(input_path, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-            
-            enhanced_lines = []
-            in_events_section = False
-            dialogue_count = 0
-            
-            for line in lines:
-                if line.strip() == '[Events]':
-                    in_events_section = True
-                    enhanced_lines.append(line)
-                elif line.startswith('[') and line.strip().endswith(']'):
-                    in_events_section = False
-                    enhanced_lines.append(line)
-                elif in_events_section and line.startswith('Dialogue:'):
-                    # 处理对话行
-                    parts = line.split(',', 9)  # ASS格式有10个字段
-                    if len(parts) >= 10:
-                        subtitle_text = parts[9].strip()
-                        
-                        # 移除ASS格式标记并应用多行修复
-                        clean_text = re.sub(r'\{[^}]*\}', '', subtitle_text)
-                        fixed_text = fixer.optimize_subtitle_text(clean_text)
-                        
-                        # 重建对话行
-                        parts[9] = fixed_text + '\n'
-                        enhanced_line = ','.join(parts)
-                        enhanced_lines.append(enhanced_line)
-                        dialogue_count += 1
-                    else:
-                        enhanced_lines.append(line)
-                else:
-                    enhanced_lines.append(line)
-            
-            # 保存增强版字幕
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.writelines(enhanced_lines)
-            
-            self.logger.info(f"ASS字幕多行修复完成: {dialogue_count} 条对话")
-            
-        except Exception as e:
-            self.logger.error(f"ASS字幕处理失败: {e}")
-            raise
-    
-    def _validate_subtitle_multiline_fix(self, subtitle_path: Path) -> Dict[str, Union[int, str]]:
-        """验证字幕多行修复的效果"""
-        try:
-            # 明确使用整数类型的计数器
-            total_lines: int = 0
-            single_line: int = 0
-            double_line: int = 0
-            over_limit: int = 0
-            avg_chars_per_line: int = 0
-            
-            with open(subtitle_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            # 简单统计 - 基于换行符
-            if subtitle_path.suffix.lower() == '.srt':
-                entries = re.split(r'\n\s*\n', content.strip())
-                for entry in entries:
-                    lines = entry.strip().split('\n')
-                    if len(lines) >= 3:
-                        text_lines = lines[2:]
-                        line_count = len([line for line in text_lines if line.strip()])
-                        total_lines += 1
-                        
-                        if line_count == 1:
-                            single_line += 1
-                        elif line_count == 2:
-                            double_line += 1
-                        else:
-                            over_limit += 1
-            
-            # 构造返回结果 
-            result: Dict[str, Union[int, str]] = {
-                "total_lines": total_lines,
-                "single_line": single_line,
-                "double_line": double_line,
-                "over_limit": over_limit,
-                "avg_chars_per_line": avg_chars_per_line
-            }
-            return result
-            
-        except Exception as e:
-            self.logger.error(f"字幕验证失败: {e}")
-            # 返回错误信息
-            error_stats: Dict[str, Union[int, str]] = {
-                "total_lines": 0,
-                "single_line": 0,
-                "double_line": 0,
-                "over_limit": 0,
-                "avg_chars_per_line": 0,
-                "error": str(e)
-            }
-            return error_stats
+    # 🔥 单行模式优化 - 已移除多行修复相关方法
+    # _apply_multiline_fix_to_subtitle_file()
+    # _fix_srt_subtitle_file()  
+    # _fix_ass_subtitle_file()
+    # _validate_subtitle_multiline_fix()
+    # 这些方法在单行模式下永远不会被调用
 
 # 为了向后兼容，创建一个别名
 FinalMerger = FFmpegFinalMerger
