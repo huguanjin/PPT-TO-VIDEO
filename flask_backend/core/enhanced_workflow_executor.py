@@ -36,7 +36,6 @@ class EnhancedWorkflowExecutor:
         # 步骤执行器映射
         self.step_executors = {
             "step01_data_preparation": self._execute_data_preparation,
-            "step01b_ai_content_optimization": self._execute_ai_content_optimization,  # 新增AI内容优化步骤
             "step02_tts_generation": self._execute_tts_generation,
             "step03_video_generation": self._execute_video_generation,
             "step04_subtitle_generation": self._execute_subtitle_generation,
@@ -290,92 +289,6 @@ class EnhancedWorkflowExecutor:
         progress_callback(100.0)
         
         return ["scripts/scripts_metadata.json"]
-    
-    async def _execute_ai_content_optimization(self, execution: WorkflowExecution,
-                                             progress_callback: Callable) -> List[str]:
-        """执行AI内容优化步骤（可选）"""
-        try:
-            # 检查是否启用AI内容优化 - 默认启用
-            config = execution.config or {}
-            ai_optimization_enabled = config.get("ai_content_optimization", {}).get("enabled", True)  # 默认启用
-            
-            if not ai_optimization_enabled:
-                self.logger.info("AI内容优化已被配置为禁用，跳过该步骤")
-                progress_callback(100.0)
-                return ["scripts/scripts_metadata.json"]  # 返回原始文件
-            
-            # 读取原始scripts数据
-            scripts_data = self.file_manager.load_scripts_metadata()
-            if not scripts_data:
-                raise Exception("scripts_metadata.json文件不存在")
-            
-            progress_callback(20.0)
-            
-            # 加载AI配置
-            ai_config = None
-            try:
-                from core.subtitle_config_loader import SmartSubtitleConfigLoader
-                # 修正配置目录路径 - 配置文件在flask_backend/config_data目录
-                config_dir = Path(__file__).parent.parent / "config_data"
-                config_loader = SmartSubtitleConfigLoader(config_dir)
-                if hasattr(config_loader, 'load_ai_config'):
-                    ai_config = config_loader.load_ai_config()  # type: ignore
-                else:
-                    self.logger.warning("SmartSubtitleConfigLoader不支持load_ai_config方法")
-                    ai_config = None
-                
-                if not ai_config or not ai_config.get("api_key"):
-                    self.logger.warning("AI配置不可用，跳过AI内容优化")
-                    progress_callback(100.0)
-                    return ["scripts/scripts_metadata.json"]
-                
-            except Exception as e:
-                self.logger.warning(f"加载AI配置失败: {e}")
-                progress_callback(100.0)
-                return ["scripts/scripts_metadata.json"]
-            
-            # 检查是否为测试环境，如果API密钥是测试密钥则跳过AI调用
-            if ai_config and ai_config.get("api_key", "").startswith("test-"):
-                self.logger.info("检测到测试API密钥，跳过AI内容优化")
-                progress_callback(100.0)
-                return ["scripts/scripts_metadata.json"]
-            
-            progress_callback(40.0)
-            
-            # 创建AI内容优化器
-            from core.ai_content_optimizer import AIContentOptimizer
-            optimizer = AIContentOptimizer(self.project_dir, ai_config)
-            
-            progress_callback(60.0)
-            
-            # 执行AI内容优化 - 添加超时保护
-            try:
-                self.logger.info("开始执行AI内容优化")
-                
-                # 设置超时时间为5分钟
-                optimized_data = await asyncio.wait_for(
-                    optimizer.optimize_scripts_content(scripts_data),
-                    timeout=300  # 5分钟超时
-                )
-                
-                # 保存优化后的scripts数据
-                optimized_filename = "scripts_optimized_metadata.json"
-                self.file_manager.save_scripts_metadata(optimized_data, filename=optimized_filename)
-                
-                progress_callback(100.0)
-                
-                self.logger.info("AI内容优化完成")
-                return [f"scripts/{optimized_filename}"]
-                
-            except asyncio.TimeoutError:
-                self.logger.warning("AI内容优化超时，使用原始数据")
-                progress_callback(100.0)
-                return ["scripts/scripts_metadata.json"]
-            
-        except Exception as e:
-            self.logger.error(f"AI内容优化失败: {e}")
-            # 失败时返回原始文件
-            return ["scripts/scripts_metadata.json"]
     
     async def _execute_tts_generation(self, execution: WorkflowExecution,
                                     progress_callback: Callable) -> List[str]:

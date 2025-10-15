@@ -29,7 +29,6 @@ ENHANCED_SEMANTIC_SPLITTER_AVAILABLE = False
 VIDEO_FRAME_SYNC_AVAILABLE = False  
 AUDIO_INTELLIGENT_SYNC_AVAILABLE = False
 AI_CONTENT_UNDERSTANDING_AVAILABLE = False
-PHASE3_INTELLIGENT_ALIGNMENT_AVAILABLE = False
 
 print("🔧 已禁用所有高级功能模块，专注测试单行模式配置")
 
@@ -47,13 +46,6 @@ class VideoMetadata:
         self.codec = codec
         self.bitrate = bitrate
 
-# 类型检查导入
-if TYPE_CHECKING:
-    try:
-        from core.intelligent_alignment_system import AlignmentReport
-    except ImportError:
-        pass
-
 class SubtitleGenerator:
     """字幕生成器 - 支持传统和增强模式"""
     
@@ -61,11 +53,9 @@ class SubtitleGenerator:
     frame_sync_optimizer: Optional[Any]
     audio_sync_optimizer: Optional[Any]
     semantic_alignment_optimizer: Optional[Any]
-    intelligent_alignment_system: Optional[Any]
     
     def __init__(self, project_dir: Path, use_enhanced: bool = False, enable_frame_sync: bool = True, 
-                 enable_audio_sync: bool = True, enable_ai_content_understanding: bool = False,
-                 enable_phase3_alignment: bool = False):
+                 enable_audio_sync: bool = True, enable_ai_content_understanding: bool = False):
         self.project_dir = Path(project_dir)
         self.file_manager = FileManager(project_dir)
         self.logger = get_logger(__name__, self.project_dir / "logs")
@@ -105,7 +95,6 @@ class SubtitleGenerator:
                 self.enable_frame_sync = enable_frame_sync
                 self.enable_audio_sync = enable_audio_sync
                 self.enable_ai_content_understanding = enable_ai_content_understanding
-                self.enable_phase3_alignment = enable_phase3_alignment
                 self.logger.info("🚀 字幕生成器启动 - 使用默认配置")
                 
         except Exception as e:
@@ -114,7 +103,6 @@ class SubtitleGenerator:
             self.enable_frame_sync = enable_frame_sync
             self.enable_audio_sync = enable_audio_sync
             self.enable_ai_content_understanding = enable_ai_content_understanding
-            self.enable_phase3_alignment = enable_phase3_alignment
         
         # 加载智能字幕配置
         try:
@@ -318,26 +306,6 @@ class SubtitleGenerator:
             self.semantic_alignment_optimizer = None
             if not AI_CONTENT_UNDERSTANDING_AVAILABLE:
                 self.logger.info("AI内容理解增强系统不可用")
-
-        # 初始化Phase 3智能对齐系统
-        if self.enable_phase3_alignment and PHASE3_INTELLIGENT_ALIGNMENT_AVAILABLE:
-            try:
-                # 创建智能对齐系统配置
-                # IntelligentAlignmentConfig和IntelligentAlignmentSystem类暂时不可用
-                # alignment_config = IntelligentAlignmentConfig()
-                # self.intelligent_alignment_system = IntelligentAlignmentSystem(alignment_config)
-                self.intelligent_alignment_system = None
-                self.logger.info("✅ Phase 3智能对齐系统已启用")
-            except Exception as e:
-                self.logger.warning(f"Phase 3智能对齐系统初始化失败，将跳过智能对齐: {e}")
-                self.intelligent_alignment_system = None
-                self.enable_phase3_alignment = False
-        else:
-            self.intelligent_alignment_system = None
-            if not PHASE3_INTELLIGENT_ALIGNMENT_AVAILABLE:
-                self.logger.info("Phase 3智能对齐系统不可用")
-            else:
-                self.logger.info("Phase 3智能对齐系统已禁用")
     
     async def generate_subtitles(self, scripts_data: Dict[str, Any], audio_data: Dict[str, Any], 
                                progress_callback: Optional[Callable[[int], None]] = None,
@@ -572,90 +540,6 @@ class SubtitleGenerator:
                     self.logger.info("AI内容理解增强系统未启用")
                 subtitle_data["ai_content_understanding_applied"] = False
 
-            # 应用Phase 3智能对齐系统
-            if self.enable_phase3_alignment and self.intelligent_alignment_system and PHASE3_INTELLIGENT_ALIGNMENT_AVAILABLE:
-                self.logger.info("🚀 开始Phase 3智能对齐处理...")
-                
-                if progress_callback:
-                    progress_callback(97)
-                
-                try:
-                    # 获取音频文件路径用于分析
-                    audio_file_path = await self._get_audio_file_for_analysis(audio_data)
-                    
-                    if audio_file_path and Path(audio_file_path).exists():
-                        # 准备文本段落数据
-                        text_segments = []
-                        for script in scripts:
-                            if "content" in script and script["content"]:
-                                text_segments.append({
-                                    "text": script["content"],
-                                    "slide_number": script.get("slide_number", 1),
-                                    "expected_duration": script.get("estimated_duration", 3.0)
-                                })
-                        
-                        # 转换现有字幕为智能对齐格式
-                        subtitle_entries = self._convert_pysrt_to_subtitle_entries(all_subtitles)
-                        
-                        # 执行智能对齐
-                        aligned_subtitles, alignment_report = self.intelligent_alignment_system.align_subtitles(
-                            audio_path=audio_file_path,
-                            subtitles=subtitle_entries
-                        )
-                        
-                        # 将对齐结果转换回pysrt格式
-                        if aligned_subtitles:
-                            all_subtitles = self._convert_subtitle_entries_to_pysrt(aligned_subtitles)
-                            
-                            # 计算对齐改进信息
-                            improvement_stats = {
-                                'precision_improvement': alignment_report.quality_metrics.precision_score * 100,
-                                'consistency_improvement': alignment_report.quality_metrics.consistency_score * 100,
-                                'overall_quality_score': alignment_report.quality_metrics.overall_quality,
-                                'boundary_accuracy': alignment_report.quality_metrics.boundary_accuracy * 100,
-                                'dtw_alignment_score': alignment_report.quality_metrics.dtw_alignment_score * 100
-                            }
-                            
-                            self.logger.info(f"🚀 Phase 3智能对齐完成: "
-                                           f"对齐精度{improvement_stats.get('precision_improvement', 0):.1f}%, "
-                                           f"一致性评分{improvement_stats.get('consistency_improvement', 0):.1f}%, "
-                                           f"整体质量评分{improvement_stats.get('overall_quality_score', 0):.2f}")
-                            
-                            # 保存智能对齐报告
-                            subtitle_data["phase3_alignment_report"] = {
-                                "input_subtitles_count": alignment_report.input_subtitles_count,
-                                "output_subtitles_count": alignment_report.output_subtitles_count,
-                                "successful_alignments": alignment_report.successful_alignments,
-                                "processing_time": alignment_report.processing_time,
-                                "quality_metrics": {
-                                    "precision_score": alignment_report.quality_metrics.precision_score,
-                                    "boundary_accuracy": alignment_report.quality_metrics.boundary_accuracy,
-                                    "dtw_alignment_score": alignment_report.quality_metrics.dtw_alignment_score,
-                                    "overall_confidence": alignment_report.quality_metrics.overall_confidence,
-                                    "consistency_score": alignment_report.quality_metrics.consistency_score,
-                                    "overall_quality": alignment_report.quality_metrics.overall_quality
-                                },
-                                "alignment_adjustments": alignment_report.alignment_adjustments,
-                                "boundaries_detected": alignment_report.boundaries_detected,
-                                "improvements": improvement_stats
-                            }
-                            subtitle_data["phase3_alignment_applied"] = True
-                        else:
-                            self.logger.warning("Phase 3智能对齐未产生改进结果，保持原始字幕")
-                            subtitle_data["phase3_alignment_applied"] = False
-                    else:
-                        self.logger.warning("未找到音频文件，跳过Phase 3智能对齐")
-                        subtitle_data["phase3_alignment_applied"] = False
-                        
-                except Exception as e:
-                    self.logger.error(f"Phase 3智能对齐处理失败: {e}")
-                    subtitle_data["phase3_alignment_applied"] = False
-                    subtitle_data["phase3_alignment_error"] = str(e)
-            else:
-                if not self.enable_phase3_alignment:
-                    self.logger.info("Phase 3智能对齐系统未启用")
-                subtitle_data["phase3_alignment_applied"] = False
-            
             combined_info = await self._generate_combined_subtitle(all_subtitles)
             subtitle_data["combined_subtitle_info"] = combined_info
             
@@ -1940,43 +1824,4 @@ class SubtitleGenerator:
             return original_text
         
         return enhanced_text
-
-    def _convert_pysrt_to_subtitle_entries(self, subtitles: List[pysrt.SubRipItem]):
-        """将pysrt字幕转换为智能对齐系统的SubtitleEntry格式"""
-        from core.intelligent_alignment_system import SubtitleEntry
-        
-        subtitle_entries = []
-        for sub in subtitles:
-            start_seconds = sub.start.hours * 3600 + sub.start.minutes * 60 + sub.start.seconds + sub.start.milliseconds / 1000.0
-            end_seconds = sub.end.hours * 3600 + sub.end.minutes * 60 + sub.end.seconds + sub.end.milliseconds / 1000.0
-            
-            entry = SubtitleEntry(
-                start_time=start_seconds,
-                end_time=end_seconds,
-                text=sub.text,
-                confidence=1.0,  # 原始字幕默认置信度为1.0
-                metadata={"original_index": sub.index}
-            )
-            subtitle_entries.append(entry)
-        
-        return subtitle_entries
-
-    def _convert_subtitle_entries_to_pysrt(self, subtitle_entries) -> List[pysrt.SubRipItem]:
-        """将智能对齐系统的SubtitleEntry格式转换回pysrt字幕"""
-        pysrt_subtitles = []
-        
-        for i, entry in enumerate(subtitle_entries):
-            # 将秒数转换回SubRipTime格式
-            start_time = self._seconds_to_srt_time(entry.start_time)
-            end_time = self._seconds_to_srt_time(entry.end_time)
-            
-            subtitle = pysrt.SubRipItem(
-                index=i + 1,
-                start=start_time,
-                end=end_time,
-                text=entry.text
-            )
-            pysrt_subtitles.append(subtitle)
-        
-        return pysrt_subtitles
 

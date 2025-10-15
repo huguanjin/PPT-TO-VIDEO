@@ -1,23 +1,45 @@
 """
 增强型语义分割器
 基于AI的智能字幕分割，确保URL、邮箱、技术术语等内容的完整性
+
+⚠️ 重要说明:
+- 此模块当前被禁用 (ENHANCED_SEMANTIC_SPLITTER_AVAILABLE = False)
+- 原因: 依赖的 custom_ai_models 模块不存在
+- 状态: 保留作为战略技术储备，未来可能启用
+- 要启用此功能，需要先实现 custom_ai_models 模块
+
+如需启用:
+1. 实现 flask_backend/core/custom_ai_models.py 模块
+2. 在 step04_subtitle_generator.py 中设置 ENHANCED_SEMANTIC_SPLITTER_AVAILABLE = True
+3. 取消下方导入注释
 """
 import re
 import json
 import asyncio
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, TYPE_CHECKING
 import logging
 from pathlib import Path
 
-from .custom_ai_models import CustomAIModelManager, AIAnalysisRequest, ModelConfig, ModelProvider
+# ⚠️ 依赖模块不存在，已注释
+# TODO: 实现 custom_ai_models 模块后取消注释
+# from .custom_ai_models import CustomAIModelManager, AIAnalysisRequest, ModelConfig, ModelProvider
 
 logger = logging.getLogger(__name__)
 
 class EnhancedSemanticSplitter:
-    """增强型语义分割器"""
+    """增强型语义分割器
     
-    def __init__(self, ai_model_manager: Optional[CustomAIModelManager] = None):
-        self.ai_manager = ai_model_manager or CustomAIModelManager()
+    ⚠️ 注意: AI功能暂时不可用，因为依赖模块 custom_ai_models 不存在
+    """
+    
+    def __init__(self, ai_model_manager: Optional[Any] = None):
+        """初始化语义分割器
+        
+        Args:
+            ai_model_manager: AI模型管理器 (当前不可用)
+        """
+        # ⚠️ AI功能暂时禁用
+        self.ai_manager = None  # ai_model_manager or CustomAIModelManager()
         self.model_name = "gemini-2.0-flash-custom"
         
         # 语义保护单元的正则模式
@@ -37,34 +59,41 @@ class EnhancedSemanticSplitter:
         self.max_chars_per_line = 26
         self.max_lines = 2
         
-        # 初始化AI模型
-        self._setup_ai_model()
+        # ⚠️ AI模型初始化暂时禁用
+        # self._setup_ai_model()
     
     def _setup_ai_model(self):
-        """设置AI模型"""
-        try:
-            # 使用Flask后端的正确配置
-            config = ModelConfig(
-                name="Gemini 2.0 Flash for Semantic Splitting",
-                provider=ModelProvider.CUSTOM_API,
-                model_id="gemini-2.0-flash",
-                base_url="https://fast.yourapi.cn/v1",  # 使用v1端点
-                api_key="sk-U5qHXmNVAOwMb3k1ITTQwSs67wR77ptgAcQLucrgiai5e6Aq",
-                support_json=True,
-                enable_function_calling=False,
-                temperature=0.1,  # 低温度确保一致性
-                max_tokens=1000,
-                timeout=30
-            )
-            
-            success = self.ai_manager.register_model(self.model_name, config)
-            if success:
-                logger.info(f"✅ AI语义分割模型 {self.model_name} 注册成功")
-            else:
-                logger.warning(f"⚠️ AI模型注册失败，将使用备用分割方案")
-                
-        except Exception as e:
-            logger.error(f"❌ AI模型设置失败: {e}")
+        """设置AI模型
+        
+        ⚠️ 此方法暂时不可用，因为依赖 ModelConfig 和 ModelProvider
+        """
+        logger.warning("⚠️ AI模型设置功能暂时不可用 (custom_ai_models 模块不存在)")
+        return
+        
+        # TODO: 实现 custom_ai_models 后取消注释
+        # try:
+        #     # 使用Flask后端的正确配置
+        #     config = ModelConfig(
+        #         name="Gemini 2.0 Flash for Semantic Splitting",
+        #         provider=ModelProvider.CUSTOM_API,
+        #         model_id="gemini-2.0-flash",
+        #         base_url="https://fast.yourapi.cn/v1",
+        #         api_key="sk-U5qHXmNVAOwMb3k1ITTQwSs67wR77ptgAcQLucrgiai5e6Aq",
+        #         support_json=True,
+        #         enable_function_calling=False,
+        #         temperature=0.1,
+        #         max_tokens=1000,
+        #         timeout=30
+        #     )
+        #     
+        #     success = self.ai_manager.register_model(self.model_name, config)
+        #     if success:
+        #         logger.info(f"✅ AI语义分割模型 {self.model_name} 注册成功")
+        #     else:
+        #         logger.warning(f"⚠️ AI模型注册失败，将使用备用分割方案")
+        #         
+        # except Exception as e:
+        #     logger.error(f"❌ AI模型设置失败: {e}")
     
     async def split_with_semantic_awareness(self, text: str) -> List[str]:
         """
@@ -155,31 +184,38 @@ class EnhancedSemanticSplitter:
         return priorities.get(unit_type, 1)
     
     async def _ai_semantic_split(self, text: str, protected_units: List[Dict]) -> Optional[List[str]]:
-        """AI增强的语义分割"""
-        try:
-            # 构建提示词
-            prompt = self._build_semantic_optimization_prompt(text, protected_units)
-            
-            # 创建AI请求
-            request = AIAnalysisRequest(
-                text=text,
-                task_type="semantic_split",
-                language="zh",
-                max_output_length=500
-            )
-            
-            # 调用AI分析
-            result = await self.ai_manager.analyze_content(request, self.model_name)
-            
-            if result.success and result.result:
-                return self._parse_ai_response(result.result, text, protected_units)
-            else:
-                logger.warning(f"AI分析失败: {result.error_message}")
-                return None
-                
-        except Exception as e:
-            logger.error(f"AI语义分割异常: {e}")
-            return None
+        """AI增强的语义分割
+        
+        ⚠️ 此方法暂时不可用，因为依赖 AIAnalysisRequest
+        """
+        logger.warning("⚠️ AI语义分割功能暂时不可用 (custom_ai_models 模块不存在)")
+        return None
+        
+        # TODO: 实现 custom_ai_models 后取消注释
+        # try:
+        #     # 构建提示词
+        #     prompt = self._build_semantic_optimization_prompt(text, protected_units)
+        #     
+        #     # 创建AI请求
+        #     request = AIAnalysisRequest(
+        #         text=text,
+        #         task_type="semantic_split",
+        #         language="zh",
+        #         max_output_length=500
+        #     )
+        #     
+        #     # 调用AI分析
+        #     result = await self.ai_manager.analyze_content(request, self.model_name)
+        #     
+        #     if result.success and result.result:
+        #         return self._parse_ai_response(result.result, text, protected_units)
+        #     else:
+        #         logger.warning(f"AI分析失败: {result.error_message}")
+        #         return None
+        #         
+        # except Exception as e:
+        #     logger.error(f"AI语义分割异常: {e}")
+        #     return None
     
     def _build_semantic_optimization_prompt(self, content: str, protected_units: List[Dict]) -> str:
         """构建语义优化提示词"""
