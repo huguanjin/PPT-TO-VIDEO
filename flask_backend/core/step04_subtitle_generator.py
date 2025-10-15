@@ -17,13 +17,6 @@ import pysrt
 from app.utils.logger import get_logger
 from app.utils.file_manager import FileManager
 
-# 导入增强版字幕生成器
-try:
-    from core.step04_subtitle_generator_enhanced import EnhancedSubtitleGenerator
-    ENHANCED_SUBTITLE_AVAILABLE = True
-except ImportError:
-    ENHANCED_SUBTITLE_AVAILABLE = False
-
 # 暂时禁用所有高级功能模块以避免NumPy兼容性问题
 ENHANCED_SEMANTIC_SPLITTER_AVAILABLE = False
 VIDEO_FRAME_SYNC_AVAILABLE = False  
@@ -243,16 +236,11 @@ class SubtitleGenerator:
             self.use_enhanced = False
             self.logger.info("🔥 单行模式：强制禁用增强字幕生成器")
         
-        # 初始化增强版生成器
+        # 单行模式下不使用增强生成器
+        self.enhanced_generator = None
         if self.use_enhanced:
-            if ENHANCED_SUBTITLE_AVAILABLE:
-                self.enhanced_generator = EnhancedSubtitleGenerator(project_dir)
-                self.logger.info("✅ Netflix级增强字幕生成器已启用")
-            else:
-                self.enhanced_generator = None
-                self.logger.warning("增强版字幕生成器不可用，将使用传统模式")
+            self.logger.warning("⚠️ 增强字幕生成器已被移除，仅支持单行模式")
         else:
-            self.enhanced_generator = None
             self.logger.info("使用传统字幕生成模式 (单行模式)")
         
         # 初始化视频帧同步优化器
@@ -322,15 +310,8 @@ class SubtitleGenerator:
             字幕数据字典
         """
         try:
-            # 如果启用增强模式，直接使用增强生成器
-            if self.use_enhanced and self.enhanced_generator:
-                self.logger.info("使用Netflix级增强字幕生成模式")
-                return await self.enhanced_generator.generate_enhanced_subtitles(
-                    scripts_data, audio_data, word_level_data, progress_callback
-                )
-            
-            # 传统字幕生成模式
-            self.logger.info("使用传统字幕生成模式")
+            # 单行模式：仅使用传统字幕生成
+            self.logger.info("使用传统字幕生成模式 (单行模式)")
             return await self._generate_traditional_subtitles(
                 scripts_data, audio_data, progress_callback
             )
