@@ -80,7 +80,7 @@ https://github.com/user-attachments/assets/12c26839-078c-4d98-a0db-1e4d4819e336
 | claude-sonnet-4-5-20250929 | [xiaohuapi.site](https://xiaohuapi.site) | 0.48元/刀 😃 |
 | claude-sonnet-4-5-20250929 | [aifast.site](https://aifast.site) | 0.4元/刀 🤩 |
 
-> 💡 **提示**: 建议使用 Claude Sonnet 4 获得最佳AI处理效果
+> 💡 **提示**: 建议使用 claude-sonnet-4-5-20250929 获得最佳AI处理效果
 
 </td>
 </tr>
