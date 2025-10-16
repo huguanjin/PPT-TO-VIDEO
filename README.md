@@ -76,9 +76,9 @@ https://github.com/user-attachments/assets/12c26839-078c-4d98-a0db-1e4d4819e336
 
 | 推荐模型 | 提供商 | 价格 |
 |:--------|:------|:-----|
-| claude-sonnet-4 | [xiaohumini.site](https://xiaohumini.site) | 0.8元/刀 🤩 |
-| claude-sonnet-4 | [xiaohuapi.site](https://xiaohuapi.site) | 0.48元/刀 😃 |
-| claude-sonnet-4 | [aifast.site](https://aifast.site) | 0.4元/刀 🤩 |
+| claude-sonnet-4-5-20250929 | [xiaohumini.site](https://xiaohumini.site) | 0.8元/刀 🤩 |
+| claude-sonnet-4-5-20250929 | [xiaohuapi.site](https://xiaohuapi.site) | 0.48元/刀 😃 |
+| claude-sonnet-4-5-20250929 | [aifast.site](https://aifast.site) | 0.4元/刀 🤩 |
 
 > 💡 **提示**: 建议使用 Claude Sonnet 4 获得最佳AI处理效果
 
