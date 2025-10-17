@@ -184,16 +184,6 @@ def register_blueprints(app):
     except Exception as e:
         print(f"❌ custom_ai_api模块加载错误: {e}")
     
-    # 导入Netflix字幕API (Phase 2)
-    netflix_subtitle_bp = None
-    try:
-        from app.api.netflix_subtitle_api import bp as netflix_subtitle_bp
-        print("✅ netflix_subtitle_api模块导入成功")
-    except ImportError as e:
-        print(f"❌ netflix_subtitle_api模块导入失败: {e}")
-    except Exception as e:
-        print(f"❌ netflix_subtitle_api模块加载错误: {e}")
-    
     # 导入模板API
     template_api = None
     try:
@@ -286,14 +276,6 @@ def register_blueprints(app):
             print("✅ custom_ai_api蓝图注册成功: /api/custom-ai/*")
         except Exception as e:
             print(f"❌ custom_ai_api蓝图注册失败: {e}")
-    
-    # 注册Netflix字幕API (Phase 2)
-    if netflix_subtitle_bp is not None:
-        try:
-            app.register_blueprint(netflix_subtitle_bp)
-            print("✅ netflix_subtitle_api蓝图注册成功: /api/netflix-subtitle/*")
-        except Exception as e:
-            print(f"❌ netflix_subtitle_api蓝图注册失败: {e}")
     
     # 注册模板API
     if template_api is not None:
