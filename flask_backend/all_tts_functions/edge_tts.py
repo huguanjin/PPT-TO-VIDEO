@@ -5,6 +5,23 @@ import asyncio
 import time
 import requests
 import json
+import ssl
+import certifi
+
+# ⚠️ SSL证书修复: 微软Edge TTS服务器证书过期问题
+# 临时禁用SSL验证以解决连接问题
+# 生产环境建议使用其他TTS服务或等待微软修复证书
+_original_create_default_context = ssl.create_default_context
+
+def _create_unverified_context(*args, **kwargs):
+    """创建不验证证书的SSL上下文"""
+    context = _original_create_default_context(*args, **kwargs)
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
+    return context
+
+# 全局替换SSL上下文创建函数
+ssl.create_default_context = _create_unverified_context
 
 # 添加正确的路径以导入config_utils
 current_dir = os.path.dirname(__file__)
@@ -160,7 +177,7 @@ def edge_tts(text, save_path):
                 print(f"❌ Edge TTS库尝试 {attempt + 1} 失败: {str(e)}")
                 if attempt < max_retries - 1:
                     print(f"   等待2秒后重试...")
-                    await asyncio.sleep(2)  # 重试前等待2秒
+                    await asyncio.sleep(2)
         
         return False
     

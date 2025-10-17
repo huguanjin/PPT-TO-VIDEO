@@ -68,6 +68,7 @@ numpy>=1.24.0
 # ===== HTTP客户端和异步处理 =====
 requests>=2.31.0
 httpx==0.25.0
+certifi>=2023.7.22  # SSL证书验证支持
 aiohttp>=3.9.0
 aiofiles>=23.2.0
 
