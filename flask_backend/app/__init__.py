@@ -134,16 +134,6 @@ def register_blueprints(app):
         print(f"❌ enhanced_workspace模块加载错误: {e}")
         enhanced_apis_available = False
     
-    # 导入智能字幕API
-    smart_subtitle_bp = None
-    try:
-        from app.api.smart_subtitle_api import smart_subtitle_bp
-        print("✅ smart_subtitle_api模块导入成功")
-    except ImportError as e:
-        print(f"❌ smart_subtitle_api模块导入失败: {e}")
-    except Exception as e:
-        print(f"❌ smart_subtitle_api模块加载错误: {e}")
-    
     # 导入AI配置API
     ai_config_api = None
     try:
@@ -236,14 +226,6 @@ def register_blueprints(app):
             print("✅ Phase 3智能对齐API蓝图注册成功: /api/phase3/*")
         except Exception as e:
             print(f"❌ Phase 3智能对齐API蓝图注册失败: {e}")
-    
-    # 注册智能字幕API
-    if smart_subtitle_bp is not None:
-        try:
-            app.register_blueprint(smart_subtitle_bp)
-            print("✅ smart_subtitle蓝图注册成功: /api/smart-subtitle/*")
-        except Exception as e:
-            print(f"❌ smart_subtitle蓝图注册失败: {e}")
     
     # 注册AI配置API
     if ai_config_api is not None:
