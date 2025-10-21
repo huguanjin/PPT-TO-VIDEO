@@ -16,6 +16,7 @@
 ### 💬 加入交流群
 <p>
   <img src="https://img.shields.io/badge/QQ群-881220679-orange.svg" alt="QQ群">
+  <img width="1284" height="2283" alt="qrcode_1761024870176" src="https://github.com/user-attachments/assets/99f367bb-89de-4013-93e6-ba2beec7d275" />
   <strong>欢迎加入讨论、反馈问题、分享经验!</strong>
 </p>
 
