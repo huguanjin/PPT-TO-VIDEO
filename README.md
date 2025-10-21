@@ -71,7 +71,7 @@ https://github.com/user-attachments/assets/12c26839-078c-4d98-a0db-1e4d4819e336
 - ✅ **智能断句系统**: 基于语义的智能字幕分割
 - ✅ **单行字幕模式**: 优化的单行字幕显示和时间分配
 - ✅ **精确时间对齐**: 基于音频时长的精确字幕时间轴
-- ✅ **多AI服务支持**: OpenAI GPT-4、Claude 3、Gemini等
+- ✅ **多AI服务支持**: OpenAI GPT-4、Claude 4、Gemini等
 - ✅ **自适应字体**: 根据内容自动调整字幕字体大小
 - ✅ **灵活配置**: 支持手动换行和配置化参数调整
 
@@ -104,7 +104,6 @@ https://github.com/user-attachments/assets/12c26839-078c-4d98-a0db-1e4d4819e336
 
 #### 🎬 专业视频制作
 - 📹 **4K高质量输出**: 支持多种分辨率和编码格式
-- ✨ **智能转场动画**: AI驱动的场景过渡效果
 - 🎯 **精确音视频同步**: 毫秒级时间轴对齐技术
 
 </td>
@@ -118,44 +117,7 @@ https://github.com/user-attachments/assets/12c26839-078c-4d98-a0db-1e4d4819e336
 
 </div>
 
----
 
-## 🏗️ 技术架构
-
-<div align="center">
-
-```
-PPT转视频系统 (现代化架构)
-├── 🎨 前端层 (PPTist + Streamlit)
-│   ├── PPTist编辑器       # Vue 3 + TypeScript + Vite
-│   ├── 配置管理面板       # 实时配置和监控
-│   └── 实时预览界面       # WebSocket支持
-├── 🚀 API网关层 (Flask Backend)
-│   ├── 统一Flask后端      # unified_app.py (主入口)
-│   ├── RESTful API       # 标准化API端点
-│   ├── 工作流管理        # enhanced_workflow_executor.py
-│   └── 批量导入          # 批量PPT导入支持
-├── 🧠 核心处理层 (Core Modules)
-│   ├── 智能字幕系统      # subtitle_*.py (智能断句和单行模式)
-│   ├── 自适应字体计算    # adaptive_font_calculator.py
-│   ├── 动态规划分割      # dp_sentence_splitter.py
-│   └── 字幕工具集        # subtitle_utils.py
-├── 🔄 工作流引擎 (5步标准流程)
-│   ├── Step 1: 数据准备  # PPTist导入 + 元数据解析
-│   ├── Step 2: TTS合成   # 多引擎语音生成
-│   ├── Step 3: 视频生成  # moviepy + OpenCV
-│   ├── Step 4: 字幕处理  # 智能字幕生成和时间对齐
-│   └── Step 5: 最终合成  # FFmpeg高质量输出
-└── 📊 基础设施层
-    ├── 配置管理          # 统一配置文件 (app_config.json)
-    ├── 任务调度          # 异步任务 + 进度跟踪
-    ├── 文件存储          # 分类存储 + 元数据管理
-    └── 监控日志          # 实时监控 + 错误追踪
-```
-
-</div>
-
----
 
 ## 🎯 核心优势
 
@@ -456,51 +418,6 @@ PPTist编辑<br>
 ---
 
 ## 💎 核心亮点
-
-<div align="center">
-
-### ✨ 智能字幕生成系统
-
-</div>
-
-```python
-# 智能字幕配置示例
-{
-  "subtitle": {
-    "enabled": true,
-    "max_chars_per_line": 36,
-    "single_line_mode": true,
-    "font_size": 24,
-    "position": "bottom"
-  }
-}
-```
-
-<table>
-<tr>
-<td width="33%" align="center">
-
-#### 🧠 智能断句
-基于动态规划的<br>
-智能句子分割
-
-</td>
-<td width="33%" align="center">
-
-#### ⏱️ 精确对齐
-基于音频时长的<br>
-时间轴对齐
-
-</td>
-<td width="33%" align="center">
-
-#### 📏 单行模式
-简洁清晰的<br>
-单行字幕显示
-
-</td>
-</tr>
-</table>
 
 <div align="center">
 
