@@ -14,8 +14,10 @@ import { apiRequest, API_ENDPOINTS } from '@/config/api'
 
 // 废弃警告 - 用于运行时提示
 function logDeprecationWarning(method: string) {
+  /* eslint-disable no-console */
   console.warn(`⚠️ [DEPRECATED] SmartSubtitleService.${method}() 已废弃 - smart_subtitle API已在后端移除 (2025-10-17)`)
   console.warn('   迁移建议: 使用基础字幕生成或配置 VITE_SUBTITLE_API_PREFIX')
+  /* eslint-enable no-console */
 }
 
 // 智能字幕配置接口
