@@ -13,6 +13,12 @@
   <img src="https://img.shields.io/badge/AI-Netflix级字幕-purple.svg" alt="AI">
 </p>
 
+### 💬 加入交流群
+<p>
+  <img src="https://img.shields.io/badge/QQ群-881220679-orange.svg" alt="QQ群">
+  <strong>欢迎加入讨论、反馈问题、分享经验!</strong>
+</p>
+
 </div>
 
 ---
