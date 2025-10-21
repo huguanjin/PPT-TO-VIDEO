@@ -14,11 +14,16 @@
 </p>
 
 ### 💬 加入交流群
-<p>
-  <img src="https://img.shields.io/badge/QQ群-881220679-orange.svg" alt="QQ群">
-  <img width="256.8" height="456.6" alt="qrcode_1761024870176" src="https://github.com/user-attachments/assets/99f367bb-89de-4013-93e6-ba2beec7d275" />
+
+<table>
+<tr>
+<td align="center">
+  <img src="https://img.shields.io/badge/QQ群-881220679-orange.svg" alt="QQ群"><br>
+  <img width="200" alt="QQ群二维码" src="https://github.com/user-attachments/assets/99f367bb-89de-4013-93e6-ba2beec7d275" /><br>
   <strong>欢迎加入讨论、反馈问题、分享经验!</strong>
-</p>
+</td>
+</tr>
+</table>
 
 </div>
 
