@@ -152,7 +152,8 @@ export function getApiEndpoints() {
     WORKFLOW: import.meta.env.VITE_WORKFLOW_API_PREFIX || '/api/workflow',
     CONFIG: import.meta.env.VITE_CONFIG_API_PREFIX || '/api/config',
     PPTIST: import.meta.env.VITE_PPTIST_API_PREFIX || '/api/pptist',
-    SUBTITLE: import.meta.env.VITE_SUBTITLE_API_PREFIX || '/api/smart-subtitle'
+    // ⚠️ SUBTITLE: 智能字幕API已移除，如需使用请配置环境变量指向其他服务
+    SUBTITLE: import.meta.env.VITE_SUBTITLE_API_PREFIX || ''
   }
 }
 

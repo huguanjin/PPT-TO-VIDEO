@@ -1,8 +1,22 @@
 /**
- * 智能字幕服务
+ * ⚠️⚠️⚠️ 智能字幕服务 - 已废弃 (2025-10-17) ⚠️⚠️⚠️
+ * 
+ * 后端smart_subtitle_api已移除,项目已简化为单行字幕模式。
+ * 此文件保留用于类型定义和向后兼容,但所有API调用将失败。
+ * 
+ * 迁移建议:
+ * - 使用基础字幕生成功能(无AI优化)
+ * - 或配置VITE_SUBTITLE_API_PREFIX环境变量指向自定义服务
+ * 
  * 提供AI字幕分割、配置管理等功能
  */
 import { apiRequest, API_ENDPOINTS } from '@/config/api'
+
+// 废弃警告 - 用于运行时提示
+function logDeprecationWarning(method: string) {
+  console.warn(`⚠️ [DEPRECATED] SmartSubtitleService.${method}() 已废弃 - smart_subtitle API已在后端移除 (2025-10-17)`)
+  console.warn('   迁移建议: 使用基础字幕生成或配置 VITE_SUBTITLE_API_PREFIX')
+}
 
 // 智能字幕配置接口
 export interface SmartSubtitleConfig {
@@ -115,8 +129,10 @@ export interface SmartSubtitleStatus {
 class SmartSubtitleService {
   /**
    * 获取智能字幕配置
+   * @deprecated API已移除
    */
   async getConfig(): Promise<SmartSubtitleConfig> {
+    logDeprecationWarning('getConfig')
     const response = await apiRequest<{ config: SmartSubtitleConfig }>(
       API_ENDPOINTS.SMART_SUBTITLE.CONFIG
     )
@@ -130,8 +146,10 @@ class SmartSubtitleService {
 
   /**
    * 更新智能字幕配置
+   * @deprecated API已移除
    */
   async updateConfig(config: Partial<SmartSubtitleConfig>): Promise<void> {
+    logDeprecationWarning('updateConfig')
     const response = await apiRequest(API_ENDPOINTS.SMART_SUBTITLE.CONFIG, {
       method: 'POST',
       body: JSON.stringify(config)
@@ -144,8 +162,10 @@ class SmartSubtitleService {
 
   /**
    * 测试字幕分割功能
+   * @deprecated API已移除
    */
   async testSplit(text: string, config?: Partial<SmartSubtitleConfig>): Promise<SplitTestResult> {
+    logDeprecationWarning('testSplit')
     const response = await apiRequest<{ result: SplitTestResult }>(
       API_ENDPOINTS.SMART_SUBTITLE.TEST_SPLIT,
       {
@@ -163,8 +183,10 @@ class SmartSubtitleService {
 
   /**
    * 计算文本显示权重
+   * @deprecated API已移除
    */
   async calculateTextWeight(text: string): Promise<TextWeightResult> {
+    logDeprecationWarning('calculateTextWeight')
     const response = await apiRequest<TextWeightResult>(
       API_ENDPOINTS.SMART_SUBTITLE.WEIGHT_CALC,
       {
@@ -182,8 +204,10 @@ class SmartSubtitleService {
 
   /**
    * 获取功能状态
+   * @deprecated API已移除
    */
   async getStatus(): Promise<SmartSubtitleStatus> {
+    logDeprecationWarning('getStatus')
     const response = await apiRequest<SmartSubtitleStatus>(
       API_ENDPOINTS.SMART_SUBTITLE.STATUS
     )

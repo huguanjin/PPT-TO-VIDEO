@@ -69,18 +69,22 @@ export const API_ENDPOINTS = {
     CONFIG: '/api/workflow/config'
   },
 
-  // 智能字幕API
+  /**
+   * @deprecated 智能字幕API已在后端移除 (2025-10-17)
+   * 项目已简化为单行字幕模式，以下端点不再可用
+   * 保留此对象仅为向后兼容,所有调用将返回404
+   * 如需字幕功能请使用基础字幕生成或本地模式
+   */
   SMART_SUBTITLE: {
-    CONFIG: '/api/smart-subtitle/config',
-    TEST_SPLIT: '/api/smart-subtitle/test-split',
-    AI_CONFIG: '/api/smart-subtitle/ai-config',
-    STATUS: '/api/smart-subtitle/status',
-    WEIGHT_CALC: '/api/smart-subtitle/weight-calculator',
-    // 新增优化API端点
-    ADAPTIVE_FONT: '/api/smart-subtitle/adaptive-font',
-    ENHANCED_SPLIT: '/api/smart-subtitle/enhanced-split', 
-    AI_OPTIMIZE: '/api/smart-subtitle/ai-optimize',
-    BATCH_OPTIMIZE: '/api/smart-subtitle/batch-optimize'
+    CONFIG: '/api/smart-subtitle/config', // ❌ 已移除
+    TEST_SPLIT: '/api/smart-subtitle/test-split', // ❌ 已移除
+    AI_CONFIG: '/api/smart-subtitle/ai-config', // ❌ 已移除
+    STATUS: '/api/smart-subtitle/status', // ❌ 已移除
+    WEIGHT_CALC: '/api/smart-subtitle/weight-calculator', // ❌ 已移除
+    ADAPTIVE_FONT: '/api/smart-subtitle/adaptive-font', // ❌ 已移除
+    ENHANCED_SPLIT: '/api/smart-subtitle/enhanced-split', // ❌ 已移除
+    AI_OPTIMIZE: '/api/smart-subtitle/ai-optimize', // ❌ 已移除
+    BATCH_OPTIMIZE: '/api/smart-subtitle/batch-optimize' // ❌ 已移除
   },
 
   // AI配置API
