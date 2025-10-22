@@ -3,13 +3,15 @@
   <div class="workflow-progress-container" :class="{ collapsed: isCollapsed }">
     <div class="progress-window" @click.stop>
       <!-- 标题栏 -->
-      <div class="header" @click="toggleCollapse">
-        <span class="title">{{ isCollapsed ? '📊' : '📊 视频生成进度' }}</span>
+      <div class="header">
+        <span class="title" @click="toggleCollapse" style="cursor: pointer; flex: 1;">
+          {{ isCollapsed ? '📊' : '📊 视频生成进度' }}
+        </span>
         <div class="header-actions">
-          <button @click.stop="toggleCollapse" class="collapse-btn" :title="isCollapsed ? '展开' : '收起'">
+          <button @click="toggleCollapse" class="collapse-btn" :title="isCollapsed ? '展开' : '收起'">
             {{ isCollapsed ? '⬆' : '⬇' }}
           </button>
-          <button @click.stop="handleClose" class="close-btn" title="关闭">✕</button>
+          <button @click="handleClose" class="close-btn" title="关闭">✕</button>
         </div>
       </div>
       

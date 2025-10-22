@@ -319,6 +319,9 @@ const handleBatchExport = async () => {
     if (autoStartWorkflow === 'true' && result.workflow_ready) {
       message.success(`批量导出成功！共 ${exportedImages.length} 张，正在启动工作流...`)
       
+      // 🔧 FIX: 无论工作流是否启动成功，都立即退出Screen模式
+      screenStore.setScreening(false)
+      
       try {
         // 🔧 NEW: 检查批量导入API是否已经返回了workflow_id
         const importWorkflowId = result.workflow_id
@@ -339,10 +342,6 @@ const handleBatchExport = async () => {
             }
           })
           window.dispatchEvent(event)
-          
-          // 🔧 FIX: 立即退出Screen模式，返回编辑器
-          screenStore.setScreening(false)
-          message.success('已退出演示模式，可在右侧查看工作流进度')
         }
         else {
           // 旧流程: 手动调用workflow/execute
@@ -388,11 +387,6 @@ const handleBatchExport = async () => {
               }
             })
             window.dispatchEvent(event)
-            
-            // 退出Screen模式，返回编辑器
-            setTimeout(() => {
-              screenStore.setScreening(false)
-            }, 1000)
           }
           else {
             message.warning('图片导出成功，但工作流启动失败，请手动启动')
