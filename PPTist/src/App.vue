@@ -13,6 +13,9 @@
     @close="workflowStore.hideWorkflowProgress()"
     @download="handleDownload"
   />
+  
+  <!-- 全局工作流历史面板 - 固定在右侧 -->
+  <WorkflowHistoryPanel v-if="appReady" />
 </template>
 
 <script lang="ts" setup>
@@ -31,6 +34,7 @@ import Screen from './views/Screen/index.vue'
 import Mobile from './views/Mobile/index.vue'
 import FullscreenSpin from '@/components/FullscreenSpin.vue'
 import WorkflowProgress from '@/components/WorkflowProgress.vue'
+import WorkflowHistoryPanel from '@/components/WorkflowHistoryPanel.vue'
 
 const _isPC = isPC()
 const appReady = ref(false)

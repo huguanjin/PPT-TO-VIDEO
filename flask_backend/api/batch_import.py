@@ -2,15 +2,22 @@
 # -*- coding: utf-8 -*-
 """
 Flask后端API - 接收前端批量导出的高质量图片
-位置：flask_backend/api/batch_import.py
+位置:flask_backend/api/batch_import.py
 """
 import base64
 import json
+import asyncio
+import time
 from pathlib import Path
 from typing import Dict, List, Any
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 import logging
+import sys
+
+# 添加项目根目录到Python路径
+flask_backend_root = Path(__file__).parent.parent
+sys.path.insert(0, str(flask_backend_root))
 
 # 创建Blueprint
 batch_import_bp = Blueprint('batch_import', __name__)
@@ -152,6 +159,18 @@ def import_slides_batch():
         logger.info(f"✅ 元数据已保存: {metadata_path}")
         logger.info(f"✅ 批量导入完成: {len(saved_files)}/{total_slides}")
         
+        # 🔧 NEW: 自动启动工作流
+        workflow_id = None
+        auto_start_workflow = data.get('auto_start_workflow', True)  # 默认自动启动
+        
+        if auto_start_workflow:
+            try:
+                workflow_id = _start_workflow_sync(project_name, slides_metadata)
+                logger.info(f"🚀 工作流已启动: {workflow_id}")
+            except Exception as e:
+                logger.error(f"❌ 启动工作流失败: {e}")
+                # 不影响导入成功,继续返回
+        
         response_data = {
             "success": True,
             "message": f"成功导入 {len(saved_files)}/{total_slides} 张幻灯片",
@@ -160,17 +179,10 @@ def import_slides_batch():
             "saved_files": saved_files,
             "failed_files": failed_files,
             "metadata_path": str(metadata_path),
-            # 🔧 添加工作流启动信息
-            "workflow_ready": True,
-            "next_step": {
-                "description": "图片已就绪，可以启动工作流",
-                "api_endpoint": "/api/workflow/execute",
-                "method": "POST",
-                "body": {
-                    "project_name": project_name
-                },
-                "note": "工作流将自动使用 slides_metadata.json 中的图片和文本数据"
-            }
+            # 🔧 添加工作流信息
+            "workflow_id": workflow_id,  # 前端需要这个ID来查询进度
+            "workflow_started": workflow_id is not None,
+            "workflow_status_url": f"/api/workflow/status/{workflow_id}" if workflow_id else None
         }
         
         return _cors_response(jsonify(response_data))
@@ -201,6 +213,191 @@ def _cors_response(response=None, status=200):
     return response
 
 
+async def _start_workflow_async(project_name: str, slides_metadata: Dict[str, Any]) -> str:
+    """
+    异步启动工作流
+    
+    Args:
+        project_name: 项目名称
+        slides_metadata: 幻灯片元数据
+    
+    Returns:
+        workflow_id: 工作流任务ID
+    """
+    try:
+        from core.enhanced_workflow_executor import EnhancedWorkflowExecutor
+        from app.api.workflow import update_task_status
+        
+        # 生成任务ID
+        task_id = f"workflow_{project_name}_{int(time.time())}"
+        
+        # 初始化任务状态
+        update_task_status(
+            task_id=task_id,
+            status='pending',
+            message='工作流准备启动',
+            progress=0,
+            project_name=project_name,
+            current_step=0,
+            total_steps=5,
+            steps=[
+                {'name': '准备阶段', 'status': 'pending', 'message': '初始化工作流'},
+                {'name': 'TTS音频生成', 'status': 'pending', 'message': '等待开始'},
+                {'name': '字幕文件生成', 'status': 'pending', 'message': '等待开始'},
+                {'name': '视频片段合成', 'status': 'pending', 'message': '等待开始'},
+                {'name': '最终视频合并', 'status': 'pending', 'message': '等待开始'}
+            ]
+        )
+        
+        # 创建工作流执行器
+        output_base = Path(__file__).parent.parent / "output"
+        executor = EnhancedWorkflowExecutor(project_dir=output_base)
+        
+        # 定义进度回调
+        def progress_callback(step_name: str, progress: float, message: str):
+            """工作流进度回调"""
+            try:
+                step_mapping = {
+                    'TTS音频生成': 1,
+                    '字幕文件生成': 2,
+                    '视频片段合成': 3,
+                    '最终视频合并': 4
+                }
+                current_step = step_mapping.get(step_name, 0)
+                
+                # 计算总进度
+                total_progress = int((current_step / 5) * 100 + (progress / 5))
+                
+                # 更新步骤状态
+                steps = [
+                    {'name': '准备阶段', 'status': 'completed', 'message': '已完成'},
+                    {'name': 'TTS音频生成', 'status': 'pending', 'message': '等待开始'},
+                    {'name': '字幕文件生成', 'status': 'pending', 'message': '等待开始'},
+                    {'name': '视频片段合成', 'status': 'pending', 'message': '等待开始'},
+                    {'name': '最终视频合并', 'status': 'pending', 'message': '等待开始'}
+                ]
+                
+                # 更新当前步骤
+                if current_step > 0:
+                    steps[current_step]['status'] = 'running'
+                    steps[current_step]['message'] = message
+                    
+                    # 标记之前的步骤为已完成
+                    for i in range(1, current_step):
+                        steps[i]['status'] = 'completed'
+                        steps[i]['message'] = '已完成'
+                
+                update_task_status(
+                    task_id=task_id,
+                    status='running',
+                    message=message,
+                    progress=total_progress,
+                    project_name=project_name,
+                    current_step=current_step,
+                    total_steps=5,
+                    steps=steps
+                )
+                
+            except Exception as e:
+                logger.error(f"进度回调错误: {e}")
+        
+        # 在后台线程中启动工作流
+        import threading
+        
+        def run_workflow():
+            """在新线程中运行工作流"""
+            try:
+                # 启动工作流
+                result = asyncio.run(executor.start_workflow(
+                    project_name=project_name,
+                    config={
+                        'slides_metadata': slides_metadata,
+                        'use_existing_slides': True  # 使用已有的图片
+                    },
+                    progress_callback=progress_callback
+                ))
+                
+                # 工作流完成 - 处理WorkflowExecution对象
+                success = getattr(result, 'success', False)
+                if success:
+                    result_data = {
+                        'video_file': getattr(result, 'video_file', ''),
+                        'duration': getattr(result, 'duration', 0),
+                        'steps': getattr(result, 'steps', [])
+                    }
+                    update_task_status(
+                        task_id=task_id,
+                        status='completed',
+                        message='视频生成完成',
+                        progress=100,
+                        result=result_data,
+                        project_name=project_name,
+                        current_step=5,
+                        total_steps=5,
+                        steps=[
+                            {'name': '准备阶段', 'status': 'completed', 'message': '已完成'},
+                            {'name': 'TTS音频生成', 'status': 'completed', 'message': '已完成'},
+                            {'name': '字幕文件生成', 'status': 'completed', 'message': '已完成'},
+                            {'name': '视频片段合成', 'status': 'completed', 'message': '已完成'},
+                            {'name': '最终视频合并', 'status': 'completed', 'message': '已完成'}
+                        ]
+                    )
+                else:
+                    error_msg = getattr(result, 'message', '工作流执行失败')
+                    update_task_status(
+                        task_id=task_id,
+                        status='failed',
+                        message=error_msg,
+                        progress=0,
+                        project_name=project_name
+                    )
+                    
+            except Exception as e:
+                logger.error(f"工作流执行错误: {e}")
+                import traceback
+                traceback.print_exc()
+                
+                update_task_status(
+                    task_id=task_id,
+                    status='failed',
+                    message=f'工作流执行异常: {str(e)}',
+                    progress=0,
+                    project_name=project_name
+                )
+        
+        # 启动后台线程
+        thread = threading.Thread(target=run_workflow, daemon=True)
+        thread.start()
+        
+        logger.info(f"✅ 工作流线程已启动: {task_id}")
+        return task_id
+        
+    except Exception as e:
+        logger.error(f"启动工作流失败: {e}")
+        raise
+
+
+def _start_workflow_sync(project_name: str, slides_metadata: Dict[str, Any]) -> str:
+    """
+    同步启动工作流 (用于Flask路由)
+    
+    Args:
+        project_name: 项目名称
+        slides_metadata: 幻灯片元数据
+    
+    Returns:
+        workflow_id: 工作流任务ID
+    """
+    # 直接调用异步函数并在新事件循环中运行
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(_start_workflow_async(project_name, slides_metadata))
+    finally:
+        loop.close()
+
+
+
 # 用于测试的路由
 @batch_import_bp.route('/api/test-import', methods=['GET'])
 def test_import():
@@ -210,3 +407,4 @@ def test_import():
         "message": "批量导入API正常运行",
         "timestamp": datetime.now().isoformat()
     }))
+

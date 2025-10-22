@@ -320,45 +320,21 @@ const handleBatchExport = async () => {
       message.success(`批量导出成功！共 ${exportedImages.length} 张，正在启动工作流...`)
       
       try {
-        // 启动工作流
-        const workflowResponse = await fetch('http://localhost:5000/api/workflow/execute', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            project_name: result.project_name
-          })
-        })
+        // 🔧 NEW: 检查批量导入API是否已经返回了workflow_id
+        const importWorkflowId = result.workflow_id
         
-        if (workflowResponse.ok) {
-          const workflowResult = await workflowResponse.json()
+        if (importWorkflowId) {
+          // 如果batch_import已经返回了workflow_id,直接使用
           // eslint-disable-next-line no-console
-          console.log('🔍 后端返回的完整数据:', workflowResult)
+          console.log('✅ 批量导入API已自动启动工作流, ID:', importWorkflowId)
           
-          // 兼容两种API返回格式:
-          // 1. 旧版API: { success: true, data: { workflow_id, task_id } }
-          // 2. 新版API: { success: true, workflow_id, task_id }
-          const workflowId = workflowResult.data?.workflow_id || 
-                           workflowResult.data?.task_id || 
-                           workflowResult.workflow_id || 
-                           workflowResult.task_id
+          message.success(`工作流已自动启动！任务ID: ${importWorkflowId}`)
           
-          if (!workflowId) {
-            // eslint-disable-next-line no-console
-            console.error('❌ 未获取到工作流ID!后端返回:', workflowResult)
-            throw new Error('未获取到工作流ID')
-          }
-          
-          message.success(`工作流已启动！任务ID: ${workflowId}`)
-          // eslint-disable-next-line no-console
-          console.log('✅ 工作流启动成功, ID:', workflowId)
-          
-          // 🔧 触发自定义事件通知VideoExportButtonNew
+          // 触发自定义事件通知VideoExportButton
           const event = new CustomEvent('batchExportComplete', {
             detail: {
               success: true,
-              workflow_id: workflowId,
+              workflow_id: importWorkflowId,
               project_name: result.project_name
             }
           })
@@ -370,16 +346,67 @@ const handleBatchExport = async () => {
           }, 1000)
         }
         else {
-          message.warning('图片导出成功，但工作流启动失败，请手动启动')
-          
-          // 触发失败事件
-          const event = new CustomEvent('batchExportComplete', {
-            detail: {
-              success: false,
-              error: '工作流启动失败'
-            }
+          // 旧流程: 手动调用workflow/execute
+          const workflowResponse = await fetch('http://localhost:5000/api/workflow/execute', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              project_name: result.project_name
+            })
           })
-          window.dispatchEvent(event)
+          
+          if (workflowResponse.ok) {
+            const workflowResult = await workflowResponse.json()
+            // eslint-disable-next-line no-console
+            console.log('🔍 后端返回的完整数据:', workflowResult)
+            
+            // 兼容两种API返回格式:
+            // 1. 旧版API: { success: true, data: { workflow_id, task_id } }
+            // 2. 新版API: { success: true, workflow_id, task_id }
+            const workflowId = workflowResult.data?.workflow_id || 
+                             workflowResult.data?.task_id || 
+                             workflowResult.workflow_id || 
+                             workflowResult.task_id
+            
+            if (!workflowId) {
+              // eslint-disable-next-line no-console
+              console.error('❌ 未获取到工作流ID!后端返回:', workflowResult)
+              throw new Error('未获取到工作流ID')
+            }
+            
+            message.success(`工作流已启动！任务ID: ${workflowId}`)
+            // eslint-disable-next-line no-console
+            console.log('✅ 工作流启动成功, ID:', workflowId)
+            
+            // 🔧 触发自定义事件通知VideoExportButtonNew
+            const event = new CustomEvent('batchExportComplete', {
+              detail: {
+                success: true,
+                workflow_id: workflowId,
+                project_name: result.project_name
+              }
+            })
+            window.dispatchEvent(event)
+            
+            // 退出Screen模式，返回编辑器
+            setTimeout(() => {
+              screenStore.setScreening(false)
+            }, 1000)
+          }
+          else {
+            message.warning('图片导出成功，但工作流启动失败，请手动启动')
+            
+            // 触发失败事件
+            const event = new CustomEvent('batchExportComplete', {
+              detail: {
+                success: false,
+                error: '工作流启动失败'
+              }
+            })
+            window.dispatchEvent(event)
+          }
         }
       }
       catch (workflowError) {
