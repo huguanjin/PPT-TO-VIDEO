@@ -340,10 +340,9 @@ const handleBatchExport = async () => {
           })
           window.dispatchEvent(event)
           
-          // 退出Screen模式，返回编辑器
-          setTimeout(() => {
-            screenStore.setScreening(false)
-          }, 1000)
+          // 🔧 FIX: 立即退出Screen模式，返回编辑器
+          screenStore.setScreening(false)
+          message.success('已退出演示模式，可在右侧查看工作流进度')
         }
         else {
           // 旧流程: 手动调用workflow/execute

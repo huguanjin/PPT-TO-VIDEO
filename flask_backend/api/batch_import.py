@@ -253,47 +253,62 @@ async def _start_workflow_async(project_name: str, slides_metadata: Dict[str, An
         output_base = Path(__file__).parent.parent / "output"
         executor = EnhancedWorkflowExecutor(project_dir=output_base)
         
-        # 定义进度回调
-        def progress_callback(step_name: str, progress: float, message: str):
-            """工作流进度回调"""
+        # 定义进度回调 - 接收WorkflowExecution对象
+        async def progress_callback(execution):
+            """工作流进度回调 - 匹配EnhancedWorkflowExecutor的签名"""
             try:
+                # 从execution对象提取信息
+                current_step_name = execution.current_step or 'step01_data_preparation'
+                
+                # 步骤映射
                 step_mapping = {
-                    'TTS音频生成': 1,
-                    '字幕文件生成': 2,
-                    '视频片段合成': 3,
-                    '最终视频合并': 4
+                    'step01_data_preparation': (0, '准备阶段'),
+                    'step02_tts_generation': (1, 'TTS音频生成'),
+                    'step03_subtitle_generation': (2, '字幕文件生成'),
+                    'step04_video_generation': (3, '视频片段合成'),
+                    'step05_final_merge': (4, '最终视频合并')
                 }
-                current_step = step_mapping.get(step_name, 0)
                 
-                # 计算总进度
-                total_progress = int((current_step / 5) * 100 + (progress / 5))
+                current_step_index, step_display_name = step_mapping.get(
+                    current_step_name, (0, '处理中')
+                )
                 
-                # 更新步骤状态
+                # 获取当前步骤进度
+                step_progress = 0.0
+                step_message = '处理中'
+                if execution.steps and current_step_name in execution.steps:
+                    step_info = execution.steps[current_step_name]
+                    step_progress = step_info.progress
+                    step_message = step_info.message or '处理中'
+                
+                # 计算总进度 (基于步骤数 + 当前步骤内进度)
+                total_progress = int((current_step_index / 5) * 100 + (step_progress / 5))
+                
+                # 构建步骤列表
                 steps = [
-                    {'name': '准备阶段', 'status': 'completed', 'message': '已完成'},
+                    {'name': '准备阶段', 'status': 'pending', 'message': '等待开始'},
                     {'name': 'TTS音频生成', 'status': 'pending', 'message': '等待开始'},
                     {'name': '字幕文件生成', 'status': 'pending', 'message': '等待开始'},
                     {'name': '视频片段合成', 'status': 'pending', 'message': '等待开始'},
                     {'name': '最终视频合并', 'status': 'pending', 'message': '等待开始'}
                 ]
                 
-                # 更新当前步骤
-                if current_step > 0:
-                    steps[current_step]['status'] = 'running'
-                    steps[current_step]['message'] = message
-                    
-                    # 标记之前的步骤为已完成
-                    for i in range(1, current_step):
+                # 更新步骤状态
+                for i in range(5):
+                    if i < current_step_index:
                         steps[i]['status'] = 'completed'
                         steps[i]['message'] = '已完成'
+                    elif i == current_step_index:
+                        steps[i]['status'] = 'running'
+                        steps[i]['message'] = step_message
                 
                 update_task_status(
                     task_id=task_id,
                     status='running',
-                    message=message,
+                    message=step_message,
                     progress=total_progress,
                     project_name=project_name,
-                    current_step=current_step,
+                    current_step=current_step_index,
                     total_steps=5,
                     steps=steps
                 )
