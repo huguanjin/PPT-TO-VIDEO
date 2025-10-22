@@ -313,14 +313,14 @@ const handleBatchExport = async () => {
     // eslint-disable-next-line no-console
     console.log('✅ 批量导出完成:', result)
     
-    // 🔧 检查是否应该自动启动工作流
+    // CRITICAL FIX: 导出完成后立即退出Screen模式(无论是否启动工作流)
+    screenStore.setScreening(false)
+    
+    // 检查是否应该自动启动工作流
     const autoStartWorkflow = localStorage.getItem('auto_start_workflow_after_export')
     
     if (autoStartWorkflow === 'true' && result.workflow_ready) {
       message.success(`批量导出成功！共 ${exportedImages.length} 张，正在启动工作流...`)
-      
-      // 🔧 FIX: 无论工作流是否启动成功，都立即退出Screen模式
-      screenStore.setScreening(false)
       
       try {
         // 🔧 NEW: 检查批量导入API是否已经返回了workflow_id

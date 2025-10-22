@@ -9,7 +9,7 @@
         </span>
         <div class="header-actions">
           <button @click="toggleCollapse" class="collapse-btn" :title="isCollapsed ? '展开' : '收起'">
-            {{ isCollapsed ? '⬆' : '⬇' }}
+            {{ isCollapsed ? '▼' : '▲' }}
           </button>
           <button @click="handleClose" class="close-btn" title="关闭">✕</button>
         </div>
