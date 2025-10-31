@@ -19,6 +19,9 @@ import sys
 flask_backend_root = Path(__file__).parent.parent
 sys.path.insert(0, str(flask_backend_root))
 
+# 导入工作流相关类
+from core.workflow_persistence import StepStatus
+
 # 创建Blueprint
 batch_import_bp = Blueprint('batch_import', __name__)
 logger = logging.getLogger(__name__)
@@ -279,7 +282,15 @@ async def _start_workflow_async(project_name: str, slides_metadata: Dict[str, An
                 if execution.steps and current_step_name in execution.steps:
                     step_info = execution.steps[current_step_name]
                     step_progress = step_info.progress
-                    step_message = step_info.message or '处理中'
+                    # WorkflowStepResult 没有 message 属性，使用 status 判断
+                    if step_info.status == StepStatus.RUNNING:
+                        step_message = f'进行中 ({int(step_info.progress)}%)'
+                    elif step_info.status == StepStatus.COMPLETED:
+                        step_message = '已完成'
+                    elif step_info.status == StepStatus.FAILED:
+                        step_message = step_info.error_message or '执行失败'
+                    else:
+                        step_message = '等待开始'
                 
                 # 计算总进度 (基于步骤数 + 当前步骤内进度)
                 total_progress = int((current_step_index / 5) * 100 + (step_progress / 5))
