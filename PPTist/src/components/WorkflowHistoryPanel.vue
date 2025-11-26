@@ -10,9 +10,14 @@
     <div v-if="!isCollapsed" class="panel-content">
       <div class="header">
         <h3>工作流任务</h3>
-        <button @click="refreshTasks" class="refresh-btn" :disabled="isLoading">
-          {{ isLoading ? '⏳' : '🔄' }}
-        </button>
+        <div class="header-actions">
+          <button @click="refreshTasks" class="refresh-btn" :disabled="isLoading">
+            {{ isLoading ? '⏳' : '🔄' }}
+          </button>
+          <button @click="togglePanel" class="close-btn" title="收起面板">
+            ✕
+          </button>
+        </div>
       </div>
       
       <div class="task-list">
@@ -252,6 +257,12 @@ onUnmounted(() => {
     font-size: 18px;
   }
   
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  
   .refresh-btn {
     background: rgba(255, 255, 255, 0.2);
     border: none;
@@ -267,6 +278,24 @@ onUnmounted(() => {
     &:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+    }
+  }
+  
+  .close-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
     }
   }
 }
