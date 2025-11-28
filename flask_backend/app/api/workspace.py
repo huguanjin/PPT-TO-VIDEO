@@ -48,8 +48,14 @@ class WorkspaceManager:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.history_dir.mkdir(parents=True, exist_ok=True)
         
-        # 创建output子目录
-        for subdir in ['slides', 'audio', 'video_clips', 'subtitles', 'final', 'scripts', 'temp']:
+        # 创建output子目录 - 只创建实际使用的目录
+        # audios: TTS生成的音频文件
+        # slides: 幻灯片图片
+        # video_clips: 视频片段
+        # subtitles: 字幕文件
+        # final: 最终合并视频
+        # temp: 临时文件
+        for subdir in ['slides', 'audios', 'video_clips', 'subtitles', 'final', 'temp']:
             (self.output_dir / subdir).mkdir(exist_ok=True)
     
     def has_workspace_content(self) -> bool:
@@ -194,12 +200,43 @@ class WorkspaceManager:
                 continue
             
             try:
-                info_file = archive_dir / 'archive_info.json'
-                if info_file.exists():
-                    with open(info_file, 'r', encoding='utf-8') as f:
-                        info = json.load(f)
-                else:
-                    # 兼容没有元数据的旧归档
+                # 优先读取 archive_metadata.json（工作流归档），其次读取 archive_info.json（手动归档）
+                info = None
+                project_name = None
+                
+                # 尝试读取工作流归档的元数据
+                workflow_metadata_file = archive_dir / 'archive_metadata.json'
+                if workflow_metadata_file.exists():
+                    with open(workflow_metadata_file, 'r', encoding='utf-8') as f:
+                        workflow_info = json.load(f)
+                    project_name = workflow_info.get('project_name')
+                    info = {
+                        'name': archive_dir.name,
+                        'archived_at': workflow_info.get('archived_at', datetime.fromtimestamp(
+                            archive_dir.stat().st_mtime).isoformat()),
+                        'folder_name': archive_dir.name
+                    }
+                
+                # 尝试读取手动归档的元数据
+                manual_info_file = archive_dir / 'archive_info.json'
+                if manual_info_file.exists():
+                    with open(manual_info_file, 'r', encoding='utf-8') as f:
+                        manual_info = json.load(f)
+                    if not info:
+                        info = manual_info
+                    # 如果手动归档有名称，优先使用它作为项目名称
+                    if not project_name and manual_info.get('name'):
+                        project_name = manual_info.get('name')
+                
+                # 尝试从 ppt_data.json 中读取项目名称
+                ppt_data_file = archive_dir / 'ppt_data.json'
+                if ppt_data_file.exists() and not project_name:
+                    with open(ppt_data_file, 'r', encoding='utf-8') as f:
+                        ppt_data = json.load(f)
+                    project_name = ppt_data.get('project_name')
+                
+                # 如果还没有info，使用默认值
+                if not info:
                     info = {
                         'name': archive_dir.name,
                         'archived_at': datetime.fromtimestamp(
@@ -221,12 +258,18 @@ class WorkspaceManager:
                     has_video = any(f.suffix.lower() in ['.mp4', '.avi', '.mov'] 
                                   for f in final_dir.iterdir())
                 
+                # 同时检查根目录的 final_video.mp4（工作流归档的视频位置）
+                if not has_video:
+                    final_video = archive_dir / 'final_video.mp4'
+                    has_video = final_video.exists()
+                
                 # 获取文件大小
                 total_size = sum(f.stat().st_size for f in archive_dir.rglob('*') if f.is_file())
                 size_mb = total_size / (1024 * 1024)  # 转换为MB
                 
                 archives.append({
-                    'name': info['name'],
+                    'name': info.get('name', archive_dir.name),
+                    'project_name': project_name or info.get('name', '未命名项目'),
                     'archived_at': info['archived_at'],
                     'slide_count': slide_count,
                     'has_video': has_video,
@@ -239,6 +282,7 @@ class WorkspaceManager:
                 # 添加基本信息
                 archives.append({
                     'name': archive_dir.name,
+                    'project_name': '未命名项目',
                     'archived_at': datetime.fromtimestamp(
                         archive_dir.stat().st_mtime
                     ).isoformat(),

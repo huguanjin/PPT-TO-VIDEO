@@ -374,7 +374,7 @@ class ProjectManager:
         # 统计项目文件
         file_stats = {
             "slides_count": len(list((project_dir / "slides").glob("*.png"))) if (project_dir / "slides").exists() else 0,
-            "audio_files": len(list((project_dir / "audio").glob("*.wav"))) if (project_dir / "audio").exists() else 0,
+            "audio_files": len(list((project_dir / "audios").glob("*.wav"))) if (project_dir / "audios").exists() else 0,
             "video_files": len(list((project_dir / "video_clips").glob("*.mp4"))) if (project_dir / "video_clips").exists() else 0,
             "subtitle_files": len(list((project_dir / "subtitles").glob("*.srt"))) if (project_dir / "subtitles").exists() else 0
         }

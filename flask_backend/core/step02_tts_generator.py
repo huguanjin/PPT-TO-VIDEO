@@ -95,6 +95,162 @@ class TTSGenerator:
                 script.get("script_id") or 
                 1)
     
+    def _extract_and_save_speech_scripts(self, scripts_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        提取和解析讲话稿内容，保存到 speech_scripts.json
+        
+        这是TTS生成前的预处理步骤，用于：
+        1. 统一提取和清理讲话稿文本
+        2. 按换行符分段（支持备注中的多段内容）
+        3. 生成便于调试的中间文件
+        4. 后续步骤可直接读取已处理的内容
+        
+        Args:
+            scripts_data: 原始脚本数据
+            
+        Returns:
+            处理后的讲话稿数据
+        """
+        self.logger.info("📝 开始提取和解析讲话稿内容...")
+        
+        scripts = scripts_data.get("scripts", [])
+        is_ai_optimized = self._is_ai_optimized_format(scripts)
+        
+        speech_scripts = {
+            "extraction_timestamp": datetime.now().isoformat(),
+            "total_slides": len(scripts),
+            "is_ai_optimized": is_ai_optimized,
+            "tts_engine": self.preferred_engine.value,
+            "tts_voice": self.tts_config.edge_voice,
+            "slides": [],
+            "statistics": {
+                "total_characters": 0,
+                "total_segments": 0,
+                "slides_with_content": 0,
+                "slides_without_content": 0,
+                "estimated_duration_seconds": 0.0
+            }
+        }
+        
+        total_chars = 0
+        total_segments = 0
+        slides_with_content = 0
+        slides_without_content = 0
+        
+        if is_ai_optimized:
+            # 处理AI优化的分段数据
+            for page_data in scripts:
+                page_num = page_data.get("page_num", 1)
+                segments = page_data.get("segments", [])
+                
+                slide_info = {
+                    "slide_number": page_num,
+                    "segments": [],
+                    "total_text": "",
+                    "character_count": 0,
+                    "has_content": False
+                }
+                
+                page_text_parts = []
+                for seg_idx, segment in enumerate(segments):
+                    raw_content = segment.get("content", "")
+                    clean_content = self._clean_html_tags(raw_content).strip()
+                    
+                    segment_info = {
+                        "segment_index": seg_idx,
+                        "raw_content": raw_content,
+                        "clean_content": clean_content,
+                        "character_count": len(clean_content),
+                        "has_content": bool(clean_content)
+                    }
+                    slide_info["segments"].append(segment_info)
+                    total_segments += 1
+                    
+                    if clean_content:
+                        page_text_parts.append(clean_content)
+                
+                slide_info["total_text"] = "\n".join(page_text_parts)
+                slide_info["character_count"] = len(slide_info["total_text"])
+                slide_info["has_content"] = bool(slide_info["total_text"])
+                
+                if slide_info["has_content"]:
+                    slides_with_content += 1
+                    total_chars += slide_info["character_count"]
+                else:
+                    slides_without_content += 1
+                
+                speech_scripts["slides"].append(slide_info)
+        else:
+            # 处理原始格式数据 - 支持按换行符分段
+            for i, script in enumerate(scripts):
+                slide_number = self._get_slide_number(script)
+                
+                # 提取文本内容（支持多种字段名）
+                raw_content = script.get("text", script.get("script_content", script.get("content", "")))
+                clean_content = self._clean_html_tags(raw_content).strip() if raw_content else ""
+                
+                # 按换行符分段（支持PPT备注中的多段内容）
+                segments = []
+                if clean_content:
+                    # 按换行符分割成多个片段
+                    text_segments = [seg.strip() for seg in clean_content.split('\n') if seg.strip()]
+                    for seg_idx, seg_text in enumerate(text_segments):
+                        segment_info = {
+                            "segment_index": seg_idx,
+                            "text": seg_text,
+                            "character_count": len(seg_text),
+                            "estimated_duration": max(1.0, len(seg_text) * 0.1)
+                        }
+                        segments.append(segment_info)
+                        total_segments += 1
+                
+                slide_info = {
+                    "slide_number": slide_number,
+                    "raw_content": raw_content,
+                    "clean_content": clean_content,
+                    "segments": segments,  # 按换行符分段后的片段列表
+                    "segment_count": len(segments),
+                    "character_count": len(clean_content),
+                    "has_content": bool(clean_content),
+                    "estimated_duration": max(3.0, len(clean_content) * 0.1) if clean_content else 3.0
+                }
+                
+                if slide_info["has_content"]:
+                    slides_with_content += 1
+                    total_chars += slide_info["character_count"]
+                    self.logger.info(f"  第 {slide_number} 页: {len(clean_content)} 字符, {len(segments)} 个片段")
+                    for seg in segments:
+                        self.logger.info(f"    片段{seg['segment_index']+1}: \"{seg['text'][:40]}{'...' if len(seg['text']) > 40 else ''}\"")
+                else:
+                    slides_without_content += 1
+                    self.logger.info(f"  第 {slide_number} 页: 无讲话稿内容")
+                
+                speech_scripts["slides"].append(slide_info)
+        
+        # 更新统计信息
+        speech_scripts["statistics"]["total_characters"] = total_chars
+        speech_scripts["statistics"]["total_segments"] = total_segments
+        speech_scripts["statistics"]["slides_with_content"] = slides_with_content
+        speech_scripts["statistics"]["slides_without_content"] = slides_without_content
+        # 估算语音时长（约每秒5个字符）
+        speech_scripts["statistics"]["estimated_duration_seconds"] = total_chars / 5.0
+        
+        # 保存到文件
+        speech_scripts_path = self.project_dir / "speech_scripts.json"
+        try:
+            import json
+            with open(speech_scripts_path, 'w', encoding='utf-8') as f:
+                json.dump(speech_scripts, f, ensure_ascii=False, indent=2)
+            self.logger.info(f"✅ 讲话稿内容已保存到: {speech_scripts_path}")
+        except Exception as e:
+            self.logger.error(f"保存speech_scripts.json失败: {e}")
+        
+        self.logger.info(f"📊 讲话稿统计: 总计 {total_chars} 字符, {total_segments} 个片段, "
+                        f"{slides_with_content} 页有内容, {slides_without_content} 页无内容, "
+                        f"预计时长 {speech_scripts['statistics']['estimated_duration_seconds']:.1f} 秒")
+        
+        return speech_scripts
+    
     async def generate_audio(self, scripts_data: Optional[Dict[str, Any]] = None, text: Optional[str] = None, 
                                output_file: Optional[str] = None, progress_callback: Optional[Callable[[int], None]] = None) -> Dict[str, Any]:
         """
@@ -133,6 +289,13 @@ class TTSGenerator:
             raise ValueError("必须提供scripts_data或text参数之一")
         try:
             self.logger.info("开始生成音频文件")
+            
+            # 🔧 第一步：提取和解析讲话稿内容，保存到 speech_scripts.json
+            speech_scripts = self._extract_and_save_speech_scripts(scripts_data)
+            
+            # 检查是否有可用内容
+            if speech_scripts["statistics"]["slides_with_content"] == 0:
+                self.logger.warning("⚠️ 所有幻灯片都没有讲话稿内容，将生成静默音频")
             
             # 确保音频目录存在
             self.file_manager.audio_dir.mkdir(parents=True, exist_ok=True)

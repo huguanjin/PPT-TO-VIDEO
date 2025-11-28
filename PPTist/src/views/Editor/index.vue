@@ -40,18 +40,15 @@
   <NotesPanel v-if="showNotesPanel" />
   <MarkupPanel v-if="showMarkupPanel" />
 
-  <!-- 归档列表弹窗 -->
-  <Modal
-    :visible="showArchiveList"
-    :width="800"
-    @closed="showArchiveList = false"
-  >
-    <ArchiveManager 
+  <!-- 归档管理弹窗 -->
+  <Modal v-model:visible="showArchiveList" :width="800">
+    <ArchiveManager
       :archives="workspace.archives.value"
       :loading="workspace.isLoading.value"
       @restore="handleRestoreArchive"
       @delete="handleDeleteArchive"
-      @refresh="workspace.loadArchiveList"
+      @refresh="() => workspace.loadArchiveList()"
+      @close="showArchiveList = false"
     />
   </Modal>
 
@@ -72,17 +69,6 @@
     @closed="closeAIPPTDialog()"
   >
     <AIPPTDialog />
-  </Modal>
-
-  <!-- 归档管理弹窗 -->
-  <Modal v-model:visible="showArchiveList" :width="800">
-    <ArchiveManager
-      :archives="workspace.archives.value"
-      :loading="workspace.isLoading.value"
-      @restore="handleRestoreArchive"
-      @delete="handleDeleteArchive"
-      @refresh="() => workspace.loadArchiveList()"
-    />
   </Modal>
 
   <!-- 通知管理器 -->

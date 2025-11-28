@@ -498,10 +498,8 @@ async def run_complete_workflow(project_name: str, workflow_id: str, config: Wor
             # 转换数据格式
             scripts_data = convert_slides_to_scripts(slides_data)
             
-            # 保存scripts_metadata.json
-            scripts_dir = project_dir / "scripts"
-            scripts_dir.mkdir(exist_ok=True)
-            scripts_metadata_path = scripts_dir / "scripts_metadata.json"
+            # 保存scripts_metadata.json到项目根目录
+            scripts_metadata_path = project_dir / "scripts_metadata.json"
             
             with open(scripts_metadata_path, 'w', encoding='utf-8') as f:
                 json.dump(scripts_data, f, ensure_ascii=False, indent=2)

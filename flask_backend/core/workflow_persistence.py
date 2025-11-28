@@ -60,6 +60,7 @@ class WorkflowExecution:
     total_progress: float = 0.0
     config: Optional[Dict[str, Any]] = None
     error_message: Optional[str] = None
+    archive_path: Optional[str] = None  # 🔧 归档路径，工作流完成后设置
 
 class WorkflowPersistenceManager:
     """工作流持久化管理器"""
@@ -75,34 +76,35 @@ class WorkflowPersistenceManager:
         
         # 定义工作流步骤和依赖关系
         # 🔧 移除了 step01b_ai_content_optimization (Phase 4已删除 ai_content_optimizer.py)
+        # 注意: 元数据文件存储在项目根目录，音频文件在 audios/ 目录
         self.workflow_steps = {
             "step01_data_preparation": {
                 "name": "数据准备",
                 "required_inputs": ["slides_metadata.json", "slides/*.png"],
-                "expected_outputs": ["scripts/scripts_metadata.json"],
+                "expected_outputs": ["scripts_metadata.json"],
                 "can_skip_if_complete": True
             },
             "step02_tts_generation": {
                 "name": "语音生成", 
-                "required_inputs": ["scripts/scripts_metadata.json"],
-                "expected_outputs": ["audio/*.wav", "audio/audio_metadata.json"],
+                "required_inputs": ["scripts_metadata.json"],
+                "expected_outputs": ["audios/*.wav", "audio_metadata.json"],
                 "can_skip_if_complete": True
             },
             "step03_video_generation": {
                 "name": "视频生成",
-                "required_inputs": ["slides/*.png", "audio/audio_metadata.json"],
-                "expected_outputs": ["video_clips/*.mp4", "video_clips/video_metadata.json"],
+                "required_inputs": ["slides/*.png", "audio_metadata.json"],
+                "expected_outputs": ["video_clips/*.mp4", "video_metadata.json"],
                 "can_skip_if_complete": True
             },
             "step04_subtitle_generation": {
                 "name": "字幕生成",
-                "required_inputs": ["scripts/scripts_metadata.json", "audio/audio_metadata.json"], 
+                "required_inputs": ["scripts_metadata.json", "audio_metadata.json"], 
                 "expected_outputs": ["subtitles/*.srt"],
                 "can_skip_if_complete": True
             },
             "step05_final_merge": {
                 "name": "最终合并",
-                "required_inputs": ["video_clips/*.mp4", "audio/*.wav", "subtitles/*.srt"],
+                "required_inputs": ["video_clips/*.mp4", "audios/*.wav", "subtitles/*.srt"],
                 "expected_outputs": ["final/final_video.mp4"],
                 "can_skip_if_complete": False  # 合并步骤总是执行
             }

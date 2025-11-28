@@ -649,3 +649,433 @@ def upload_project_images_chunked(project_name):
             'message': str(e)
         }), 500
 
+
+# ===== 历史记录管理 API =====
+
+def get_user_history_dir() -> Path:
+    """获取当前用户的历史记录目录"""
+    user_id = get_current_user_id()
+    flask_backend_dir = Path(__file__).parent.parent.parent
+    return flask_backend_dir / "history" / user_id
+
+
+@bp.route('/history', methods=['GET'])
+@optional_login
+def get_history_list():
+    """
+    获取用户的历史项目列表
+    
+    返回格式:
+    {
+        "success": true,
+        "data": [
+            {
+                "archive_id": "项目名_20231128_120000",
+                "project_name": "项目名",
+                "archived_at": "2023-11-28T12:00:00",
+                "video_available": true,
+                "thumbnail": "slides/slide_001.jpg",
+                "duration_seconds": 120.5
+            },
+            ...
+        ]
+    }
+    """
+    try:
+        history_dir = get_user_history_dir()
+        
+        if not history_dir.exists():
+            return jsonify({
+                'success': True,
+                'data': [],
+                'message': '暂无历史记录'
+            })
+        
+        history_list = []
+        
+        # 遍历历史目录
+        for archive_dir in sorted(history_dir.iterdir(), reverse=True):
+            if not archive_dir.is_dir():
+                continue
+            
+            metadata_path = archive_dir / "archive_metadata.json"
+            if not metadata_path.exists():
+                continue
+            
+            try:
+                with open(metadata_path, 'r', encoding='utf-8') as f:
+                    metadata = json.load(f)
+                
+                # 检查视频是否存在
+                video_path = archive_dir / "final_video.mp4"
+                video_available = video_path.exists()
+                
+                # 获取缩略图
+                thumbnail = None
+                slides_dir = archive_dir / "slides"
+                if slides_dir.exists():
+                    thumbnails = list(slides_dir.glob("*.jpg"))
+                    if thumbnails:
+                        thumbnail = f"history/{get_current_user_id()}/{archive_dir.name}/slides/{thumbnails[0].name}"
+                
+                history_item = {
+                    "archive_id": archive_dir.name,
+                    "project_name": metadata.get("project_name", "未命名项目"),
+                    "archived_at": metadata.get("archived_at"),
+                    "video_available": video_available,
+                    "thumbnail": thumbnail,
+                    "duration_seconds": metadata.get("total_duration_seconds"),
+                    "execution_id": metadata.get("execution_id"),
+                    "workflow_status": metadata.get("workflow_status", "unknown")
+                }
+                
+                history_list.append(history_item)
+                
+            except Exception as e:
+                logger.warning(f"读取历史记录失败: {archive_dir.name}: {e}")
+                continue
+        
+        return jsonify({
+            'success': True,
+            'data': history_list,
+            'total': len(history_list)
+        })
+        
+    except Exception as e:
+        logger.error(f"获取历史记录列表失败: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@bp.route('/history/<archive_id>', methods=['GET'])
+@optional_login
+def get_history_detail(archive_id):
+    """获取历史项目详情"""
+    try:
+        history_dir = get_user_history_dir()
+        archive_dir = history_dir / archive_id
+        
+        if not archive_dir.exists():
+            return jsonify({
+                'success': False,
+                'message': '历史记录不存在'
+            }), 404
+        
+        metadata_path = archive_dir / "archive_metadata.json"
+        if not metadata_path.exists():
+            return jsonify({
+                'success': False,
+                'message': '历史记录元数据不存在'
+            }), 404
+        
+        with open(metadata_path, 'r', encoding='utf-8') as f:
+            metadata = json.load(f)
+        
+        # 检查各文件是否存在
+        video_path = archive_dir / "final_video.mp4"
+        ppt_data_path = archive_dir / "ppt_data.json"
+        
+        detail = {
+            **metadata,
+            "video_available": video_path.exists(),
+            "video_size_mb": video_path.stat().st_size / (1024 * 1024) if video_path.exists() else 0,
+            "ppt_data_available": ppt_data_path.exists(),
+            "archive_dir": str(archive_dir)
+        }
+        
+        # 列出字幕文件
+        subtitles_dir = archive_dir / "subtitles"
+        if subtitles_dir.exists():
+            detail["subtitle_files"] = [f.name for f in subtitles_dir.glob("*.srt")]
+        
+        # 列出幻灯片预览
+        slides_dir = archive_dir / "slides"
+        if slides_dir.exists():
+            detail["slide_thumbnails"] = [f.name for f in slides_dir.glob("*.jpg")]
+        
+        return jsonify({
+            'success': True,
+            'data': detail
+        })
+        
+    except Exception as e:
+        logger.error(f"获取历史记录详情失败: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@bp.route('/history/<archive_id>', methods=['DELETE'])
+@optional_login
+def delete_history(archive_id):
+    """删除历史记录"""
+    try:
+        history_dir = get_user_history_dir()
+        archive_dir = history_dir / archive_id
+        
+        if not archive_dir.exists():
+            return jsonify({
+                'success': False,
+                'message': '历史记录不存在'
+            }), 404
+        
+        # 删除整个归档目录
+        shutil.rmtree(archive_dir)
+        
+        logger.info(f"已删除历史记录: {archive_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': '历史记录已删除'
+        })
+        
+    except Exception as e:
+        logger.error(f"删除历史记录失败: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@bp.route('/history/<archive_id>/preview', methods=['GET'])
+@optional_login
+def preview_history_video(archive_id):
+    """预览历史视频（流式播放）"""
+    from flask import send_file, request, Response
+    
+    try:
+        history_dir = get_user_history_dir()
+        archive_dir = history_dir / archive_id
+        video_path = archive_dir / "final_video.mp4"
+        
+        if not video_path.exists():
+            return jsonify({
+                'success': False,
+                'message': '视频文件不存在'
+            }), 404
+        
+        # 支持 Range 请求，用于视频拖动
+        file_size = video_path.stat().st_size
+        range_header = request.headers.get('Range')
+        
+        if range_header:
+            # 解析 Range 请求
+            byte_start = 0
+            byte_end = file_size - 1
+            
+            if range_header.startswith('bytes='):
+                range_spec = range_header[6:]
+                if '-' in range_spec:
+                    start_str, end_str = range_spec.split('-', 1)
+                    if start_str:
+                        byte_start = int(start_str)
+                    if end_str:
+                        byte_end = int(end_str)
+            
+            # 确保范围有效
+            byte_end = min(byte_end, file_size - 1)
+            content_length = byte_end - byte_start + 1
+            
+            def generate():
+                with open(video_path, 'rb') as f:
+                    f.seek(byte_start)
+                    remaining = content_length
+                    while remaining > 0:
+                        chunk_size = min(8192, remaining)
+                        chunk = f.read(chunk_size)
+                        if not chunk:
+                            break
+                        remaining -= len(chunk)
+                        yield chunk
+            
+            response = Response(
+                generate(),
+                status=206,
+                mimetype='video/mp4',
+                direct_passthrough=True
+            )
+            response.headers['Content-Range'] = f'bytes {byte_start}-{byte_end}/{file_size}'
+            response.headers['Content-Length'] = content_length
+            response.headers['Accept-Ranges'] = 'bytes'
+            return response
+        else:
+            # 完整文件响应
+            return send_file(
+                video_path,
+                mimetype='video/mp4',
+                as_attachment=False
+            )
+        
+    except Exception as e:
+        logger.error(f"预览历史视频失败: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@bp.route('/history/<archive_id>/download', methods=['GET'])
+@optional_login
+def download_history_video(archive_id):
+    """下载历史视频"""
+    from flask import send_file
+    
+    try:
+        history_dir = get_user_history_dir()
+        archive_dir = history_dir / archive_id
+        video_path = archive_dir / "final_video.mp4"
+        
+        if not video_path.exists():
+            return jsonify({
+                'success': False,
+                'message': '视频文件不存在'
+            }), 404
+        
+        # 获取项目名用于下载文件名
+        metadata_path = archive_dir / "archive_metadata.json"
+        download_name = f"{archive_id}.mp4"
+        if metadata_path.exists():
+            try:
+                with open(metadata_path, 'r', encoding='utf-8') as f:
+                    metadata = json.load(f)
+                    project_name = metadata.get("project_name", archive_id)
+                    download_name = f"{project_name}.mp4"
+            except:
+                pass
+        
+        return send_file(
+            video_path,
+            mimetype='video/mp4',
+            as_attachment=True,
+            download_name=download_name
+        )
+        
+    except Exception as e:
+        logger.error(f"下载历史视频失败: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@bp.route('/history/<archive_id>/download-bundle', methods=['GET'])
+@optional_login
+def download_history_bundle(archive_id):
+    """下载历史项目打包（视频+ppt_data.json）"""
+    from flask import send_file
+    import zipfile
+    import tempfile
+    
+    try:
+        history_dir = get_user_history_dir()
+        archive_dir = history_dir / archive_id
+        
+        if not archive_dir.exists():
+            return jsonify({
+                'success': False,
+                'message': '归档不存在'
+            }), 404
+        
+        video_path = archive_dir / "final_video.mp4"
+        ppt_data_path = archive_dir / "ppt_data.json"
+        
+        # 获取项目名用于 ZIP 文件名
+        metadata_path = archive_dir / "archive_metadata.json"
+        project_name = archive_id
+        if metadata_path.exists():
+            try:
+                with open(metadata_path, 'r', encoding='utf-8') as f:
+                    metadata = json.load(f)
+                    project_name = metadata.get("project_name", archive_id)
+            except:
+                pass
+        
+        # 创建临时 ZIP 文件
+        temp_zip = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+        temp_zip_path = temp_zip.name
+        temp_zip.close()
+        
+        try:
+            with zipfile.ZipFile(temp_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                # 添加视频文件
+                if video_path.exists():
+                    zipf.write(video_path, f"{project_name}.mp4")
+                
+                # 添加 ppt_data.json
+                if ppt_data_path.exists():
+                    zipf.write(ppt_data_path, "ppt_data.json")
+                
+                # 添加元数据
+                if metadata_path.exists():
+                    zipf.write(metadata_path, "archive_metadata.json")
+            
+            return send_file(
+                temp_zip_path,
+                mimetype='application/zip',
+                as_attachment=True,
+                download_name=f"{project_name}.zip"
+            )
+        finally:
+            # 延迟删除临时文件（Flask 会在响应完成后处理）
+            import atexit
+            atexit.register(lambda: os.unlink(temp_zip_path) if os.path.exists(temp_zip_path) else None)
+        
+    except Exception as e:
+        logger.error(f"下载历史项目打包失败: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@bp.route('/history/<archive_id>/restore', methods=['POST'])
+@optional_login
+def restore_history_to_workspace(archive_id):
+    """
+    将历史项目恢复到工作区
+    用于重新编辑或重新生成视频
+    """
+    try:
+        history_dir = get_user_history_dir()
+        archive_dir = history_dir / archive_id
+        
+        if not archive_dir.exists():
+            return jsonify({
+                'success': False,
+                'message': '历史记录不存在'
+            }), 404
+        
+        # 获取用户工作目录
+        output_dir = get_user_output_dir()
+        
+        # 恢复 ppt_data.json
+        ppt_data_src = archive_dir / "ppt_data.json"
+        ppt_data_dst = output_dir / "ppt_data.json"
+        
+        if ppt_data_src.exists():
+            shutil.copy2(ppt_data_src, ppt_data_dst)
+            logger.info(f"已恢复 ppt_data.json 到工作区")
+        else:
+            return jsonify({
+                'success': False,
+                'message': '归档中没有 ppt_data.json'
+            }), 400
+        
+        return jsonify({
+            'success': True,
+            'message': '历史项目已恢复到工作区',
+            'data': {
+                'restored_to': str(output_dir),
+                'archive_id': archive_id
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"恢复历史项目失败: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500

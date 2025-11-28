@@ -1,8 +1,11 @@
 ﻿"""
 增强的工作流执行器 - 支持断点续传和智能跳过
+支持工作流前清理和完成后归档
 """
 import asyncio
 import sys
+import shutil
+import json
 from pathlib import Path
 from typing import Dict, Any, Optional, Callable, List
 from datetime import datetime
@@ -19,7 +22,7 @@ from core.step02_tts_generator import TTSGenerator
 from core.step03_video_generator import VideoGenerator
 from core.step04_subtitle_generator import SubtitleGenerator
 from core.step05_final_merger import FFmpegFinalMerger
-from app.utils.logger import get_logger
+from app.utils.logger import get_logger, clear_log_directory, reset_logger_cleared_state
 from app.utils.file_manager import FileManager
 
 class EnhancedWorkflowExecutor:
@@ -39,18 +42,260 @@ class EnhancedWorkflowExecutor:
             "step04_subtitle_generation": self._execute_subtitle_generation,
             "step05_final_merge": self._execute_final_merge
         }
+        
+        # 🔧 历史目录配置
+        self.history_dir = flask_backend_dir / "history"
+    
+    def _cleanup_before_workflow(self) -> Dict[str, Any]:
+        """
+        工作流执行前清理历史数据
+        
+        清理内容:
+        - audios/ 目录下的所有音频文件  
+        - video_clips/ 目录下的所有视频片段
+        - subtitles/ 目录下的所有字幕文件
+        - final/ 目录下的所有最终视频
+        - temp/ 目录下的临时文件
+        - workflow_history/ 目录下的历史记录
+        - logs/ 目录下的所有日志文件
+        - 各种 *_metadata.json 文件（除了 ppt_data.json 和 workspace.json）
+        
+        保留内容:
+        - slides/ 目录（幻灯片图片）
+        - ppt_data.json（源PPT数据）
+        - workspace.json（工作区配置）
+        
+        Returns:
+            清理结果统计
+        """
+        self.logger.info("🧹 开始清理历史工作流数据...")
+        
+        cleanup_stats = {
+            "deleted_files": 0,
+            "deleted_dirs": 0,
+            "freed_space_mb": 0.0,
+            "errors": []
+        }
+        
+        # 🔧 清理日志目录 - 确保每次工作流只保留最新日志
+        logs_dir = self.project_dir / "logs"
+        if logs_dir.exists():
+            try:
+                clear_log_directory(logs_dir)
+                reset_logger_cleared_state()
+                self.logger.info("✅ 清理日志目录完成")
+            except Exception as e:
+                cleanup_stats["errors"].append(f"清理日志目录失败: {e}")
+        
+        # 需要清理的目录 - 只清理实际使用的目录
+        dirs_to_clean = [
+            self.project_dir / "audios",       # TTS生成的音频
+            self.project_dir / "video_clips",  # 视频片段
+            self.project_dir / "subtitles",    # 字幕文件
+            self.project_dir / "temp",         # 临时文件
+            self.project_dir / "workflow_history",  # 工作流历史
+        ]
+        
+        # 清理目录内容
+        for dir_path in dirs_to_clean:
+            if dir_path.exists():
+                try:
+                    for item in dir_path.iterdir():
+                        try:
+                            if item.is_file():
+                                size = item.stat().st_size
+                                item.unlink()
+                                cleanup_stats["deleted_files"] += 1
+                                cleanup_stats["freed_space_mb"] += size / (1024 * 1024)
+                            elif item.is_dir():
+                                shutil.rmtree(item)
+                                cleanup_stats["deleted_dirs"] += 1
+                        except Exception as e:
+                            cleanup_stats["errors"].append(f"{item}: {e}")
+                    self.logger.info(f"✅ 清理目录: {dir_path.name}")
+                except Exception as e:
+                    cleanup_stats["errors"].append(f"清理目录 {dir_path} 失败: {e}")
+        
+        # 清理 final/ 目录（删除所有历史视频文件）
+        final_dir = self.project_dir / "final"
+        if final_dir.exists():
+            try:
+                for video_file in final_dir.glob("*.mp4"):
+                    try:
+                        size = video_file.stat().st_size
+                        video_file.unlink()
+                        cleanup_stats["deleted_files"] += 1
+                        cleanup_stats["freed_space_mb"] += size / (1024 * 1024)
+                    except Exception as e:
+                        cleanup_stats["errors"].append(f"删除视频 {video_file}: {e}")
+                self.logger.info(f"✅ 清理 final 目录中的历史视频")
+            except Exception as e:
+                cleanup_stats["errors"].append(f"清理 final 目录失败: {e}")
+        
+        # 清理中间元数据文件（保留 ppt_data.json 和 workspace.json）
+        metadata_files_to_delete = [
+            "audio_metadata.json",
+            "video_metadata.json", 
+            "subtitles_metadata.json",
+            "scripts_metadata.json",
+            "merge_metadata.json",
+            "slides_metadata.json",  # 这个会重新生成
+            "speech_scripts.json",   # TTS前的讲话稿提取结果
+        ]
+        
+        for filename in metadata_files_to_delete:
+            file_path = self.project_dir / filename
+            if file_path.exists():
+                try:
+                    size = file_path.stat().st_size
+                    file_path.unlink()
+                    cleanup_stats["deleted_files"] += 1
+                    cleanup_stats["freed_space_mb"] += size / (1024 * 1024)
+                    self.logger.info(f"✅ 删除元数据: {filename}")
+                except Exception as e:
+                    cleanup_stats["errors"].append(f"删除 {filename}: {e}")
+        
+        # 清理 slides 目录下的 slides_metadata.json
+        slides_metadata = self.project_dir / "slides" / "slides_metadata.json"
+        if slides_metadata.exists():
+            try:
+                slides_metadata.unlink()
+                cleanup_stats["deleted_files"] += 1
+            except Exception as e:
+                cleanup_stats["errors"].append(f"删除 slides_metadata.json: {e}")
+        
+        self.logger.info(f"🧹 清理完成: 删除 {cleanup_stats['deleted_files']} 个文件, "
+                        f"{cleanup_stats['deleted_dirs']} 个目录, "
+                        f"释放 {cleanup_stats['freed_space_mb']:.2f} MB")
+        
+        if cleanup_stats["errors"]:
+            self.logger.warning(f"⚠️ 清理过程中有 {len(cleanup_stats['errors'])} 个错误")
+        
+        return cleanup_stats
+    
+    def _archive_completed_workflow(self, execution: WorkflowExecution) -> Dict[str, Any]:
+        """
+        工作流完成后归档结果到 history 目录
+        
+        只归档核心文件:
+        - 最终视频文件 (final_video.mp4)
+        - ppt_data.json（源数据）
+        - 执行元数据 (archive_metadata.json)
+        
+        归档目录结构:
+        history/{user_id}/{project_name}_{timestamp}/
+            ├── final_video.mp4
+            ├── ppt_data.json
+            └── archive_metadata.json
+        
+        注意: 工作流执行完成后会保留所有中间结果文件便于排查问题，
+        只有在重新执行工作流时才会清理上一次的历史记录。
+        
+        Args:
+            execution: 工作流执行记录
+            
+        Returns:
+            归档结果
+        """
+        self.logger.info("📦 开始归档工作流结果...")
+        
+        archive_result = {
+            "success": False,
+            "archive_path": None,
+            "archived_files": [],
+            "errors": []
+        }
+        
+        try:
+            # 从项目目录路径提取用户ID（目录名就是用户ID）
+            user_id = self.project_dir.name
+            
+            # 生成归档目录名
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            project_name = execution.project_name or "unnamed"
+            # 清理项目名中的特殊字符
+            safe_project_name = "".join(c if c.isalnum() or c in ('_', '-') else '_' for c in project_name)
+            archive_name = f"{safe_project_name}_{timestamp}"
+            
+            # 创建归档目录
+            archive_dir = self.history_dir / user_id / archive_name
+            archive_dir.mkdir(parents=True, exist_ok=True)
+            
+            self.logger.info(f"📁 归档目录: {archive_dir}")
+            
+            # 1. 复制最终视频
+            final_dir = self.project_dir / "final"
+            if final_dir.exists():
+                video_files = list(final_dir.glob("*.mp4"))
+                if video_files:
+                    # 取最新的视频文件
+                    latest_video = max(video_files, key=lambda f: f.stat().st_mtime)
+                    dest_video = archive_dir / "final_video.mp4"
+                    shutil.copy2(latest_video, dest_video)
+                    archive_result["archived_files"].append(str(dest_video))
+                    self.logger.info(f"✅ 归档视频: {latest_video.name}")
+            
+            # 2. 复制 ppt_data.json
+            ppt_data_path = self.project_dir / "ppt_data.json"
+            if ppt_data_path.exists():
+                dest_ppt = archive_dir / "ppt_data.json"
+                shutil.copy2(ppt_data_path, dest_ppt)
+                archive_result["archived_files"].append(str(dest_ppt))
+                self.logger.info("✅ 归档 ppt_data.json")
+            
+            # 注意：不再归档 subtitles/ 和 slides/ 目录
+            # 这些文件保留在用户工作目录中便于排查问题
+            # 只有重新执行工作流时才会被清理
+            
+            # 3. 创建归档元数据
+            archive_metadata = {
+                "project_name": project_name,
+                "user_id": user_id,
+                "archived_at": datetime.now().isoformat(),
+                "execution_id": execution.execution_id,
+                "workflow_status": execution.workflow_status.value if execution.workflow_status else "unknown",
+                "started_at": execution.started_at.isoformat() if execution.started_at else None,
+                "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
+                "total_duration_seconds": (execution.completed_at - execution.started_at).total_seconds() 
+                    if execution.started_at and execution.completed_at else None,
+                "archived_files": [str(f) for f in archive_result["archived_files"]],
+                "source_dir": str(self.project_dir)
+            }
+            
+            metadata_path = archive_dir / "archive_metadata.json"
+            with open(metadata_path, 'w', encoding='utf-8') as f:
+                json.dump(archive_metadata, f, indent=2, ensure_ascii=False)
+            archive_result["archived_files"].append(str(metadata_path))
+            
+            archive_result["success"] = True
+            archive_result["archive_path"] = str(archive_dir)
+            
+            self.logger.info(f"📦 归档完成: {len(archive_result['archived_files'])} 个文件 -> {archive_dir}")
+            
+            # 注意：归档后不再清理用户工作目录
+            # 保留所有中间结果文件便于后续排查问题
+            # 只有在重新执行工作流时才会清理上一次的历史记录
+            
+        except Exception as e:
+            error_msg = f"归档失败: {e}"
+            self.logger.error(error_msg, exc_info=True)
+            archive_result["errors"].append(error_msg)
+        
+        return archive_result
     
     async def start_workflow(self, project_name: str, config: Optional[Dict[str, Any]] = None,
                            force_restart: bool = False,
                            progress_callback: Optional[Callable] = None) -> WorkflowExecution:
         """启动工作流（支持断点续传）"""
         
-        # 检查是否有未完成的执行记录
-        if not force_restart:
-            latest_execution = self.persistence_manager.get_latest_execution(project_name)
-            if latest_execution and self.persistence_manager.can_resume_workflow(latest_execution):
-                self.logger.info(f"发现未完成的工作流，从断点继续执行: {latest_execution.execution_id}")
-                return await self._resume_workflow(latest_execution, progress_callback)
+        # 🔧 新增：每次启动工作流前清理历史数据
+        # 这确保每次执行都是全新的，只保留 ppt_data.json 作为起点
+        self.logger.info("🚀 准备启动新工作流，先清理历史数据...")
+        cleanup_result = self._cleanup_before_workflow()
+        self.logger.info(f"🧹 清理完成: {cleanup_result}")
+        
+        # 不再检查断点续传，每次都是全新执行
+        # 因为每个用户只有一个工作目录，每次只能执行一个工作流
         
         # 创建新的执行记录
         execution = self.persistence_manager.create_new_execution(project_name, config)
@@ -168,6 +413,16 @@ class EnhancedWorkflowExecutor:
             self.persistence_manager.mark_workflow_completed(execution)
             self.logger.info(f"工作流执行完成: {execution.execution_id}")
             
+            # 🔧 新增：工作流成功完成后归档结果到 history 目录
+            self.logger.info("📦 开始归档工作流结果...")
+            archive_result = self._archive_completed_workflow(execution)
+            if archive_result["success"]:
+                self.logger.info(f"✅ 归档成功: {archive_result['archive_path']}")
+                # 将归档路径保存到执行记录中
+                execution.archive_path = archive_result["archive_path"]
+            else:
+                self.logger.warning(f"⚠️ 归档失败: {archive_result['errors']}")
+            
             if progress_callback:
                 await progress_callback(execution)
             
@@ -214,44 +469,42 @@ class EnhancedWorkflowExecutor:
             }
             
             for i, slide in enumerate(ppt_data.get("slides", []), 1):
-                # 从PPTist slide中正确提取remark文本
+                # 从PPTist slide中提取讲话稿文本
                 import re
-                import json as json_lib
                 
-                # PPTist数据结构：remark在content字段的JSON字符串中
-                raw_remark = ""
-                content_str = slide.get("content", "")
-                if content_str:
-                    try:
-                        # 解析content中的JSON
-                        content_data = json_lib.loads(content_str)
-                        raw_remark = content_data.get("remark", "")
-                        self.logger.debug(f"第{i}页原始remark: {raw_remark[:100]}...")
-                    except (json_lib.JSONDecodeError, ValueError) as e:
-                        self.logger.warning(f"第{i}页content解析失败: {e}")
-                        raw_remark = ""
+                # PPTist数据结构：
+                # - remark: PPT备注内容（HTML格式）- 作为讲话稿来源
+                # - script: PPT页面的脚本内容（非讲话稿）
+                # 使用remark字段作为讲话稿，按换行符分段
+                raw_remark = slide.get("remark", "") or ""
                 
-                # 处理PPTist的多个<p>标签格式，保留手动分行
                 if raw_remark:
-                    # 1. 将连续的</p><p>标签对转换为换行符（这是PPTist的手动分行格式）
-                    clean_remark = re.sub(r'</p>\s*<p[^>]*>', '\n', raw_remark, flags=re.IGNORECASE)
+                    # 处理PPTist的HTML格式，提取文本并保留分段信息
+                    # 1. 将连续的</p><p>标签对转换为换行符（PPTist的手动分行格式）
+                    clean_text = re.sub(r'</p>\s*<p[^>]*>', '\n', raw_remark, flags=re.IGNORECASE)
                     # 2. 将各种形式的<br>标签转换为换行符
-                    clean_remark = re.sub(r'<br\s*/?>', '\n', clean_remark, flags=re.IGNORECASE)
+                    clean_text = re.sub(r'<br\s*/?>', '\n', clean_text, flags=re.IGNORECASE)
                     # 3. 去除所有剩余的HTML标签
-                    clean_remark = re.sub(r'<[^>]+>', '', clean_remark)
-                    # 4. 清理多余的空白字符，但保留换行符
-                    clean_remark = re.sub(r'[ \t]+', ' ', clean_remark)  # 将多个空格/制表符合并为单个空格
-                    clean_remark = re.sub(r' *\n *', '\n', clean_remark)  # 清理换行符前后的空格
-                    clean_remark = clean_remark.strip()  # 去除首尾空白
-                    self.logger.debug(f"第{i}页处理后文本: {clean_remark}")
+                    clean_text = re.sub(r'<[^>]+>', '', clean_text)
+                    # 4. HTML实体解码
+                    import html
+                    clean_text = html.unescape(clean_text)
+                    # 5. 清理多余的空白字符，但保留换行符
+                    clean_text = re.sub(r'[ \t]+', ' ', clean_text)
+                    clean_text = re.sub(r' *\n *', '\n', clean_text)
+                    # 6. 移除空行
+                    clean_text = re.sub(r'\n+', '\n', clean_text)
+                    clean_text = clean_text.strip()
+                    
+                    self.logger.info(f"第{i}页备注内容: \"{clean_text[:80]}{'...' if len(clean_text) > 80 else ''}\"")
                 else:
-                    clean_remark = ""
-                    self.logger.debug(f"第{i}页无remark内容")
+                    clean_text = ""
+                    self.logger.info(f"第{i}页无备注内容")
                 
                 standard_slide = {
                     "slide_id": i,
-                    "text": clean_remark,  # 使用text字段作为主要文本内容
-                    "duration": max(3.0, len(clean_remark) * 0.1),
+                    "text": clean_text,  # 使用text字段存储清理后的备注内容
+                    "duration": max(3.0, len(clean_text) * 0.1) if clean_text else 3.0,
                     "background": slide.get("background", {}),
                     "elements": slide.get("elements", [])
                 }
@@ -286,7 +539,7 @@ class EnhancedWorkflowExecutor:
         
         progress_callback(100.0)
         
-        return ["scripts/scripts_metadata.json"]
+        return ["scripts_metadata.json"]  # 保存在项目根目录
     
     async def _execute_tts_generation(self, execution: WorkflowExecution,
                                     progress_callback: Callable) -> List[str]:

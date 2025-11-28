@@ -25,9 +25,8 @@ class FileManager:
         
         # 定义项目目录结构
         self.slides_dir = self.base_path / "slides"
-        self.audio_dir = self.base_path / "audios"
+        self.audio_dir = self.base_path / "audios"  # TTS生成的音频
         self.temp_dir = self.base_path / "temp"
-        self.output_dir = self.base_path / "output"
         self.subtitles_dir = self.base_path / "subtitles"
         self.video_clips_dir = self.base_path / "video_clips"
         self.final_dir = self.base_path / "final"
@@ -215,10 +214,11 @@ class FileManager:
         """创建项目目录结构"""
         try:
             self.ensure_dir(self.slides_dir)
-            self.ensure_dir(self.audio_dir)
+            self.ensure_dir(self.audio_dir)  # audios/
             self.ensure_dir(self.temp_dir)
-            self.ensure_dir(self.output_dir)
             self.ensure_dir(self.subtitles_dir)
+            self.ensure_dir(self.video_clips_dir)
+            self.ensure_dir(self.final_dir)
             logger.info("项目目录结构创建完成")
         except Exception as e:
             logger.error(f"创建目录结构失败: {e}")

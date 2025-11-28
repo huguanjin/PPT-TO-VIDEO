@@ -8,6 +8,7 @@ import { useSlidesStore } from '@/store'
 
 export interface ArchiveItem {
   name: string
+  project_name: string
   archived_at: string
   slide_count: number
   has_video: boolean
