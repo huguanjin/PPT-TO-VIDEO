@@ -6,6 +6,7 @@
 import { ref } from 'vue'
 import { toPng, toJpeg } from 'html-to-image'
 import { useSlidesStore } from '@/store'
+import { getAuthHeaders, getAuthJsonHeaders } from '@/utils/authFetch'
 
 // 导入新的直接幻灯片捕获功能
 import { generateImagesWithDirectCapture } from './videoExport/imageGenerators'
@@ -243,6 +244,7 @@ export class PPTistWorkflowExporter {
     
     const response = await fetch(`${this.config.backendUrl}/api/pptist_export/upload/file`, {
       method: 'POST',
+      headers: getAuthHeaders(),
       body: formData
     })
     
@@ -259,9 +261,7 @@ export class PPTistWorkflowExporter {
   private async uploadImageToBackend(imageDataUrl: string, slide: any, index: number): Promise<any> {
     const response = await fetch(`${this.config.backendUrl}/api/pptist_export/upload/base64`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: getAuthJsonHeaders(),
       body: JSON.stringify({
         image_data: imageDataUrl,
         project_name: this.config.projectName,
@@ -296,7 +296,9 @@ export class PPTistWorkflowExporter {
    * 检查导出状态
    */
   async checkExportStatus(): Promise<any> {
-    const response = await fetch(`${this.config.backendUrl}/api/pptist_export/export/status/${this.config.projectName}`)
+    const response = await fetch(`${this.config.backendUrl}/api/pptist_export/export/status/${this.config.projectName}`, {
+      headers: getAuthHeaders(),
+    })
     
     if (!response.ok) {
       throw new Error(`获取状态失败: ${response.status}`)

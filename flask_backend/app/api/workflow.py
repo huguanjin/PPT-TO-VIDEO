@@ -9,7 +9,11 @@ import time
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, g
+
+# 导入认证装饰器和存储服务
+from app.auth.decorators import optional_login, get_current_user_id
+from app.services.storage_service import StorageService
 
 # 添加项目根目录到Python路径
 # 添加flask_backend目录到Python路径
@@ -127,6 +131,11 @@ def start_workflow():
 def get_workflow_status(task_id):
     """获取工作流处理状态"""
     try:
+        # 🔧 每次查询时重新从文件加载，确保获取最新状态
+        load_task_statuses()
+        
+        logger.debug(f"查询任务状态: {task_id}, 当前已加载任务数: {len(task_statuses)}")
+        
         # 从任务状态管理器获取真实状态
         if task_id in task_statuses:
             task_status = task_statuses[task_id]
@@ -150,7 +159,7 @@ def get_workflow_status(task_id):
             })
         else:
             # 任务不存在，可能是服务器重启导致的，返回未找到状态
-            logger.warning(f"任务 {task_id} 不存在，可能是服务器重启导致的")
+            logger.warning(f"任务 {task_id} 不存在，已加载的任务IDs: {list(task_statuses.keys())}")
             return jsonify({
                 'success': True,
                 'workflow': {
@@ -287,13 +296,18 @@ def download_result(task_id):
 
 
 @bp.route('/download/<project_name>/<filename>', methods=['GET'])
+@optional_login
 def download_project_file(project_name, filename):
     """下载项目文件"""
     try:
         from flask import send_file, current_app
         
-        # 构建文件路径 - 单机版本：直接使用output目录
-        output_dir = Path(current_app.config.get('OUTPUT_FOLDER', 'output'))
+        # 获取当前用户ID
+        user_id = get_current_user_id()
+        
+        # 使用StorageService获取用户工作目录
+        storage_service = StorageService()
+        output_dir = storage_service.get_user_work_dir(user_id)
         file_path = output_dir / filename
         
         # 检查文件是否存在
@@ -398,6 +412,7 @@ def cancel_workflow(task_id):
 
 
 @bp.route('/execute', methods=['POST'])
+@optional_login
 def execute_workflow():
     """执行工作流（兼容前端调用）"""
     try:
@@ -418,12 +433,17 @@ def execute_workflow():
         # 生成任务ID
         task_id = f"workflow_{int(time.time() * 1000)}"
         
-        output_dir = Path(current_app.config.get('OUTPUT_FOLDER', 'output'))
-        # 🔧 修复：使用项目根目录而不是output目录，确保配置文件路径正确
-        # 项目根目录 = output目录的父级的父级 (flask_backend/output -> flask_backend -> 项目根)
-        project_dir = output_dir.parent.parent
-        logger.info(f"🔧 项目根目录设置为: {project_dir}")
-        logger.info(f"🔧 输出目录: {output_dir}")
+        # 🔧 多用户支持：获取当前用户ID，使用用户专属工作目录
+        user_id = get_current_user_id()
+        storage_service = StorageService()
+        output_dir = storage_service.get_user_work_dir(user_id)
+        
+        # 🔧 项目根目录设置为 flask_backend 目录（用于读取配置文件等）
+        project_dir = storage_service.base_dir
+        
+        logger.info(f"🔧 用户ID: {user_id}")
+        logger.info(f"🔧 用户工作目录: {output_dir}")
+        logger.info(f"🔧 项目根目录: {project_dir}")
         
         if not project_dir.exists():
             return jsonify({
@@ -517,6 +537,8 @@ def execute_workflow_task(project_name: str, task_id: str, project_dir: Path, ou
     """实际执行工作流任务 - 使用增强的工作流执行器"""
     try:
         logger.info(f"开始执行工作流任务: {project_name}")
+        logger.info(f"🔧 工作流工作目录: {output_dir}")
+        logger.info(f"🔧 工作流项目目录: {project_dir}")
         
         # 初始化步骤状态
         steps = [
@@ -713,21 +735,24 @@ def convert_slides_to_scripts(ppt_data, project_name):
 # 任务状态管理
 task_statuses = {}
 
+# 获取 flask_backend 目录的绝对路径
+_FLASK_BACKEND_DIR = Path(__file__).parent.parent.parent
+
 def save_task_statuses():
-    """保存任务状态到文件"""
+    """保存任务状态到文件（使用 flask_backend/output/task_status/ 目录）"""
     try:
-        status_file = Path('output/task_status/task_statuses.json')
-        status_file.parent.mkdir(exist_ok=True)
+        status_file = _FLASK_BACKEND_DIR / 'output' / 'task_status' / 'task_statuses.json'
+        status_file.parent.mkdir(parents=True, exist_ok=True)
         with open(status_file, 'w', encoding='utf-8') as f:
             json.dump(task_statuses, f, ensure_ascii=False, indent=2)
     except Exception as e:
         logger.error(f"保存任务状态失败: {e}")
 
 def load_task_statuses():
-    """从文件加载任务状态"""
+    """从文件加载任务状态（使用 flask_backend/output/task_status/ 目录）"""
     try:
         global task_statuses
-        status_file = Path('output/task_status/task_statuses.json')
+        status_file = _FLASK_BACKEND_DIR / 'output' / 'task_status' / 'task_statuses.json'
         if status_file.exists():
             with open(status_file, 'r', encoding='utf-8') as f:
                 task_statuses = json.load(f)
@@ -737,9 +762,23 @@ def load_task_statuses():
         logger.error(f"加载任务状态失败: {e}")
         task_statuses = {}
 
-def update_task_status(task_id, status, message, progress, result=None, project_name='', current_step=1, total_steps=5, steps=None):
-    """更新任务状态"""
-    task_statuses[task_id] = {
+def update_task_status(task_id, status, message, progress, result=None, project_name='', current_step=1, total_steps=5, steps=None, user_id=None):
+    """
+    更新任务状态（同时保存到文件和MongoDB）
+    
+    Args:
+        task_id: 任务ID
+        status: 状态 (pending/running/completed/failed)
+        message: 状态消息
+        progress: 进度百分比 (0-100)
+        result: 执行结果
+        project_name: 项目名称
+        current_step: 当前步骤
+        total_steps: 总步骤数
+        steps: 步骤详情列表
+        user_id: 用户ID（用于MongoDB关联）
+    """
+    task_data = {
         'status': status,
         'message': message,
         'progress': progress,
@@ -750,7 +789,43 @@ def update_task_status(task_id, status, message, progress, result=None, project_
         'steps': steps or [],
         'updated_at': datetime.now().isoformat()
     }
+    
+    # 1. 更新内存中的状态
+    task_statuses[task_id] = task_data
+    
+    # 2. 保存到文件
     save_task_statuses()
+    
+    # 3. 同步到 MongoDB tasks 表
+    try:
+        from app.database import get_db
+        db = get_db()
+        if db is not None:
+            # 构建MongoDB文档
+            mongo_doc = {
+                'task_id': task_id,
+                'user_id': user_id,
+                'project_name': project_name,
+                'status': status,
+                'message': message,
+                'progress': progress,
+                'result': result,
+                'current_step': current_step,
+                'total_steps': total_steps,
+                'steps': steps or [],
+                'updated_at': datetime.now()
+            }
+            
+            # 使用 upsert 更新或插入
+            db.tasks.update_one(
+                {'task_id': task_id},
+                {'$set': mongo_doc, '$setOnInsert': {'created_at': datetime.now()}},
+                upsert=True
+            )
+            logger.debug(f"任务状态已同步到MongoDB: {task_id}")
+    except Exception as e:
+        # MongoDB同步失败不影响主流程，只记录日志
+        logger.warning(f"同步任务状态到MongoDB失败: {e}")
 
 # 启动时加载任务状态
 load_task_statuses()

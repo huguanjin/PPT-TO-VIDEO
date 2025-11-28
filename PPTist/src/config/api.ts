@@ -3,10 +3,10 @@
  * 适配VideoLingo技术融合主入口
  */
 
-// 从环境变量获取API基础URL，默认指向VideoLingo技术融合主入口
-export const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8004'
+// Flask 后端 API 地址（统一使用5000端口）
+export const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
 
-// 备用API地址（传统Flask应用）
+// 备用API地址（保持兼容）
 export const API_FALLBACK_URL: string = import.meta.env.VITE_API_FALLBACK_URL || 'http://localhost:5000'
 
 // 后端服务配置

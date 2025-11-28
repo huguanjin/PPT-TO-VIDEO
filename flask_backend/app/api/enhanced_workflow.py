@@ -18,6 +18,10 @@ from werkzeug.utils import secure_filename
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
 
+# 导入认证相关模块
+from app.services.storage_service import StorageService
+from app.utils.auth_decorators import optional_login, get_current_user_id
+
 # 类型检查导入
 if TYPE_CHECKING:
     from core.step04_subtitle_generator import SubtitleGenerator as RealSubtitleGenerator
@@ -279,10 +283,17 @@ def update_enhanced_config():
         return jsonify({"success": False, "message": f"更新配置失败: {str(e)}"}), 500
 
 @bp.route('/import', methods=['POST'])
+@optional_login
 def import_project():
     """增强的项目导入功能 - 合并FastAPI的FormData处理"""
     try:
         logger.info("开始处理项目导入请求")
+        
+        # 🔧 多用户支持：获取当前用户ID
+        user_id = get_current_user_id()
+        storage_service = StorageService()
+        
+        logger.info(f"🔧 用户ID: {user_id}")
         
         # 获取项目数据
         project_data_str = request.form.get("project_data")
@@ -307,9 +318,11 @@ def import_project():
         
         logger.info(f"项目名称: {project_name}")
         
-        # 单机版本：直接使用当前目录下的output目录作为项目目录
-        project_dir = Path("output")
+        # 🔧 多用户支持：使用用户专属工作目录
+        project_dir = storage_service.get_user_work_dir(user_id)
         project_dir.mkdir(parents=True, exist_ok=True)
+        
+        logger.info(f"🔧 用户工作目录: {project_dir}")
         
         # 保存slides_metadata
         slides_dir = project_dir / "slides"
@@ -367,6 +380,7 @@ def import_project():
         return jsonify({"success": False, "message": f"项目导入失败: {str(e)}"}), 500
 
 @bp.route('/execute', methods=['POST'])
+@optional_login
 def execute_workflow():
     """执行完整工作流 - 合并FastAPI的异步执行功能"""
     try:
@@ -380,8 +394,13 @@ def execute_workflow():
         
         logger.info(f"开始执行工作流，项目名称: {project_name}")
         
-        # 单机版本：直接使用当前目录下的output目录
-        project_dir = Path("output")
+        # 🔧 多用户支持：获取当前用户ID，使用用户专属工作目录
+        user_id = get_current_user_id()
+        storage_service = StorageService()
+        project_dir = storage_service.get_user_work_dir(user_id)
+        
+        logger.info(f"🔧 用户ID: {user_id}")
+        logger.info(f"🔧 用户工作目录: {project_dir}")
         
         if not project_dir.exists():
             logger.error(f"错误: 输出目录不存在: {project_dir}")
@@ -412,7 +431,7 @@ def execute_workflow():
         config = WorkflowConfig(data.get('config'))
         thread = threading.Thread(
             target=run_complete_workflow_sync,
-            args=(project_name, workflow_id, config)
+            args=(project_name, workflow_id, config, project_dir)  # 🔧 传入用户工作目录
         )
         thread.daemon = True
         thread.start()
@@ -428,13 +447,13 @@ def execute_workflow():
         logger.error(f"工作流启动失败: {e}")
         return jsonify({"success": False, "message": f"工作流启动失败: {str(e)}"}), 500
 
-def run_complete_workflow_sync(project_name: str, workflow_id: str, config: WorkflowConfig):
+def run_complete_workflow_sync(project_name: str, workflow_id: str, config: WorkflowConfig, project_dir: Path):
     """运行完整工作流的同步包装器"""
     try:
         # 创建新的事件循环来运行异步函数
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(run_complete_workflow(project_name, workflow_id, config))
+        loop.run_until_complete(run_complete_workflow(project_name, workflow_id, config, project_dir))
     except Exception as e:
         logger.error(f"工作流执行异常: {str(e)}")
         # 更新失败状态
@@ -445,11 +464,10 @@ def run_complete_workflow_sync(project_name: str, workflow_id: str, config: Work
     finally:
         loop.close()
 
-async def run_complete_workflow(project_name: str, workflow_id: str, config: WorkflowConfig):
+async def run_complete_workflow(project_name: str, workflow_id: str, config: WorkflowConfig, project_dir: Path):
     """运行完整工作流 - 从FastAPI移植"""
     try:
-        # 单机版本：直接使用当前目录下的output目录
-        project_dir = Path("output")
+        # 🔧 多用户支持：使用传入的用户工作目录
         logger = get_logger(__name__, project_dir / "logs")
         
         # 更新配置（如果提供）
@@ -668,11 +686,15 @@ def get_workflow_status(workflow_id):
         return jsonify({"success": False, "message": str(e)}), 500
 
 @bp.route('/projects', methods=['GET'])
+@optional_login
 def list_projects():
-    """列出所有项目 - 单机版本返回当前工作空间信息"""
+    """列出所有项目 - 多用户版本返回用户工作空间信息"""
     try:
-        # 使用当前目录下的output目录
-        output_dir = Path("output")
+        # 🔧 多用户支持：获取当前用户ID，使用用户专属工作目录
+        user_id = get_current_user_id()
+        storage_service = StorageService()
+        output_dir = storage_service.get_user_work_dir(user_id)
+        
         if not output_dir.exists():
             return jsonify({"success": True, "projects": []})
         
@@ -730,11 +752,16 @@ def list_projects():
         return jsonify({"success": False, "message": f"获取项目列表失败: {str(e)}"}), 500
 
 @bp.route('/download/<project_name>/<filename>', methods=['GET'])
+@optional_login
 def download_video(project_name, filename):
     """下载视频文件"""
     try:
-        # 单机版本：直接从当前目录下的output/final目录下载
-        video_path = Path("output") / "final" / filename
+        # 🔧 多用户支持：从用户专属目录下载
+        user_id = get_current_user_id()
+        storage_service = StorageService()
+        user_dir = storage_service.get_user_work_dir(user_id)
+        video_path = user_dir / "final" / filename
+        
         if not video_path.exists():
             return jsonify({"success": False, "message": "视频文件不存在"}), 404
         

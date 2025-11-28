@@ -6,16 +6,21 @@ import os
 from pathlib import Path
 from flask import Blueprint, send_file, current_app, jsonify
 from app.utils.logger import get_logger
+from app.auth.decorators import optional_login, get_current_user_id
+from app.services.storage_service import StorageService
 
 bp = Blueprint('download', __name__)
 logger = get_logger(__name__)
 
 @bp.route('/<project_name>/<filename>', methods=['GET'])
+@optional_login
 def download_project_file(project_name, filename):
     """下载项目文件"""
     try:
-        # 构建文件路径
-        output_dir = Path(current_app.config.get('OUTPUT_FOLDER', 'output'))
+        # 获取当前用户的工作目录
+        user_id = get_current_user_id()
+        storage_service = StorageService()
+        output_dir = storage_service.get_user_work_dir(user_id)
         
         # 对于final_video.mp4，需要查找final目录中的最新文件
         if filename == 'final_video.mp4':

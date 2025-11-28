@@ -17,6 +17,7 @@ import { storeToRefs } from 'pinia'
 import { toJpeg } from 'html-to-image'
 import { useSlidesStore } from '@/store'
 import message from '@/utils/message'
+import { getAuthJsonHeaders } from '@/utils/authFetch'
 
 interface ExportResult {
   projectName: string
@@ -161,9 +162,7 @@ export const useBatchExport = () => {
 
       const response = await fetch(`${backendUrl}/api/import-slides-batch`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthJsonHeaders(),
         body: JSON.stringify(exportData)
       })
 

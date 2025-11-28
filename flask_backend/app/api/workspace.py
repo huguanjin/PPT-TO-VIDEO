@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 工作空间管理API
-支持单一工作区模式和智能归档功能
+支持多用户隔离的工作区模式和智能归档功能
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import os
@@ -14,24 +14,39 @@ from pathlib import Path
 from datetime import datetime
 import logging
 
+# 导入认证装饰器和存储服务
+from app.auth.decorators import optional_login, get_current_user_id
+from app.services.storage_service import StorageService
+
 # 配置日志
 logger = logging.getLogger(__name__)
 
 workspace_bp = Blueprint('workspace', __name__)
 
+
 class WorkspaceManager:
-    def __init__(self):
-        # 使用动态路径解析，自适应 flask_backend 或 backend 目录
-        from app.utils.path_resolver import get_backend_root
-        backend_root = get_backend_root()
-        self.output_dir = backend_root / 'output'
-        self.history_dir = backend_root / 'history'
+    """工作空间管理器 - 支持多用户隔离"""
+    
+    def __init__(self, user_id: str = None):
+        """
+        初始化工作空间管理器
+        
+        Args:
+            user_id: 用户ID，如果为None则使用匿名用户
+        """
+        self.storage_service = StorageService()
+        self.user_id = user_id or 'anonymous'
+        
+        # 获取用户专属目录
+        self.output_dir = self.storage_service.get_user_work_dir(self.user_id)
+        self.history_dir = self.storage_service.get_user_history_dir(self.user_id)
+        
         self._ensure_dirs()
     
     def _ensure_dirs(self):
         """确保目录存在"""
-        self.output_dir.mkdir(exist_ok=True)
-        self.history_dir.mkdir(exist_ok=True)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.history_dir.mkdir(parents=True, exist_ok=True)
         
         # 创建output子目录
         for subdir in ['slides', 'audio', 'video_clips', 'subtitles', 'final', 'scripts', 'temp']:
@@ -286,29 +301,40 @@ class WorkspaceManager:
             logger.error(f"删除归档失败: {e}")
             return False, f"删除失败: {str(e)}"
 
-# 全局实例
-workspace_manager = WorkspaceManager()
+# 辅助函数：获取当前用户的工作空间管理器
+def get_user_workspace_manager() -> WorkspaceManager:
+    """获取当前用户的工作空间管理器"""
+    user_id = get_current_user_id()
+    return WorkspaceManager(user_id)
+
 
 @workspace_bp.route('/check', methods=['GET'])
+@optional_login
 def check_workspace():
     """检查工作空间是否有内容"""
     try:
-        exists = workspace_manager.has_workspace_content()
+        manager = get_user_workspace_manager()
+        exists = manager.has_workspace_content()
         return jsonify({'success': True, 'exists': exists})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @workspace_bp.route('/load', methods=['GET'])
+@optional_login
 def load_workspace():
     """加载工作空间数据"""
     try:
-        data = workspace_manager.load_workspace()
+        manager = get_user_workspace_manager()
+        data = manager.load_workspace()
         return jsonify({'success': True, **data})
     except Exception as e:
         logger.error(f"加载工作空间失败: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @workspace_bp.route('/save', methods=['POST'])
+@optional_login
 def save_workspace():
     """保存工作空间 - 无限制（支持频繁保存）"""
     try:
@@ -319,13 +345,16 @@ def save_workspace():
         slides = data.get('slides', '[]')
         title = data.get('title', '我的演示文稿')
         
-        success = workspace_manager.save_workspace(slides, title)
+        manager = get_user_workspace_manager()
+        success = manager.save_workspace(slides, title)
         return jsonify({'success': success})
     except Exception as e:
         logger.error(f"保存工作空间失败: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @workspace_bp.route('/archive', methods=['POST'])
+@optional_login
 def archive_workspace():
     """归档当前工作空间"""
     try:
@@ -335,23 +364,29 @@ def archive_workspace():
             
         archive_name = data.get('archive_name').strip()
         
-        success, message = workspace_manager.archive_workspace(archive_name)
+        manager = get_user_workspace_manager()
+        success, message = manager.archive_workspace(archive_name)
         return jsonify({'success': success, 'message': message})
     except Exception as e:
         logger.error(f"归档工作空间失败: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @workspace_bp.route('/archives', methods=['GET'])
+@optional_login
 def get_archives():
     """获取归档列表"""
     try:
-        archives = workspace_manager.get_archives()
+        manager = get_user_workspace_manager()
+        archives = manager.get_archives()
         return jsonify({'success': True, 'archives': archives})
     except Exception as e:
         logger.error(f"获取归档列表失败: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @workspace_bp.route('/restore', methods=['POST'])
+@optional_login
 def restore_archive():
     """恢复归档"""
     try:
@@ -361,13 +396,16 @@ def restore_archive():
             
         folder_name = data.get('folder_name')
         
-        success, message = workspace_manager.restore_archive(folder_name)
+        manager = get_user_workspace_manager()
+        success, message = manager.restore_archive(folder_name)
         return jsonify({'success': success, 'message': message})
     except Exception as e:
         logger.error(f"恢复归档失败: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @workspace_bp.route('/delete', methods=['DELETE'])
+@optional_login
 def delete_archive():
     """删除归档"""
     try:
@@ -377,7 +415,8 @@ def delete_archive():
             
         folder_name = data.get('folder_name')
         
-        success, message = workspace_manager.delete_archive(folder_name)
+        manager = get_user_workspace_manager()
+        success, message = manager.delete_archive(folder_name)
         return jsonify({'success': success, 'message': message})
     except Exception as e:
         logger.error(f"删除归档失败: {e}")

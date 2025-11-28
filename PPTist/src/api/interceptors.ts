@@ -84,12 +84,19 @@ export const authErrorInterceptor: ErrorInterceptor = (error) => {
   if (error.message.includes('401')) {
     // 清除本地认证信息
     localStorage.removeItem('auth_token')
+    localStorage.removeItem('user_info')
     
-    // 可以在这里触发重新登录逻辑
-    // router.push('/login')
+    // 清除匿名访问标记，强制显示登录页
+    localStorage.removeItem('skip_login')
     
     // eslint-disable-next-line no-console
-    console.warn('认证已过期，请重新登录')
+    console.warn('🔐 认证已过期，请重新登录')
+    
+    // 刷新页面以显示登录界面
+    // 延迟执行避免中断当前请求处理
+    setTimeout(() => {
+      window.location.reload()
+    }, 100)
   }
   return error
 }

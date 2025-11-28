@@ -17,6 +17,20 @@ import pysrt
 from app.utils.logger import get_logger
 from app.utils.file_manager import FileManager
 
+# 导入配置桥接模块
+try:
+    from .system_config_bridge import (
+        get_manual_split_config,
+        get_single_line_mode,
+        get_time_allocation_config,
+        get_app_config,
+        get_feature_flags,
+        get_subtitle_multiline_config
+    )
+    USE_CONFIG_BRIDGE = True
+except ImportError:
+    USE_CONFIG_BRIDGE = False
+
 # 暂时禁用所有高级功能模块以避免NumPy兼容性问题
 ENHANCED_SEMANTIC_SPLITTER_AVAILABLE = False
 VIDEO_FRAME_SYNC_AVAILABLE = False  
@@ -54,18 +68,11 @@ class SubtitleGenerator:
         self.logger = get_logger(__name__, self.project_dir / "logs")
         
         # 根据配置和依赖可用性决定是否启用AI功能
+        # 🔄 使用配置桥接模块（优先从 MongoDB 读取，自动回退到文件）
         try:
-            # 尝试加载应用配置
-            app_config_path = self.project_dir / "flask_backend" / "config_data" / "app_config.json"
-            if app_config_path.exists():
-                import json
-                with open(app_config_path, 'r', encoding='utf-8') as f:
-                    app_config = json.load(f)
-                
-                # 从配置文件读取功能开关
-                features = app_config.get("features", {})
-                ai_models = app_config.get("ai_models", {})
-                
+            if USE_CONFIG_BRIDGE:
+                # 从配置桥接模块获取功能开关
+                features = get_feature_flags(self.project_dir)
                 self.use_enhanced = features.get("enhanced_subtitle_generation", True)
                 self.enable_frame_sync = features.get("video_frame_sync", True)
                 self.enable_audio_sync = features.get("audio_intelligent_sync", True)
@@ -73,22 +80,45 @@ class SubtitleGenerator:
                 self.enable_phase3_alignment = features.get("phase3_integration", True)
                 
                 # 检查是否强制启用AI模式
-                force_ai_mode = ai_models.get("force_ai_mode", False)
+                force_ai_mode = features.get("force_ai_mode", False)
                 if force_ai_mode:
                     self.use_enhanced = True
                     self.enable_ai_content_understanding = True
                 
-                if self.use_enhanced or self.enable_ai_content_understanding:
-                    self.logger.info("🤖 字幕生成器启动 - 完整AI模式（所有高级功能已启用）")
-                else:
-                    self.logger.info("🚀 字幕生成器启动 - 基础模式")
+                self.logger.info("🔄 字幕生成器使用配置桥接模块加载配置")
             else:
-                # 配置文件不存在时的默认设置
-                self.use_enhanced = use_enhanced
-                self.enable_frame_sync = enable_frame_sync
-                self.enable_audio_sync = enable_audio_sync
-                self.enable_ai_content_understanding = enable_ai_content_understanding
-                self.logger.info("🚀 字幕生成器启动 - 使用默认配置")
+                # 回退：尝试加载应用配置文件
+                app_config_path = self.project_dir / "flask_backend" / "config_data" / "app_config.json"
+                if app_config_path.exists():
+                    import json
+                    with open(app_config_path, 'r', encoding='utf-8') as f:
+                        app_config = json.load(f)
+                    
+                    features = app_config.get("features", {})
+                    ai_models = app_config.get("ai_models", {})
+                    
+                    self.use_enhanced = features.get("enhanced_subtitle_generation", True)
+                    self.enable_frame_sync = features.get("video_frame_sync", True)
+                    self.enable_audio_sync = features.get("audio_intelligent_sync", True)
+                    self.enable_ai_content_understanding = features.get("ai_semantic_enhancement", True)
+                    self.enable_phase3_alignment = features.get("phase3_integration", True)
+                    
+                    force_ai_mode = ai_models.get("force_ai_mode", False)
+                    if force_ai_mode:
+                        self.use_enhanced = True
+                        self.enable_ai_content_understanding = True
+                else:
+                    # 配置文件不存在时的默认设置
+                    self.use_enhanced = use_enhanced
+                    self.enable_frame_sync = enable_frame_sync
+                    self.enable_audio_sync = enable_audio_sync
+                    self.enable_ai_content_understanding = enable_ai_content_understanding
+                    self.logger.info("🚀 字幕生成器启动 - 使用默认配置")
+            
+            if self.use_enhanced or self.enable_ai_content_understanding:
+                self.logger.info("🤖 字幕生成器启动 - 完整AI模式（所有高级功能已启用）")
+            else:
+                self.logger.info("🚀 字幕生成器启动 - 基础模式")
                 
         except Exception as e:
             self.logger.warning(f"配置加载失败，使用默认设置: {e}")
@@ -119,57 +149,48 @@ class SubtitleGenerator:
             max_chars_per_line = 36  # 使用与前端一致的默认值
         
         # 加载单行模式配置
+        # 🔄 使用配置桥接模块（优先从 MongoDB 读取）
         self.single_line_mode = False
         self.single_line_config = {}
         try:
-            # 🔧 修复配置文件路径：如果当前目录是output，则向上查找配置
-            manual_config_path = self.project_dir / "flask_backend" / "config_data" / "manual_split_config.json"
-            
-            # 如果路径不存在，尝试从父目录查找（处理output目录的情况）
-            if not manual_config_path.exists() and self.project_dir.name == "output":
-                parent_project_dir = self.project_dir.parent.parent  # output -> flask_backend -> 项目根
-                manual_config_path = parent_project_dir / "flask_backend" / "config_data" / "manual_split_config.json"
-                self.logger.info(f"🔧 从父目录查找配置: {manual_config_path}")
-            
-            self.logger.info(f"🔍 尝试加载单行模式配置: {manual_config_path}")
-            self.logger.info(f"🔍 配置文件存在: {manual_config_path.exists()}")
-            
-            if manual_config_path.exists():
-                import json
-                with open(manual_config_path, 'r', encoding='utf-8') as f:
-                    manual_config = json.load(f)
+            if USE_CONFIG_BRIDGE:
+                # 从配置桥接获取单行模式配置
+                self.single_line_mode = get_single_line_mode(self.project_dir)
+                self.single_line_config = get_time_allocation_config(self.project_dir)
+                self.logger.info(f"🔄 从配置桥接加载 single_line_mode: {self.single_line_mode}")
+            else:
+                # 回退：从文件读取配置
+                manual_config_path = self.project_dir / "flask_backend" / "config_data" / "manual_split_config.json"
                 
-                self.logger.info(f"🔍 配置文件加载成功")
-                display_mode = manual_config.get("manual_split_config", {}).get("subtitle_display_mode", {})
-                self.logger.info(f"🔍 subtitle_display_mode: {display_mode}")
+                # 如果路径不存在，尝试从父目录查找（处理output目录的情况）
+                if not manual_config_path.exists() and self.project_dir.name == "output":
+                    parent_project_dir = self.project_dir.parent.parent
+                    manual_config_path = parent_project_dir / "flask_backend" / "config_data" / "manual_split_config.json"
                 
-                self.single_line_mode = display_mode.get("single_line_mode", False)
-                self.single_line_config = display_mode.get("time_allocation", {
-                    "method": "proportional",
-                    "based_on": "character_count",
-                    "min_line_duration": 1.0,
-                    "max_line_duration": 8.0
-                })
-                
-                self.logger.info(f"🔍 解析出 single_line_mode: {self.single_line_mode} (类型: {type(self.single_line_mode)})")
-                
-                # 🔥 强制调试：确保配置正确解析
-                if self.single_line_mode:
-                    self.logger.info("✅ 单行字幕模式已启用 - 多行字幕将被拆分为连续单行")
-                    self.logger.info("🔧 强制设置 single_line_mode = True")
-                else:
-                    # 如果配置文件中是 true 但这里还是 False，需要强制修正
-                    raw_single_line = display_mode.get("single_line_mode")
-                    self.logger.warning(f"⚠️ single_line_mode 配置异常！原始值: {raw_single_line} (类型: {type(raw_single_line)})")
+                if manual_config_path.exists():
+                    import json
+                    with open(manual_config_path, 'r', encoding='utf-8') as f:
+                        manual_config = json.load(f)
+                    
+                    display_mode = manual_config.get("manual_split_config", {}).get("subtitle_display_mode", {})
+                    self.single_line_mode = display_mode.get("single_line_mode", False)
+                    self.single_line_config = display_mode.get("time_allocation", {
+                        "method": "proportional",
+                        "based_on": "character_count",
+                        "min_line_duration": 1.0,
+                        "max_line_duration": 8.0
+                    })
                     
                     # 强制转换为布尔值
-                    if raw_single_line is True or str(raw_single_line).lower() == 'true':
+                    if self.single_line_mode is True or str(self.single_line_mode).lower() == 'true':
                         self.single_line_mode = True
-                        self.logger.info("🔧 强制修正 single_line_mode = True")
                     else:
-                        self.logger.info("📝 多行字幕模式 - 保持原有换行显示")
+                        self.single_line_mode = False
+            
+            if self.single_line_mode:
+                self.logger.info("✅ 单行字幕模式已启用 - 多行字幕将被拆分为连续单行")
             else:
-                self.logger.warning(f"🔍 配置文件不存在: {manual_config_path}")
+                self.logger.info("📝 多行字幕模式 - 保持原有换行显示")
         except Exception as e:
             self.logger.error(f"读取单行模式配置失败: {e}")
             import traceback
@@ -190,18 +211,25 @@ class SubtitleGenerator:
         }
         
         # 智能断句系统启用逻辑 - 根据配置决定
+        # 🔄 使用配置桥接模块
         try:
-            # 检查配置是否禁用Flask重载问题规避
-            subtitle_config_path = self.project_dir / "flask_backend" / "config_data" / "subtitle_multiline_fix_config.json"
             disable_for_flask = True  # 默认禁用
             
-            if subtitle_config_path.exists():
-                import json
-                with open(subtitle_config_path, 'r', encoding='utf-8') as f:
-                    subtitle_config = json.load(f)
-                
-                intelligent_breaking = subtitle_config.get("intelligent_sentence_breaking", {})
-                disable_for_flask = intelligent_breaking.get("disable_for_flask", False)
+            if USE_CONFIG_BRIDGE:
+                # 从配置桥接获取多行字幕修复配置
+                multiline_config = get_subtitle_multiline_config(self.project_dir)
+                intelligent_breaking = multiline_config.get("intelligent_sentence_breaking", {})
+                disable_for_flask = intelligent_breaking.get("disable_for_flask", True)
+            else:
+                # 回退：从文件读取
+                subtitle_config_path = self.project_dir / "flask_backend" / "config_data" / "subtitle_multiline_fix_config.json"
+                if subtitle_config_path.exists():
+                    import json
+                    with open(subtitle_config_path, 'r', encoding='utf-8') as f:
+                        subtitle_config = json.load(f)
+                    
+                    intelligent_breaking = subtitle_config.get("intelligent_sentence_breaking", {})
+                    disable_for_flask = intelligent_breaking.get("disable_for_flask", True)
             
             if not disable_for_flask and self.use_enhanced:
                 self.logger.info("✅ 智能断句系统已启用（完整功能模式）")
@@ -589,21 +617,26 @@ class SubtitleGenerator:
         
         try:
             # 🔥 强制单行检查：在分割前检查配置
+            # 🔄 使用配置桥接模块
             config_single_line_mode = False
             try:
-                manual_config_path = self.project_dir / "flask_backend" / "config_data" / "manual_split_config.json"
-                
-                # 🔧 修复配置文件路径：如果当前目录是output，则向上查找配置
-                if not manual_config_path.exists() and self.project_dir.name == "output":
-                    parent_project_dir = self.project_dir.parent.parent  # output -> flask_backend -> 项目根
-                    manual_config_path = parent_project_dir / "flask_backend" / "config_data" / "manual_split_config.json"
-                
-                if manual_config_path.exists():
-                    import json
-                    with open(manual_config_path, 'r', encoding='utf-8') as f:
-                        manual_config = json.load(f)
-                    config_single_line_mode = manual_config.get("manual_split_config", {}).get("subtitle_display_mode", {}).get("single_line_mode", False)
-                    self.logger.info(f"🔥 字幕生成前配置检查: single_line_mode = {config_single_line_mode}")
+                if USE_CONFIG_BRIDGE:
+                    config_single_line_mode = get_single_line_mode(self.project_dir)
+                    self.logger.info(f"🔥 从配置桥接获取 single_line_mode = {config_single_line_mode}")
+                else:
+                    # 回退：从文件读取
+                    manual_config_path = self.project_dir / "flask_backend" / "config_data" / "manual_split_config.json"
+                    
+                    if not manual_config_path.exists() and self.project_dir.name == "output":
+                        parent_project_dir = self.project_dir.parent.parent
+                        manual_config_path = parent_project_dir / "flask_backend" / "config_data" / "manual_split_config.json"
+                    
+                    if manual_config_path.exists():
+                        import json
+                        with open(manual_config_path, 'r', encoding='utf-8') as f:
+                            manual_config = json.load(f)
+                        config_single_line_mode = manual_config.get("manual_split_config", {}).get("subtitle_display_mode", {}).get("single_line_mode", False)
+                        self.logger.info(f"🔥 字幕生成前配置检查: single_line_mode = {config_single_line_mode}")
             except Exception as e:
                 self.logger.error(f"配置检查失败: {e}")
             

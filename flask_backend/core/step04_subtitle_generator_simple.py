@@ -6,6 +6,13 @@ from pathlib import Path
 from typing import List, Dict, Any
 import json
 
+# 导入配置桥接模块
+try:
+    from .system_config_bridge import get_single_line_mode
+    USE_CONFIG_BRIDGE = True
+except ImportError:
+    USE_CONFIG_BRIDGE = False
+
 class SimpleSubtitleGenerator:
     """简化的字幕生成器 - 只执行单行分割"""
     
@@ -18,8 +25,15 @@ class SimpleSubtitleGenerator:
         self.load_config()
         
     def load_config(self):
-        """加载配置"""
+        """加载配置 - 使用配置桥接模块"""
         try:
+            # 🔄 优先使用配置桥接（从 MongoDB 读取）
+            if USE_CONFIG_BRIDGE:
+                self.single_line_mode = get_single_line_mode(self.project_dir)
+                self.logger.info(f"🔄 从配置桥接加载 single_line_mode = {self.single_line_mode}")
+                return
+            
+            # 回退：从文件读取配置
             manual_config_path = self.project_dir / "flask_backend" / "config_data" / "manual_split_config.json"
             if manual_config_path.exists():
                 with open(manual_config_path, 'r', encoding='utf-8') as f:

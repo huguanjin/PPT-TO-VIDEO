@@ -4,6 +4,7 @@ import { useSnapshotStore } from './snapshot'
 import { useKeyboardStore } from './keyboard'
 import { useScreenStore } from './screen'
 import { useWorkflowStore } from './workflow'
+import { useAuthStore } from './auth'
 
 export {
   useMainStore,
@@ -12,4 +13,5 @@ export {
   useKeyboardStore,
   useScreenStore,
   useWorkflowStore,
+  useAuthStore,
 }

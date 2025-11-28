@@ -2,10 +2,10 @@
 项目管理API接口
 处理项目创建、更新、删除等操作
 
-注意：单机版本使用统一工作目录架构
-- 所有项目数据存储在 flask_backend/output/ 目录
-- 不再为每个项目创建独立子目录
-- project_name 参数保留用于兼容性，但不影响目录结构
+注意：多用户版本使用用户独立工作目录架构
+- 每个用户的数据存储在 flask_backend/output/{user_id}/ 目录
+- 历史项目归档到 flask_backend/history/{user_id}/ 目录
+- 匿名用户使用 'anonymous' 作为 user_id
 """
 import os
 import sys
@@ -13,11 +13,15 @@ import json
 import shutil
 from datetime import datetime
 from pathlib import Path
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, g
 
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
+
+# 导入认证装饰器和存储服务
+from app.auth.decorators import optional_login, get_current_user_id
+from app.services.storage_service import StorageService
 
 try:
     from app.utils.file_manager import FileManager  # type: ignore
@@ -36,11 +40,21 @@ except ImportError as e:
 bp = Blueprint('project', __name__)
 logger = get_logger(__name__)
 
+
+def get_user_output_dir() -> Path:
+    """获取当前用户的工作目录"""
+    user_id = get_current_user_id()
+    storage_service = StorageService()
+    return storage_service.get_user_work_dir(user_id)
+
+
 @bp.route('/list', methods=['GET'])
+@optional_login
 def list_projects():
     """获取所有项目列表"""
     try:
-        output_dir = Path(current_app.config.get('OUTPUT_FOLDER', 'output'))
+        # 使用用户专属工作目录
+        output_dir = get_user_output_dir()
         projects = []
         
         if output_dir.exists():
@@ -105,11 +119,13 @@ def list_projects():
         }), 500
 
 @bp.route('/<project_name>', methods=['GET'])
+@optional_login
 def get_project_detail(project_name):
     """获取项目详细信息"""
     try:
-        output_dir = Path(current_app.config.get('OUTPUT_FOLDER', 'output'))
-        project_dir = output_dir  # 单机版本：使用统一工作目录
+        # 使用用户专属工作目录
+        output_dir = get_user_output_dir()
+        project_dir = output_dir  # 用户级别：使用用户工作目录
         
         if not project_dir.exists():
             return jsonify({
@@ -190,11 +206,13 @@ def get_project_detail(project_name):
         }), 500
 
 @bp.route('/<project_name>', methods=['PUT'])
+@optional_login
 def update_project(project_name):
     """更新项目信息，如果项目不存在则创建"""
     try:
-        output_dir = Path(current_app.config.get('OUTPUT_FOLDER', 'output'))
-        project_dir = output_dir  # 单机版本：使用统一工作目录
+        # 使用用户专属工作目录
+        output_dir = get_user_output_dir()
+        project_dir = output_dir  # 用户级别：使用用户工作目录
         
         # 获取请求数据
         data = request.get_json()
@@ -297,11 +315,13 @@ def update_project(project_name):
         }), 500
 
 @bp.route('/<project_name>', methods=['DELETE'])
+@optional_login
 def delete_project(project_name):
     """删除项目"""
     try:
-        output_dir = Path(current_app.config.get('OUTPUT_FOLDER', 'output'))
-        project_dir = output_dir  # 单机版本：使用统一工作目录
+        # 使用用户专属工作目录
+        output_dir = get_user_output_dir()
+        project_dir = output_dir  # 用户级别：使用用户工作目录
         
         if not project_dir.exists():
             return jsonify({
@@ -327,13 +347,15 @@ def delete_project(project_name):
         }), 500
 
 @bp.route('/<project_name>/download', methods=['GET'])
+@optional_login
 def download_project_video(project_name):
     """下载项目生成的视频"""
     try:
         from flask import send_file
         
-        output_dir = Path(current_app.config.get('OUTPUT_FOLDER', 'output'))
-        project_dir = output_dir  # 单机版本：使用统一工作目录
+        # 使用用户专属工作目录
+        output_dir = get_user_output_dir()
+        project_dir = output_dir  # 用户级别：使用用户工作目录
         
         if not project_dir.exists():
             return jsonify({
@@ -369,6 +391,7 @@ def download_project_video(project_name):
         }), 500
 
 @bp.route('/create', methods=['POST'])
+@optional_login
 def create_project():
     """创建新项目"""
     try:
@@ -395,8 +418,9 @@ def create_project():
                 'message': '无效的项目名称'
             }), 400
         
-        output_dir = Path(current_app.config.get('OUTPUT_FOLDER', 'output'))
-        project_dir = output_dir  # 单机版本：使用统一工作目录
+        # 使用用户专属工作目录
+        output_dir = get_user_output_dir()
+        project_dir = output_dir  # 用户级别：使用用户工作目录
         
         if project_dir.exists():
             return jsonify({
@@ -448,11 +472,13 @@ def create_project():
 
 
 @bp.route('/<project_name>/upload-image', methods=['POST'])
+@optional_login
 def upload_project_image(project_name):
     """上传项目图片"""
     try:
-        output_dir = Path(current_app.config.get('OUTPUT_FOLDER', 'output'))
-        project_dir = output_dir  # 单机版本：使用统一工作目录
+        # 使用用户专属工作目录
+        output_dir = get_user_output_dir()
+        project_dir = output_dir  # 用户级别：使用用户工作目录
         
         if not project_dir.exists():
             # 自动创建项目目录
@@ -578,11 +604,13 @@ def upload_project_image(project_name):
 
 
 @bp.route('/<project_name>/upload-images-chunked', methods=['POST'])
+@optional_login
 def upload_project_images_chunked(project_name):
     """分片上传项目图片"""
     try:
-        output_dir = Path(current_app.config.get('OUTPUT_FOLDER', 'output'))
-        project_dir = output_dir  # 单机版本：使用统一工作目录
+        # 使用用户专属工作目录
+        output_dir = get_user_output_dir()
+        project_dir = output_dir  # 用户级别：使用用户工作目录
         
         if not project_dir.exists():
             return jsonify({

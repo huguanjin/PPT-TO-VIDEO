@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from typing import Dict, List, Any
 from datetime import datetime
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 import logging
 import sys
 
@@ -22,12 +22,17 @@ sys.path.insert(0, str(flask_backend_root))
 # 导入工作流相关类
 from core.workflow_persistence import StepStatus
 
+# 🔧 导入用户认证和存储服务
+from app.auth.decorators import get_current_user_id, optional_login
+from app.services.storage_service import StorageService
+
 # 创建Blueprint
 batch_import_bp = Blueprint('batch_import', __name__)
 logger = logging.getLogger(__name__)
 
 
 @batch_import_bp.route('/api/import-slides-batch', methods=['POST', 'OPTIONS'])
+@optional_login
 def import_slides_batch():
     """
     接收前端批量导出的幻灯片图片
@@ -63,7 +68,7 @@ def import_slides_batch():
         response = jsonify({"status": "ok"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
         return response, 200
     
     try:
@@ -88,10 +93,21 @@ def import_slides_batch():
         
         logger.info(f"📥 开始接收批量导出: {project_name}, {len(images)} 张图片")
         
-        # 创建输出目录
-        output_base = Path(__file__).parent.parent / "output"
+        # 🔧 多用户支持：使用用户专属工作目录
+        user_id = get_current_user_id()
+        storage_service = StorageService()
+        output_base = storage_service.get_user_work_dir(user_id)
         slides_dir = output_base / "slides"
         slides_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 🔧 调试日志：打印详细信息
+        print(f"🔧🔧🔧 [DEBUG] user_id = {user_id}")
+        print(f"🔧🔧🔧 [DEBUG] output_base = {output_base}")
+        print(f"🔧🔧🔧 [DEBUG] slides_dir = {slides_dir}")
+        print(f"🔧🔧🔧 [DEBUG] g.user_id = {getattr(g, 'user_id', 'NOT SET')}")
+        print(f"🔧🔧🔧 [DEBUG] g.username = {getattr(g, 'username', 'NOT SET')}")
+        
+        logger.info(f"🔧 用户ID: {user_id}, 输出目录: {output_base}")
         
         # 保存所有图片
         saved_files = []
@@ -166,9 +182,22 @@ def import_slides_batch():
         workflow_id = None
         auto_start_workflow = data.get('auto_start_workflow', True)  # 默认自动启动
         
+        # 🔧 从 ppt_data.json 读取原始项目名称（用于 MongoDB tasks 表）
+        ppt_project_name = project_name  # 默认使用前端传来的项目名
+        ppt_data_path = output_base / "ppt_data.json"
+        if ppt_data_path.exists():
+            try:
+                with open(ppt_data_path, 'r', encoding='utf-8') as f:
+                    ppt_data = json.load(f)
+                    ppt_project_name = ppt_data.get('project_name', project_name)
+                    logger.info(f"📝 从 ppt_data.json 读取项目名称: {ppt_project_name}")
+            except Exception as e:
+                logger.warning(f"⚠️ 读取 ppt_data.json 失败，使用默认名称: {e}")
+        
         if auto_start_workflow:
             try:
-                workflow_id = _start_workflow_sync(project_name, slides_metadata)
+                # 🔧 传入用户目录 output_base 和原始项目名称给工作流执行器
+                workflow_id = _start_workflow_sync(project_name, slides_metadata, output_base, ppt_project_name)
                 logger.info(f"🚀 工作流已启动: {workflow_id}")
             except Exception as e:
                 logger.error(f"❌ 启动工作流失败: {e}")
@@ -185,6 +214,7 @@ def import_slides_batch():
             # 🔧 添加工作流信息
             "workflow_id": workflow_id,  # 前端需要这个ID来查询进度
             "workflow_started": workflow_id is not None,
+            "workflow_ready": workflow_id is not None,  # 🔧 兼容前端检查的字段名
             "workflow_status_url": f"/api/workflow/status/{workflow_id}" if workflow_id else None
         }
         
@@ -208,7 +238,7 @@ def _cors_response(response=None, status=200):
     
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     
     if status != 200:
         response.status_code = status
@@ -216,17 +246,22 @@ def _cors_response(response=None, status=200):
     return response
 
 
-async def _start_workflow_async(project_name: str, slides_metadata: Dict[str, Any]) -> str:
+async def _start_workflow_async(project_name: str, slides_metadata: Dict[str, Any], output_base: Path = None, ppt_project_name: str = None) -> str:
     """
     异步启动工作流
     
     Args:
-        project_name: 项目名称
+        project_name: 项目名称（用于 task_id）
         slides_metadata: 幻灯片元数据
+        output_base: 用户输出目录
+        ppt_project_name: PPT原始项目名称（用于 MongoDB tasks 表显示）
     
     Returns:
         workflow_id: 工作流任务ID
     """
+    # 如果未提供 ppt_project_name，使用 project_name
+    if ppt_project_name is None:
+        ppt_project_name = project_name
     try:
         from core.enhanced_workflow_executor import EnhancedWorkflowExecutor
         from app.api.workflow import update_task_status
@@ -240,7 +275,7 @@ async def _start_workflow_async(project_name: str, slides_metadata: Dict[str, An
             status='pending',
             message='工作流准备启动',
             progress=0,
-            project_name=project_name,
+            project_name=ppt_project_name,  # 🔧 使用PPT原始项目名称
             current_step=0,
             total_steps=5,
             steps=[
@@ -252,9 +287,14 @@ async def _start_workflow_async(project_name: str, slides_metadata: Dict[str, An
             ]
         )
         
-        # 创建工作流执行器
-        output_base = Path(__file__).parent.parent / "output"
+        # 🔧 多用户支持：使用传入的用户目录或默认目录
+        if output_base is None:
+            # 回退到默认目录（兼容旧调用）
+            output_base = Path(__file__).parent.parent / "output"
+            logger.warning("⚠️ 未指定用户目录，使用默认output目录")
+        
         executor = EnhancedWorkflowExecutor(project_dir=output_base)
+        logger.info(f"🔧 工作流执行器使用目录: {output_base}")
         
         # 定义进度回调 - 接收WorkflowExecution对象
         async def progress_callback(execution):
@@ -318,7 +358,7 @@ async def _start_workflow_async(project_name: str, slides_metadata: Dict[str, An
                     status='running',
                     message=step_message,
                     progress=total_progress,
-                    project_name=project_name,
+                    project_name=ppt_project_name,  # 🔧 使用PPT原始项目名称
                     current_step=current_step_index,
                     total_steps=5,
                     steps=steps
@@ -344,12 +384,37 @@ async def _start_workflow_async(project_name: str, slides_metadata: Dict[str, An
                 ))
                 
                 # 工作流完成 - 处理WorkflowExecution对象
-                success = getattr(result, 'success', False)
+                # 🔧 修复：使用正确的 workflow_status 属性判断成功/失败
+                workflow_status = getattr(result, 'workflow_status', None)
+                success = (workflow_status is not None and 
+                          workflow_status.value == 'completed')
+                
+                logger.info(f"工作流执行结果: workflow_status={workflow_status}, success={success}")
+                
                 if success:
+                    # 🔧 修复：将 WorkflowStepResult 对象转换为可序列化的字典
+                    raw_steps = getattr(result, 'steps', {})
+                    serializable_steps = {}
+                    if isinstance(raw_steps, dict):
+                        for step_name, step_result in raw_steps.items():
+                            if hasattr(step_result, '__dict__'):
+                                # 转换 WorkflowStepResult 为字典
+                                step_dict = {}
+                                for attr in ['step_name', 'status', 'start_time', 'end_time', 
+                                           'progress', 'output_files', 'error_message', 'execution_time']:
+                                    val = getattr(step_result, attr, None)
+                                    # 处理枚举值
+                                    if hasattr(val, 'value'):
+                                        val = val.value
+                                    step_dict[attr] = val
+                                serializable_steps[step_name] = step_dict
+                            else:
+                                serializable_steps[step_name] = step_result
+                    
                     result_data = {
                         'video_file': getattr(result, 'video_file', ''),
                         'duration': getattr(result, 'duration', 0),
-                        'steps': getattr(result, 'steps', [])
+                        'steps': serializable_steps
                     }
                     update_task_status(
                         task_id=task_id,
@@ -357,7 +422,7 @@ async def _start_workflow_async(project_name: str, slides_metadata: Dict[str, An
                         message='视频生成完成',
                         progress=100,
                         result=result_data,
-                        project_name=project_name,
+                        project_name=ppt_project_name,  # 🔧 使用PPT原始项目名称
                         current_step=5,
                         total_steps=5,
                         steps=[
@@ -369,13 +434,14 @@ async def _start_workflow_async(project_name: str, slides_metadata: Dict[str, An
                         ]
                     )
                 else:
-                    error_msg = getattr(result, 'message', '工作流执行失败')
+                    # 🔧 修复：获取正确的错误信息
+                    error_msg = getattr(result, 'error_message', None) or '工作流执行失败'
                     update_task_status(
                         task_id=task_id,
                         status='failed',
                         message=error_msg,
                         progress=0,
-                        project_name=project_name
+                        project_name=ppt_project_name  # 🔧 使用PPT原始项目名称
                     )
                     
             except Exception as e:
@@ -388,7 +454,7 @@ async def _start_workflow_async(project_name: str, slides_metadata: Dict[str, An
                     status='failed',
                     message=f'工作流执行异常: {str(e)}',
                     progress=0,
-                    project_name=project_name
+                    project_name=ppt_project_name  # 🔧 使用PPT原始项目名称
                 )
         
         # 启动后台线程
@@ -403,13 +469,15 @@ async def _start_workflow_async(project_name: str, slides_metadata: Dict[str, An
         raise
 
 
-def _start_workflow_sync(project_name: str, slides_metadata: Dict[str, Any]) -> str:
+def _start_workflow_sync(project_name: str, slides_metadata: Dict[str, Any], output_base: Path = None, ppt_project_name: str = None) -> str:
     """
     同步启动工作流 (用于Flask路由)
     
     Args:
-        project_name: 项目名称
+        project_name: 项目名称（用于 task_id）
         slides_metadata: 幻灯片元数据
+        output_base: 用户工作目录
+        ppt_project_name: PPT原始项目名称（用于 MongoDB tasks 表显示）
     
     Returns:
         workflow_id: 工作流任务ID
@@ -418,7 +486,7 @@ def _start_workflow_sync(project_name: str, slides_metadata: Dict[str, Any]) -> 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        return loop.run_until_complete(_start_workflow_async(project_name, slides_metadata))
+        return loop.run_until_complete(_start_workflow_async(project_name, slides_metadata, output_base, ppt_project_name))
     finally:
         loop.close()
 

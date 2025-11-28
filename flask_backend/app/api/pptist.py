@@ -10,11 +10,15 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, g
 
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
+
+# 导入认证装饰器和存储服务
+from app.auth.decorators import optional_login, get_current_user_id
+from app.services.storage_service import StorageService
 
 try:
     from app.utils.task_manager import TaskManager  # type: ignore
@@ -36,6 +40,14 @@ logger = get_logger(__name__)
 # 全局任务管理器
 task_manager = None
 
+
+def get_user_output_dir() -> Path:
+    """获取当前用户的工作目录"""
+    user_id = get_current_user_id()
+    storage_service = StorageService()
+    return storage_service.get_user_work_dir(user_id)
+
+
 def get_task_manager():
     """获取任务管理器实例"""
     global task_manager
@@ -44,7 +56,9 @@ def get_task_manager():
         task_manager = TaskManager(base_dir)
     return task_manager
 
+
 @bp.route('/import', methods=['POST'])
+@optional_login
 def import_pptist_data():
     """
     导入PPTist数据
@@ -102,8 +116,9 @@ def handle_json_import(project_name: str, project_data: dict):
         # 生成任务ID
         task_id = str(uuid.uuid4())
         
-        output_dir = Path(current_app.config.get('OUTPUT_FOLDER', 'output'))
-        project_dir = output_dir  # 单机版本：使用统一工作目录
+        # 使用用户专属工作目录
+        output_dir = get_user_output_dir()
+        project_dir = output_dir  # 用户级别：使用用户工作目录
         
         # 创建项目目录
         project_dir.mkdir(parents=True, exist_ok=True)
@@ -282,10 +297,12 @@ def get_import_status(task_id):
         }), 500
 
 @bp.route('/projects', methods=['GET'])
+@optional_login
 def list_projects():
     """获取PPTist项目列表"""
     try:
-        output_dir = Path(current_app.config.get('OUTPUT_FOLDER', 'output'))
+        # 使用用户专属工作目录
+        output_dir = get_user_output_dir()
         projects = []
         
         if output_dir.exists():
@@ -347,13 +364,15 @@ def get_project_info(project_name):
         }), 500
 
 @bp.route('/project/<project_name>', methods=['DELETE'])
+@optional_login
 def delete_project(project_name):
     """删除项目"""
     try:
         import shutil
         
-        output_dir = Path(current_app.config.get('OUTPUT_FOLDER', 'output'))
-        project_dir = output_dir  # 单机版本：使用统一工作目录
+        # 使用用户专属工作目录
+        output_dir = get_user_output_dir()
+        project_dir = output_dir  # 用户级别：使用用户工作目录
         
         if not project_dir.exists():
             return jsonify({

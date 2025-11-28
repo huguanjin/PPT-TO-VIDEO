@@ -4,6 +4,7 @@
  */
 
 import { API_BASE_URL } from '@/config/api'
+import { getAuthHeaders } from './authFetch'
 
 export interface ChunkUploadOptions {
   file: File
@@ -67,6 +68,7 @@ export class ChunkedUploader {
 
     const response = await fetch(`${this.baseUrl}/api/upload/init`, {
       method: 'POST',
+      headers: getAuthHeaders(),
       body: formData
     })
 
@@ -97,6 +99,7 @@ export class ChunkedUploader {
 
     const response = await fetch(`${this.baseUrl}/api/upload/chunk`, {
       method: 'POST',
+      headers: getAuthHeaders(),
       body: formData
     })
 
@@ -129,6 +132,7 @@ export class ChunkedUploader {
     // 使用新的项目图片上传端点
     const response = await fetch(`${this.baseUrl}/api/project/${projectName}/upload-images-chunked`, {
       method: 'POST',
+      headers: getAuthHeaders(),
       body: formData
     })
 

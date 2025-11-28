@@ -1,22 +1,53 @@
 """
 配置工具模块
 支持TTS配置的加载和管理
+
+注意: 此模块现已迁移到使用 system_config_bridge
+优先从 MongoDB 读取配置，文件读取作为回退方案
 """
 import json
+import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
+
+logger = logging.getLogger(__name__)
+
+# 尝试导入配置桥接模块
+try:
+    from .system_config_bridge import get_tts_config as bridge_get_tts_config
+    USE_CONFIG_BRIDGE = True
+    logger.debug("配置桥接模块已加载")
+except ImportError:
+    USE_CONFIG_BRIDGE = False
+    logger.debug("配置桥接模块不可用，使用文件读取")
+
 
 def load_key(key: str) -> Dict[str, Any]:
     """
     从配置中加载指定的键值
     
+    优先级:
+    1. MongoDB system_config 表（通过配置桥接）
+    2. 本地 config_data/*.json 文件
+    3. 默认配置
+    
     Args:
-        key: 配置键名
+        key: 配置键名 (edge_tts, fish_tts, openai_tts, azure_tts)
         
     Returns:
         配置字典
     """
-    # 默认配置
+    # 1. 尝试使用配置桥接（优先从 MongoDB 读取）
+    if USE_CONFIG_BRIDGE:
+        try:
+            config = bridge_get_tts_config(key)
+            if config:
+                logger.debug(f"从配置桥接加载 {key} 配置")
+                return config
+        except Exception as e:
+            logger.debug(f"配置桥接读取失败: {e}")
+    
+    # 2. 默认配置（用于回退）
     default_config = {
         "edge_tts": {
             "voice": "zh-CN-XiaoxiaoNeural",

@@ -1,0 +1,47 @@
+# MongoDB Configuration Template
+# 复制此文件为 mongo_config.yaml 并填入真实的连接信息
+
+# ============================================
+# MongoDB Atlas 云端连接配置
+# ============================================
+# 如果使用 MongoDB Atlas 云服务，请取消下面的注释
+#
+# mongodb:
+#   # MongoDB Atlas 连接字符串
+#   # 格式: mongodb+srv://用户名:密码@集群地址/数据库名?参数
+#   connection_string: "mongodb+srv://your_username:your_password@your_cluster.mongodb.net/?retryWrites=true&w=majority&appName=YourAppName"
+#   
+#   # 数据库名称
+#   database_name: "PPTTOVideo"
+
+# ============================================
+# 本地 MongoDB 连接配置
+# ============================================
+# 如果使用本地安装的 MongoDB，请使用以下配置
+#
+mongodb:
+  # 本地 MongoDB 连接字符串
+  # 无认证: mongodb://localhost:27017/
+  # 有认证: mongodb://username:password@localhost:27017/
+  connection_string: "mongodb://localhost:27017/"
+  
+  # 数据库名称
+  database_name: "PPTTOVideo"
+
+# ============================================
+# 使用说明
+# ============================================
+# 1. 将此文件复制为 mongo_config.yaml
+#    命令: cp mongo_config.template.yaml mongo_config.yaml
+#
+# 2. 根据您的 MongoDB 部署类型选择配置:
+#    - 本地部署: 使用默认的本地配置，修改端口号（如需要）
+#    - 云端部署: 注释掉本地配置，取消 Atlas 配置的注释
+#
+# 3. 填入真实的连接信息:
+#    - your_username: MongoDB 用户名
+#    - your_password: MongoDB 密码
+#    - your_cluster: MongoDB 集群地址
+#    - YourAppName: 应用名称
+#
+# 4. 确保 mongo_config.yaml 已添加到 .gitignore 中，避免泄露敏感信息

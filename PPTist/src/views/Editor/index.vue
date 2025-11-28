@@ -9,24 +9,6 @@
       </div>
       <div class="workspace-actions">
         <button 
-          class="test-btn"
-          @click="showBackendTest = !showBackendTest"
-          title="后端连接测试"
-          v-if="isDevelopment"
-        >
-          <i class="icon-test">🔧</i>
-          后端测试
-        </button>
-        <button 
-          class="archive-btn"
-          @click="handleArchive"
-          :disabled="workspace.isLoading.value"
-          title="归档当前项目"
-        >
-          <i class="icon-archive">📦</i>
-          归档项目
-        </button>
-        <button 
           class="history-btn"
           @click="showArchiveManager"
           title="查看归档"
@@ -106,11 +88,6 @@
   <!-- 通知管理器 -->
   <NotificationManager ref="notificationManager" />
 
-  <!-- 后端测试弹窗 -->
-  <Modal v-model:visible="showBackendTest" :width="900" v-if="isDevelopment">
-    <BackendTest />
-  </Modal>
-
   <!-- 确认对话框 -->
   <ConfirmDialog
     v-model:visible="showDeleteConfirm"
@@ -146,7 +123,6 @@ import Modal from '@/components/Modal.vue'
 import ArchiveManager from '../../components/ArchiveManager.vue'
 import NotificationManager from '../../components/NotificationManager.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
-import BackendTest from '@/components/BackendTest.vue'
 
 const mainStore = useMainStore()
 const { dialogForExport, showSelectPanel, showSearchPanel, showNotesPanel, showMarkupPanel, showAIPPTDialog } = storeToRefs(mainStore)
@@ -158,10 +134,6 @@ const remarkHeight = ref(240) // 增加默认高度到240px，提供更好的编
 // 工作空间管理
 const workspace = useWorkspaceManager()
 const showArchiveList = ref(false)
-
-// 开发环境测试
-const isDevelopment = import.meta.env.MODE === 'development'
-const showBackendTest = ref(false)
 
 // 通知和确认对话框
 const notificationManager = ref<InstanceType<typeof NotificationManager> | null>(null)
@@ -176,19 +148,6 @@ const showArchiveManager = async () => {
   }
   catch (error: any) {
     notificationManager.value?.error(`获取归档列表失败: ${error.message || '未知错误'}`)
-  }
-}
-
-// 归档处理
-const handleArchive = async () => {
-  try {
-    const success = await workspace.archiveProject()
-    if (success) {
-      notificationManager.value?.success('项目归档成功！')
-    }
-  } 
-  catch (error: any) {
-    notificationManager.value?.error(`归档失败: ${error.message || '未知错误'}`)
   }
 }
 
@@ -314,24 +273,6 @@ usePasteEvent()
       
       i {
         font-size: 12px;
-      }
-    }
-    
-    .archive-btn {
-      color: #0066cc;
-      border-color: #0066cc;
-      
-      &:hover {
-        background: #e6f2ff;
-      }
-    }
-    
-    .test-btn {
-      color: #ff6600;
-      border-color: #ff6600;
-      
-      &:hover {
-        background: #fff3e6;
       }
     }
     

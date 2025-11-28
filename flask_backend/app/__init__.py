@@ -43,6 +43,9 @@ def create_app(config_class=None):
     # 创建必要的目录
     create_directories(app)
     
+    # 初始化数据库（MongoDB）
+    initialize_database(app)
+    
     # 初始化Netflix监控系统 (Phase 2)
     initialize_netflix_monitoring(app)
     
@@ -65,6 +68,13 @@ def setup_logging(app):
 
 def register_blueprints(app):
     """注册蓝图"""
+    
+    # 导入认证相关蓝图
+    from app.api.auth import bp as auth_bp
+    from app.api.admin import bp as admin_bp
+    from app.api.tasks import bp as tasks_bp
+    from app.api.user_config import bp as user_config_bp
+    from app.api.storage import storage_bp
     
     # 导入原有蓝图
     from app.api.common import bp as common_bp
@@ -185,6 +195,14 @@ def register_blueprints(app):
     app.register_blueprint(download_bp, url_prefix='/api/download')
     app.register_blueprint(pptist_export_bp, url_prefix='/api/pptist_export')
     app.register_blueprint(workspace_bp, url_prefix='/api/workspace')
+    
+    # 注册认证相关蓝图
+    app.register_blueprint(auth_bp)  # /api/auth/*
+    app.register_blueprint(admin_bp)  # /api/admin/*
+    app.register_blueprint(tasks_bp)  # /api/tasks/*
+    app.register_blueprint(user_config_bp)  # /api/user-config/*
+    app.register_blueprint(storage_bp)  # /api/storage/*
+    print("✅ 认证蓝图注册成功: /api/auth/*, /api/admin/*, /api/tasks/*, /api/user-config/*, /api/storage/*")
     
     # 注册批量导入API蓝图（前端批量导出功能）
     try:
@@ -423,4 +441,56 @@ def initialize_netflix_monitoring(app):
         return False
     except Exception as e:
         app.logger.error(f"Netflix监控系统初始化错误: {e}")
+        return False
+
+
+def initialize_database(app):
+    """
+    初始化 MongoDB 数据库
+    - 建立连接
+    - 创建索引
+    - 首次启动时自动创建管理员账户
+    """
+    try:
+        from app.database import init_database
+        from app.database.mongodb import check_connection
+        
+        print("=" * 50)
+        print("🔌 正在初始化 MongoDB 数据库...")
+        print("=" * 50)
+        
+        # 执行数据库初始化
+        result = init_database()
+        
+        if result['success']:
+            print("✅ MongoDB 数据库初始化成功")
+            
+            if result['admin_created']:
+                print("")
+                print("🎉 " + "=" * 46)
+                print("   管理员账户已自动创建！")
+                print(f"   凭据文件: {result['credentials_file']}")
+                print("🎉 " + "=" * 46)
+                print("")
+            
+            # 存储数据库状态到应用上下文
+            app.config['MONGODB_INITIALIZED'] = True
+            app.config['MONGODB_CONNECTED'] = check_connection()
+        else:
+            print(f"⚠️ MongoDB 数据库初始化失败: {result.get('error')}")
+            app.config['MONGODB_INITIALIZED'] = False
+            app.config['MONGODB_CONNECTED'] = False
+        
+        return result['success']
+        
+    except ImportError as e:
+        print(f"⚠️ MongoDB 模块导入失败: {e}")
+        print("   请确保已安装 pymongo: pip install pymongo")
+        app.config['MONGODB_INITIALIZED'] = False
+        app.config['MONGODB_CONNECTED'] = False
+        return False
+    except Exception as e:
+        print(f"❌ MongoDB 初始化错误: {e}")
+        app.config['MONGODB_INITIALIZED'] = False
+        app.config['MONGODB_CONNECTED'] = False
         return False

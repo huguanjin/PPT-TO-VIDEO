@@ -24,6 +24,13 @@ except ImportError:
 from app.utils.file_manager import FileManager
 from app.utils.logger import get_logger
 
+# 导入配置桥接模块
+try:
+    from .system_config_bridge import get_single_line_mode
+    USE_CONFIG_BRIDGE = True
+except ImportError:
+    USE_CONFIG_BRIDGE = False
+
 class FFmpegFinalMerger:
     """基于FFmpeg的最终视频合并器"""
     
@@ -54,9 +61,15 @@ class FFmpegFinalMerger:
             self.logger.warning("FFmpeg不可用，将使用MoviePy作为备选方案")
     
     def _load_single_line_mode_config(self) -> bool:
-        """加载单行模式配置"""
+        """加载单行模式配置 - 使用配置桥接模块"""
         try:
-            # 🔧 修复配置文件路径查找逻辑
+            # 🔄 优先使用配置桥接（从 MongoDB 读取）
+            if USE_CONFIG_BRIDGE:
+                single_line_mode = get_single_line_mode(self.project_dir)
+                self.logger.info(f"✅ Step05从配置桥接加载 single_line_mode: {single_line_mode}")
+                return single_line_mode
+            
+            # 回退：从文件读取配置
             config_path = self.project_dir / "flask_backend" / "config_data" / "manual_split_config.json"
             
             # 如果路径不存在，尝试从父目录查找（处理output目录的情况）

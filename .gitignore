@@ -91,6 +91,8 @@ flask_backend/config_data/storage/*.db
 flask_backend/.env
 flask_backend/.env.local
 flask_backend/.env.*.local
+flask_backend/mongo_config.yaml
+!flask_backend/mongo_config.template.yaml
 !flask_backend/config_data/*_template.json
 !flask_backend/config_data/*_example.json
 

@@ -86,6 +86,7 @@ import SlideThumbnails from './SlideThumbnails.vue'
 import WritingBoardTool from './WritingBoardTool.vue'
 import CountdownTimer from './CountdownTimer.vue'
 import BottomThumbnails from './BottomThumbnails.vue'
+import { getAuthJsonHeaders } from '@/utils/authFetch'
 
 const props = defineProps<{
   changeViewMode: (mode: 'base' | 'presenter') => void
@@ -286,8 +287,13 @@ const handleBatchExport = async () => {
     // 发送到后端
     batchExportStatus.value = '正在发送到后端...'
     
+    // 从 localStorage 获取项目名称（由 VideoExportButton.vue 设置）
+    // 如果没有则使用时间戳生成默认名称
+    const storedProjectName = localStorage.getItem('video_export_project_name')
+    const projectName = storedProjectName || `pptist_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}`
+    
     const exportData = {
-      projectName: '如何选择中转大模型，如何比较价格',
+      projectName,
       totalSlides,
       exportedCount: exportedImages.length,
       images: exportedImages,
@@ -296,9 +302,7 @@ const handleBatchExport = async () => {
 
     const response = await fetch('http://localhost:5000/api/import-slides-batch', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthJsonHeaders(),
       body: JSON.stringify(exportData)
     })
 
@@ -347,9 +351,7 @@ const handleBatchExport = async () => {
           // 旧流程: 手动调用workflow/execute
           const workflowResponse = await fetch('http://localhost:5000/api/workflow/execute', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: getAuthJsonHeaders(),  // 🔧 添加认证头
             body: JSON.stringify({
               project_name: result.project_name
             })

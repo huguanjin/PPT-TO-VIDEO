@@ -25,10 +25,24 @@ export interface WorkspaceData {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
 const API_BASE = `${API_BASE_URL}/api/workspace`
 
-// API请求封装
+// 获取认证头
+const getAuthHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+  const token = localStorage.getItem('auth_token')
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  return headers
+}
+
+// API请求封装 - 带认证
 const api = {
   async get(url: string) {
-    const response = await fetch(`${API_BASE}${url}`)
+    const response = await fetch(`${API_BASE}${url}`, {
+      headers: getAuthHeaders(),
+    })
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
@@ -38,9 +52,7 @@ const api = {
   async post(url: string, data?: any) {
     const response = await fetch(`${API_BASE}${url}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       body: data ? JSON.stringify(data) : undefined,
     })
     if (!response.ok) {
@@ -52,9 +64,7 @@ const api = {
   async delete(url: string, data?: any) {
     const response = await fetch(`${API_BASE}${url}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       body: data ? JSON.stringify(data) : undefined,
     })
     if (!response.ok) {
@@ -92,36 +102,52 @@ export const useWorkspaceManager = () => {
     try {
       isLoading.value = true
       
-      // 正在初始化工作空间...
+      // eslint-disable-next-line no-console
+      console.log('🔄 [Workspace] 正在初始化工作空间...')
       
       // 检查当前工作区是否有内容
+      // eslint-disable-next-line no-console
+      console.log('🔄 [Workspace] 调用 api.get(/check)...')
       const checkResult = await api.get('/check')
+      // eslint-disable-next-line no-console
+      console.log('🔄 [Workspace] /check 返回:', checkResult)
       const hasContent = checkResult.exists
       
-      // 工作空间状态检查完成
+      // eslint-disable-next-line no-console
+      console.log('✅ [Workspace] 检查完成, hasContent:', hasContent)
       
       if (hasContent) {
         // 加载现有内容
+        // eslint-disable-next-line no-console
+        console.log('🔄 [Workspace] 调用 loadWorkspaceContent()...')
         await loadWorkspaceContent()
-        // 已加载现有工作空间内容
+        // eslint-disable-next-line no-console
+        console.log('✅ [Workspace] 已加载现有工作空间内容')
       }
       else {
         // 创建默认内容
         await createDefaultContent()
-        // 已创建默认工作空间内容
+        // eslint-disable-next-line no-console
+        console.log('✅ [Workspace] 已创建默认工作空间内容')
       }
       
       // 加载归档列表
       await loadArchiveList()
+      // eslint-disable-next-line no-console
+      console.log('✅ [Workspace] 归档列表加载完成')
       
       // 设置自动保存
       setupAutoSave()
+      
+      // eslint-disable-next-line no-console
+      console.log('✅ [Workspace] 初始化完成')
       
       return true
       
     }
     catch (error) {
-      // 工作空间初始化失败
+      // eslint-disable-next-line no-console
+      console.error('❌ [Workspace] 初始化失败:', error)
       return false
     }
     finally {
@@ -132,7 +158,11 @@ export const useWorkspaceManager = () => {
   // 加载工作空间内容
   const loadWorkspaceContent = async (): Promise<void> => {
     try {
+      // eslint-disable-next-line no-console
+      console.log('🔄 [Workspace] loadWorkspaceContent - 调用 api.get(/load)...')
       const response = await api.get('/load')
+      // eslint-disable-next-line no-console
+      console.log('🔄 [Workspace] loadWorkspaceContent - /load 返回:', response)
       
       if (response.success) {
         const { slides, title, last_modified } = response

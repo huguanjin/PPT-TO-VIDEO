@@ -27,7 +27,7 @@ export interface EnvironmentConfig {
  */
 const ENV_CONFIGS: Record<Environment, EnvironmentConfig> = {
   development: {
-    API_BASE_URL: 'http://localhost:8004',
+    API_BASE_URL: 'http://localhost:5000',
     API_FALLBACK_URL: 'http://localhost:5000',
     TIMEOUT: 30000,
     RETRY_TIMES: 3,
@@ -45,7 +45,7 @@ const ENV_CONFIGS: Record<Environment, EnvironmentConfig> = {
     API_LOGGING: false
   },
   test: {
-    API_BASE_URL: 'http://localhost:8004',
+    API_BASE_URL: 'http://localhost:5000',
     API_FALLBACK_URL: 'http://localhost:5000',
     TIMEOUT: 5000,
     RETRY_TIMES: 1,

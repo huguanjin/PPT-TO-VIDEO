@@ -1,0 +1,151 @@
+{
+  "project_name": "我的演示文稿",
+  "slides": [
+    {
+      "id": "welcome_slide_1",
+      "elements": [
+        {
+          "type": "shape",
+          "id": "bg_shape_1",
+          "left": 0,
+          "top": 0,
+          "width": 1000,
+          "height": 562.5,
+          "viewBox": [200, 200],
+          "path": "M 0 0 L 200 0 L 200 200 L 0 200 Z",
+          "fill": "#4A90D9",
+          "fixedRatio": false,
+          "rotate": 0,
+          "lock": true
+        },
+        {
+          "type": "text",
+          "id": "title_1",
+          "left": 100,
+          "top": 180,
+          "width": 800,
+          "height": 100,
+          "content": "<p style=\"text-align: center;\"><strong><span style=\"font-size: 54px; color: #ffffff;\">欢迎使用 PPT 转视频工具</span></strong></p>",
+          "rotate": 0,
+          "defaultFontName": "Microsoft YaHei",
+          "defaultColor": "#ffffff",
+          "vertical": false,
+          "textType": "title"
+        },
+        {
+          "type": "text",
+          "id": "subtitle_1",
+          "left": 150,
+          "top": 320,
+          "width": 700,
+          "height": 80,
+          "content": "<p style=\"text-align: center;\"><span style=\"font-size: 24px; color: #e0e0e0;\">在 PPTist 编辑器中创建精彩的演示文稿</span></p>",
+          "rotate": 0,
+          "defaultFontName": "Microsoft YaHei",
+          "defaultColor": "#e0e0e0",
+          "vertical": false
+        }
+      ],
+      "background": {
+        "type": "solid",
+        "color": "#4A90D9"
+      },
+      "script": "欢迎使用 PPT 转视频工具！这是一个强大的工具，可以帮助您将演示文稿转换为精美的视频教程。",
+      "notes": "首页幻灯片 - 欢迎页面"
+    },
+    {
+      "id": "feature_slide_2",
+      "elements": [
+        {
+          "type": "text",
+          "id": "title_2",
+          "left": 50,
+          "top": 50,
+          "width": 900,
+          "height": 80,
+          "content": "<p><strong><span style=\"font-size: 40px; color: #333333;\">主要功能</span></strong></p>",
+          "rotate": 0,
+          "defaultFontName": "Microsoft YaHei",
+          "defaultColor": "#333333",
+          "vertical": false,
+          "textType": "title"
+        },
+        {
+          "type": "text",
+          "id": "feature_list",
+          "left": 80,
+          "top": 150,
+          "width": 840,
+          "height": 350,
+          "content": "<p><span style=\"font-size: 28px; color: #555555;\">✨ 智能文字转语音 (TTS)</span></p><p><br></p><p><span style=\"font-size: 28px; color: #555555;\">🎬 自动生成视频片段</span></p><p><br></p><p><span style=\"font-size: 28px; color: #555555;\">📝 Netflix 风格字幕</span></p><p><br></p><p><span style=\"font-size: 28px; color: #555555;\">🔊 多种语音选择</span></p>",
+          "rotate": 0,
+          "defaultFontName": "Microsoft YaHei",
+          "defaultColor": "#555555",
+          "vertical": false
+        }
+      ],
+      "background": {
+        "type": "solid",
+        "color": "#ffffff"
+      },
+      "script": "PPT转视频工具提供了丰富的功能：智能文字转语音，支持多种声音；自动生成视频片段；Netflix 风格的专业字幕；以及多种语音可供选择。",
+      "notes": "功能介绍页"
+    },
+    {
+      "id": "guide_slide_3",
+      "elements": [
+        {
+          "type": "text",
+          "id": "title_3",
+          "left": 50,
+          "top": 50,
+          "width": 900,
+          "height": 80,
+          "content": "<p><strong><span style=\"font-size: 40px; color: #333333;\">使用步骤</span></strong></p>",
+          "rotate": 0,
+          "defaultFontName": "Microsoft YaHei",
+          "defaultColor": "#333333",
+          "vertical": false,
+          "textType": "title"
+        },
+        {
+          "type": "text",
+          "id": "steps_list",
+          "left": 80,
+          "top": 150,
+          "width": 840,
+          "height": 350,
+          "content": "<p><span style=\"font-size: 26px; color: #555555;\">1️⃣ 在编辑器中创建或导入 PPT</span></p><p><br></p><p><span style=\"font-size: 26px; color: #555555;\">2️⃣ 为每页添加解说词脚本</span></p><p><br></p><p><span style=\"font-size: 26px; color: #555555;\">3️⃣ 选择语音和配置参数</span></p><p><br></p><p><span style=\"font-size: 26px; color: #555555;\">4️⃣ 一键生成视频教程</span></p>",
+          "rotate": 0,
+          "defaultFontName": "Microsoft YaHei",
+          "defaultColor": "#555555",
+          "vertical": false
+        }
+      ],
+      "background": {
+        "type": "solid",
+        "color": "#f5f5f5"
+      },
+      "script": "使用步骤非常简单：首先在编辑器中创建或导入您的 PPT 文件；然后为每一页添加解说词脚本；接着选择您喜欢的语音和配置参数；最后一键生成视频教程。",
+      "notes": "操作指南页"
+    }
+  ],
+  "theme": {
+    "themeColor": "#4A90D9",
+    "fontColor": "#333333",
+    "fontName": "Microsoft YaHei",
+    "backgroundColor": "#ffffff"
+  },
+  "viewportSize": {
+    "width": 1000,
+    "height": 562.5
+  },
+  "viewportRatio": 0.5625,
+  "created_at": "2025-01-01T00:00:00.000Z",
+  "updated_at": "2025-01-01T00:00:00.000Z",
+  "_template_info": {
+    "name": "默认模板",
+    "description": "新用户默认演示文稿模板",
+    "version": "1.0.0"
+  }
+}
