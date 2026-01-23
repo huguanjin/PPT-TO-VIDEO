@@ -51,6 +51,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   confirm: []
   cancel: []
+  'update:visible': [value: boolean]
 }>()
 
 const icon = computed(() => {
@@ -63,10 +64,12 @@ const icon = computed(() => {
 })
 
 const handleConfirm = () => {
+  emit('update:visible', false)
   emit('confirm')
 }
 
 const handleCancel = () => {
+  emit('update:visible', false)
   emit('cancel')
 }
 </script>

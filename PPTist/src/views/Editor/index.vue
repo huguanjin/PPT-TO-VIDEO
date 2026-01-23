@@ -9,6 +9,15 @@
       </div>
       <div class="workspace-actions">
         <button 
+          class="archive-btn"
+          @click="handleArchiveProject"
+          :disabled="workspace.isLoading.value"
+          title="归档当前项目到历史记录"
+        >
+          <i class="icon-archive">📦</i>
+          归档项目
+        </button>
+        <button 
           class="history-btn"
           @click="showArchiveManager"
           title="查看归档"
@@ -79,9 +88,19 @@
     v-model:visible="showDeleteConfirm"
     title="删除归档"
     :message="`确定要删除归档 '${deleteTarget}' 吗？此操作不可撤销。`"
-    :variant="'danger'"
+    type="danger"
     @confirm="confirmDeleteArchive"
     @cancel="cancelDeleteArchive"
+  />
+
+  <!-- 归档确认对话框 -->
+  <ConfirmDialog
+    v-model:visible="showArchiveConfirm"
+    title="归档当前项目"
+    :message="`确定要将当前项目 '${workspace.currentTitle.value}' 归档到历史记录吗？\n\n归档后当前工作区将被清空，您可以在历史项目中恢复。`"
+    type="default"
+    @confirm="confirmArchiveProject"
+    @cancel="showArchiveConfirm = false"
   />
 </template>
 
@@ -125,6 +144,30 @@ const showArchiveList = ref(false)
 const notificationManager = ref<InstanceType<typeof NotificationManager> | null>(null)
 const showDeleteConfirm = ref(false)
 const deleteTarget = ref<string>('')
+const showArchiveConfirm = ref(false)
+
+// 归档当前项目
+const handleArchiveProject = () => {
+  if (!workspace.currentTitle.value || workspace.currentTitle.value === '我的演示文稿') {
+    notificationManager.value?.warning('请先为演示文稿设置一个有意义的名称后再归档')
+    return
+  }
+  showArchiveConfirm.value = true
+}
+
+// 确认归档项目
+const confirmArchiveProject = async () => {
+  showArchiveConfirm.value = false
+  try {
+    const success = await workspace.archiveProject(workspace.currentTitle.value)
+    if (success) {
+      notificationManager.value?.success('项目已成功归档到历史记录！')
+    }
+  }
+  catch (error: any) {
+    notificationManager.value?.error(`归档失败: ${error.message || '未知错误'}`)
+  }
+}
 
 // 显示归档管理器
 const showArchiveManager = async () => {
@@ -264,6 +307,16 @@ usePasteEvent()
     
     .history-btn {
       color: #666;
+    }
+    
+    .archive-btn {
+      color: #1890ff;
+      border-color: #1890ff;
+      
+      &:hover {
+        background: #e6f7ff;
+        border-color: #40a9ff;
+      }
     }
   }
 }

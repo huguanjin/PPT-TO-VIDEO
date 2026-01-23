@@ -700,9 +700,9 @@ class FFmpegFinalMerger:
                 base_font_size = subtitle_config.get("font_size", 16)  # 使用优化后的默认值
                 user_font_color = subtitle_config.get("font_color", "#FFFFFF")
                 
-                # 使用用户配置的字体（如果可用）
-                if user_font_family and user_font_family != "微软雅黑":
-                    font_name = user_font_family
+                # 🔄 跨平台字体映射 - 将用户指定的字体映射到当前平台的等效字体
+                # 这解决了Mac/Linux系统没有Windows字体（如Arial Unicode MS）导致的乱码问题
+                font_name = self._get_cross_platform_font(user_font_family)
                 
                 # 🎯 集成自适应字体大小计算器
                 try:
@@ -963,15 +963,264 @@ class FFmpegFinalMerger:
         return None
     
     def _get_platform_font(self) -> str:
-        """获取平台适配的字体名称 - 借鉴 testfile 方式"""
+        """
+        获取平台适配的字体名称 - 支持中文字符
+        
+        macOS: 使用 PingFang SC (苹方) - macOS 10.11+ 系统自带中文字体
+               备选: Heiti SC (黑体-简), STHeiti, Hiragino Sans GB
+        Windows: Microsoft YaHei (微软雅黑)
+        Linux: Noto Sans CJK (需要安装 fonts-noto-cjk)
+        """
         system = platform.system()
         
         if system == 'Linux':
-            return 'NotoSansCJK-Regular'
+            # Linux 需要安装 Noto CJK 字体: sudo apt install fonts-noto-cjk
+            return 'Noto Sans CJK SC'
         elif system == 'Darwin':  # macOS
-            return 'Arial Unicode MS'
+            # PingFang SC 是 macOS 10.11+ 自带的中文字体，支持简体中文
+            # 如果 PingFang 不可用，FFmpeg 会自动回退到其他可用字体
+            # 备选字体优先级: PingFang SC > Heiti SC > STHeiti > Hiragino Sans GB
+            return 'PingFang SC'
         else:  # Windows
             return 'Microsoft YaHei'
+    
+    def _get_cross_platform_font(self, requested_font: str) -> str:
+        """
+        跨平台字体映射 - 解决Mac/Linux系统没有Windows字体导致的乱码问题
+        
+        将Windows常见字体映射到其他平台的等效字体，确保字幕正常显示。
+        
+        Args:
+            requested_font: 用户请求的字体名称（通常是Windows字体）
+            
+        Returns:
+            当前平台可用的等效字体名称
+        """
+        system = platform.system()
+        
+        # 定义跨平台字体映射表
+        # 格式: { "原字体名(小写)": {"Darwin": "Mac字体", "Linux": "Linux字体", "Windows": "Win字体"} }
+        FONT_MAPPING = {
+            # Unicode 通用字体
+            "arial unicode ms": {
+                "Darwin": "PingFang SC",
+                "Linux": "Noto Sans CJK SC",
+                "Windows": "Arial Unicode MS"
+            },
+            "arial": {
+                "Darwin": "Arial",  # macOS也有Arial
+                "Linux": "Liberation Sans",
+                "Windows": "Arial"
+            },
+            
+            # 微软中文字体
+            "microsoft yahei": {
+                "Darwin": "PingFang SC",
+                "Linux": "Noto Sans CJK SC",
+                "Windows": "Microsoft YaHei"
+            },
+            "微软雅黑": {
+                "Darwin": "PingFang SC",
+                "Linux": "Noto Sans CJK SC",
+                "Windows": "Microsoft YaHei"
+            },
+            "msyh": {
+                "Darwin": "PingFang SC",
+                "Linux": "Noto Sans CJK SC",
+                "Windows": "Microsoft YaHei"
+            },
+            
+            # 黑体系列
+            "simhei": {
+                "Darwin": "Heiti SC",
+                "Linux": "Noto Sans CJK SC",
+                "Windows": "SimHei"
+            },
+            "黑体": {
+                "Darwin": "Heiti SC",
+                "Linux": "Noto Sans CJK SC",
+                "Windows": "SimHei"
+            },
+            "heiti sc": {
+                "Darwin": "Heiti SC",
+                "Linux": "Noto Sans CJK SC",
+                "Windows": "SimHei"
+            },
+            
+            # 宋体系列
+            "simsun": {
+                "Darwin": "Songti SC",
+                "Linux": "Noto Serif CJK SC",
+                "Windows": "SimSun"
+            },
+            "宋体": {
+                "Darwin": "Songti SC",
+                "Linux": "Noto Serif CJK SC",
+                "Windows": "SimSun"
+            },
+            "nsimsun": {
+                "Darwin": "Songti SC",
+                "Linux": "Noto Serif CJK SC",
+                "Windows": "NSimSun"
+            },
+            
+            # 楷体系列
+            "kaiti": {
+                "Darwin": "Kaiti SC",
+                "Linux": "Noto Serif CJK SC",
+                "Windows": "KaiTi"
+            },
+            "楷体": {
+                "Darwin": "Kaiti SC",
+                "Linux": "Noto Serif CJK SC",
+                "Windows": "KaiTi"
+            },
+            "simkai": {
+                "Darwin": "Kaiti SC",
+                "Linux": "Noto Serif CJK SC",
+                "Windows": "KaiTi"
+            },
+            
+            # 仿宋系列
+            "fangsong": {
+                "Darwin": "STFangsong",
+                "Linux": "Noto Serif CJK SC",
+                "Windows": "FangSong"
+            },
+            "仿宋": {
+                "Darwin": "STFangsong",
+                "Linux": "Noto Serif CJK SC",
+                "Windows": "FangSong"
+            },
+            
+            # 苹方系列 (Mac -> Windows)
+            "pingfang sc": {
+                "Darwin": "PingFang SC",
+                "Linux": "Noto Sans CJK SC",
+                "Windows": "Microsoft YaHei"
+            },
+            "苹方": {
+                "Darwin": "PingFang SC",
+                "Linux": "Noto Sans CJK SC",
+                "Windows": "Microsoft YaHei"
+            },
+            
+            # 华文系列
+            "stxihei": {
+                "Darwin": "STXihei",
+                "Linux": "Noto Sans CJK SC",
+                "Windows": "STXihei"
+            },
+            "华文细黑": {
+                "Darwin": "STXihei",
+                "Linux": "Noto Sans CJK SC",
+                "Windows": "STXihei"
+            },
+            "stheiti": {
+                "Darwin": "STHeiti",
+                "Linux": "Noto Sans CJK SC",
+                "Windows": "SimHei"
+            },
+            "华文黑体": {
+                "Darwin": "STHeiti",
+                "Linux": "Noto Sans CJK SC",
+                "Windows": "SimHei"
+            },
+            
+            # Noto CJK 系列 (Linux优先)
+            "noto sans cjk sc": {
+                "Darwin": "PingFang SC",
+                "Linux": "Noto Sans CJK SC",
+                "Windows": "Microsoft YaHei"
+            },
+            "noto serif cjk sc": {
+                "Darwin": "Songti SC",
+                "Linux": "Noto Serif CJK SC",
+                "Windows": "SimSun"
+            },
+            
+            # 日文字体映射
+            "ms gothic": {
+                "Darwin": "Hiragino Sans",
+                "Linux": "Noto Sans CJK JP",
+                "Windows": "MS Gothic"
+            },
+            "meiryo": {
+                "Darwin": "Hiragino Sans",
+                "Linux": "Noto Sans CJK JP",
+                "Windows": "Meiryo"
+            },
+            "yu gothic": {
+                "Darwin": "Hiragino Sans",
+                "Linux": "Noto Sans CJK JP",
+                "Windows": "Yu Gothic"
+            },
+            
+            # 韩文字体映射
+            "malgun gothic": {
+                "Darwin": "Apple SD Gothic Neo",
+                "Linux": "Noto Sans CJK KR",
+                "Windows": "Malgun Gothic"
+            },
+            "gulim": {
+                "Darwin": "Apple SD Gothic Neo",
+                "Linux": "Noto Sans CJK KR",
+                "Windows": "Gulim"
+            },
+            
+            # 通用西文字体
+            "times new roman": {
+                "Darwin": "Times New Roman",
+                "Linux": "Liberation Serif",
+                "Windows": "Times New Roman"
+            },
+            "verdana": {
+                "Darwin": "Verdana",
+                "Linux": "DejaVu Sans",
+                "Windows": "Verdana"
+            },
+            "tahoma": {
+                "Darwin": "Tahoma",
+                "Linux": "DejaVu Sans",
+                "Windows": "Tahoma"
+            },
+            "consolas": {
+                "Darwin": "Menlo",
+                "Linux": "DejaVu Sans Mono",
+                "Windows": "Consolas"
+            },
+            "courier new": {
+                "Darwin": "Courier New",
+                "Linux": "Liberation Mono",
+                "Windows": "Courier New"
+            }
+        }
+        
+        # 转换为小写进行匹配
+        font_key = requested_font.lower().strip()
+        
+        # 查找映射
+        if font_key in FONT_MAPPING:
+            mapped_font = FONT_MAPPING[font_key].get(system, requested_font)
+            if mapped_font != requested_font:
+                self.logger.info(f"🔄 字体映射: '{requested_font}' → '{mapped_font}' (平台: {system})")
+            return mapped_font
+        
+        # 如果没有找到映射，检查是否是当前平台的原生字体
+        if system == 'Darwin':
+            # macOS原生字体不需要映射
+            mac_fonts = ['pingfang sc', 'heiti sc', 'songti sc', 'kaiti sc', 'stfangsong', 
+                        'stxihei', 'stheiti', 'hiragino sans', 'apple sd gothic neo']
+            if font_key in mac_fonts:
+                return requested_font
+        elif system == 'Linux':
+            # Linux Noto字体不需要映射
+            if 'noto' in font_key:
+                return requested_font
+        
+        # 未知字体，返回平台默认字体作为安全回退
+        self.logger.warning(f"⚠️ 未知字体 '{requested_font}'，使用平台默认字体")
+        return self._get_platform_font()
     
     def _css_color_to_ffmpeg(self, css_color: str) -> str:
         """

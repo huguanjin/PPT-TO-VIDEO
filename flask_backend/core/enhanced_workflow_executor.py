@@ -248,16 +248,27 @@ class EnhancedWorkflowExecutor:
             # 只有重新执行工作流时才会被清理
             
             # 3. 创建归档元数据
+            # 解析时间字符串为 datetime 对象用于计算持续时间
+            start_dt = None
+            end_dt = None
+            try:
+                if execution.start_time:
+                    start_dt = datetime.fromisoformat(execution.start_time)
+                if execution.end_time:
+                    end_dt = datetime.fromisoformat(execution.end_time)
+            except (ValueError, TypeError):
+                pass
+            
             archive_metadata = {
                 "project_name": project_name,
                 "user_id": user_id,
                 "archived_at": datetime.now().isoformat(),
                 "execution_id": execution.execution_id,
                 "workflow_status": execution.workflow_status.value if execution.workflow_status else "unknown",
-                "started_at": execution.started_at.isoformat() if execution.started_at else None,
-                "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
-                "total_duration_seconds": (execution.completed_at - execution.started_at).total_seconds() 
-                    if execution.started_at and execution.completed_at else None,
+                "started_at": execution.start_time,  # 已经是 ISO 格式字符串
+                "completed_at": execution.end_time,  # 已经是 ISO 格式字符串
+                "total_duration_seconds": (end_dt - start_dt).total_seconds() 
+                    if start_dt and end_dt else None,
                 "archived_files": [str(f) for f in archive_result["archived_files"]],
                 "source_dir": str(self.project_dir)
             }
