@@ -9,6 +9,14 @@
       </div>
       <div class="workspace-actions">
         <button 
+          class="image-creator-btn"
+          @click="showImageCreator = true"
+          title="AI图片创作"
+        >
+          <i class="icon-image">🎨</i>
+          AI绘图
+        </button>
+        <button 
           class="archive-btn"
           @click="handleArchiveProject"
           :disabled="workspace.isLoading.value"
@@ -80,6 +88,18 @@
     <AIPPTDialog />
   </Modal>
 
+  <!-- AI图片创作弹窗 -->
+  <Modal
+    v-model:visible="showImageCreator"
+    :width="960"
+    closeButton
+  >
+    <ImageCreator 
+      @close="showImageCreator = false"
+      @insert="handleInsertImage"
+    />
+  </Modal>
+
   <!-- 通知管理器 -->
   <NotificationManager ref="notificationManager" />
 
@@ -128,6 +148,7 @@ import Modal from '@/components/Modal.vue'
 import ArchiveManager from '../../components/ArchiveManager.vue'
 import NotificationManager from '../../components/NotificationManager.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
+import ImageCreator from '../../components/ImageCreator.vue'
 
 const mainStore = useMainStore()
 const { dialogForExport, showSelectPanel, showSearchPanel, showNotesPanel, showMarkupPanel, showAIPPTDialog } = storeToRefs(mainStore)
@@ -145,6 +166,9 @@ const notificationManager = ref<InstanceType<typeof NotificationManager> | null>
 const showDeleteConfirm = ref(false)
 const deleteTarget = ref<string>('')
 const showArchiveConfirm = ref(false)
+
+// AI图片创作
+const showImageCreator = ref(false)
 
 // 归档当前项目
 const handleArchiveProject = () => {
@@ -219,6 +243,22 @@ const confirmDeleteArchive = async () => {
 const cancelDeleteArchive = () => {
   showDeleteConfirm.value = false
   deleteTarget.value = ''
+}
+
+// 导入创建元素的hook
+import useCreateElement from '@/hooks/useCreateElement'
+const { createImageElement } = useCreateElement()
+
+// 处理插入AI生成的图片
+const handleInsertImage = (imageUrl: string) => {
+  try {
+    createImageElement(imageUrl)
+    showImageCreator.value = false
+    notificationManager.value?.success('图片已插入到当前幻灯片')
+  }
+  catch (error: any) {
+    notificationManager.value?.error(`插入图片失败: ${error.message || '未知错误'}`)
+  }
 }
 
 // 初始化
@@ -316,6 +356,16 @@ usePasteEvent()
       &:hover {
         background: #e6f7ff;
         border-color: #40a9ff;
+      }
+    }
+
+    .image-creator-btn {
+      color: #722ed1;
+      border-color: #722ed1;
+      
+      &:hover {
+        background: #f9f0ff;
+        border-color: #9254de;
       }
     }
   }

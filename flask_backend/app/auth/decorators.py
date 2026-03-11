@@ -38,6 +38,10 @@ def login_required(f: Callable) -> Callable:
     """
     @wraps(f)
     def decorated(*args, **kwargs):
+        # 允许 CORS 预检请求直接通过
+        if request.method == 'OPTIONS':
+            return f(*args, **kwargs)
+
         # 获取 Token
         token = get_token_from_header()
         
@@ -99,16 +103,20 @@ def admin_required(f: Callable) -> Callable:
     """
     @wraps(f)
     def decorated(*args, **kwargs):
+        # 允许 CORS 预检请求直接通过
+        if request.method == 'OPTIONS':
+            return f(*args, **kwargs)
+
         # 获取 Token
         token = get_token_from_header()
-        
+
         if not token:
             return jsonify({
                 'success': False,
                 'message': '未提供认证令牌',
                 'error': 'UNAUTHORIZED'
             }), 401
-        
+
         # 解码 Token
         payload = decode_token(token)
         if not payload:
@@ -174,9 +182,13 @@ def optional_login(f: Callable) -> Callable:
     
     @wraps(f)
     def decorated(*args, **kwargs):
+        # 允许 CORS 预检请求直接通过
+        if request.method == 'OPTIONS':
+            return f(*args, **kwargs)
+
         # 尝试获取 Token
         token = get_token_from_header()
-        
+
         if not token:
             if REQUIRE_LOGIN:
                 return jsonify({

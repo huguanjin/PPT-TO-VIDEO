@@ -22,7 +22,11 @@ def create_app(config_class=None):
         app.config.from_object(DevelopmentConfig)
     
     # 配置CORS
-    CORS(app, origins=['*'], supports_credentials=True)
+    # 注意：supports_credentials=True 不能与 origins='*' 同用，需指定具体来源
+    CORS(app, origins=['http://localhost:5173', 'http://127.0.0.1:5173',
+                       'http://localhost:3000', 'http://127.0.0.1:3000',
+                       'http://localhost:5174', 'http://127.0.0.1:5174'],
+         supports_credentials=True)
     
     # 配置请求限制（放宽限制以支持前端频繁操作）
     limiter = Limiter(
@@ -184,6 +188,16 @@ def register_blueprints(app):
     except Exception as e:
         print(f"❌ template_api模块加载错误: {e}")
     
+    # 导入图片生成API
+    image_generator_bp = None
+    try:
+        from app.api.image_generator import bp as image_generator_bp
+        print("✅ image_generator模块导入成功")
+    except ImportError as e:
+        print(f"❌ image_generator模块导入失败: {e}")
+    except Exception as e:
+        print(f"❌ image_generator模块加载错误: {e}")
+    
     # 注册原有蓝图
     app.register_blueprint(common_bp)
     app.register_blueprint(pptist_bp, url_prefix='/api/pptist')
@@ -266,6 +280,14 @@ def register_blueprints(app):
             print("✅ template_api蓝图注册成功: /data/*, /img/*, /templates/*")
         except Exception as e:
             print(f"❌ template_api蓝图注册失败: {e}")
+    
+    # 注册图片生成API
+    if image_generator_bp is not None:
+        try:
+            app.register_blueprint(image_generator_bp, url_prefix='/api/image-generator')
+            print("✅ image_generator蓝图注册成功: /api/image-generator/*")
+        except Exception as e:
+            print(f"❌ image_generator蓝图注册失败: {e}")
     
     # 手动分割API已通过直接路由注册
     

@@ -22,6 +22,7 @@ class UserConfig:
     smart_subtitle: Dict[str, Any] = field(default_factory=dict)
     netflix_v2: Dict[str, Any] = field(default_factory=dict)
     advanced_features: Dict[str, Any] = field(default_factory=dict)
+    image_generation: Dict[str, Any] = field(default_factory=dict)
     updated_at: datetime = field(default_factory=datetime.utcnow)
     _id: Optional[ObjectId] = None
     
@@ -36,6 +37,7 @@ class UserConfig:
             'smart_subtitle': self.smart_subtitle,
             'netflix_v2': self.netflix_v2,
             'advanced_features': self.advanced_features,
+            'image_generation': self.image_generation,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
         if include_id and self._id:
@@ -53,6 +55,7 @@ class UserConfig:
             'smart_subtitle': self.smart_subtitle,
             'netflix_v2': self.netflix_v2,
             'advanced_features': self.advanced_features,
+            'image_generation': self.image_generation,
             'updated_at': self.updated_at
         }
     
@@ -76,6 +79,7 @@ class UserConfig:
             smart_subtitle=data.get('smart_subtitle', {}),
             netflix_v2=data.get('netflix_v2', {}),
             advanced_features=data.get('advanced_features', {}),
+            image_generation=data.get('image_generation', {}),
             updated_at=updated_at or datetime.utcnow(),
             _id=data.get('_id')
         )
@@ -123,7 +127,8 @@ class UserConfigService:
             subtitle=config_data.get('subtitle', {}),
             smart_subtitle=config_data.get('smart_subtitle', {}),
             netflix_v2=config_data.get('netflix_v2', {}),
-            advanced_features=config_data.get('advanced_features', {})
+            advanced_features=config_data.get('advanced_features', {}),
+            image_generation=config_data.get('image_generation', {})
         )
         
         doc = config.to_db_dict()
@@ -145,7 +150,7 @@ class UserConfigService:
         
         # 支持的配置字段
         allowed_fields = ['ai', 'tts', 'video', 'subtitle', 'smart_subtitle', 
-                         'netflix_v2', 'advanced_features']
+                         'netflix_v2', 'advanced_features', 'image_generation']
         
         for field in allowed_fields:
             if field in updates:
